@@ -1,0 +1,139 @@
+"use client";
+
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { supabase } from "@/lib/supabase";
+
+type TaskRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  assignee_name: string;
+};
+
+export default function TasksSection() {
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: qError } = await supabase
+      .from("tasks")
+      .select("id, title, description, status, due_date, assignee_name")
+      .eq("status", "open")
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (qError) {
+      setError(qError.message);
+      setTasks([]);
+    } else {
+      setTasks((data ?? []) as TaskRow[]);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function onAdd(e: FormEvent) {
+    e.preventDefault();
+    const title = newTitle.trim();
+    if (!title || adding) return;
+    setAdding(true);
+    setError(null);
+    const { error: insError } = await supabase.from("tasks").insert({
+      title,
+      status: "open",
+    });
+    setAdding(false);
+    if (insError) {
+      setError(insError.message);
+      return;
+    }
+    setNewTitle("");
+    void load();
+  }
+
+  async function onComplete(id: string) {
+    setBusyId(id);
+    setError(null);
+    const { error: upError } = await supabase
+      .from("tasks")
+      .update({ status: "complete" })
+      .eq("id", id);
+    setBusyId(null);
+    if (upError) {
+      setError(upError.message);
+      return;
+    }
+    void load();
+  }
+
+  return (
+    <>
+      <h2>Tasks</h2>
+      <p className="tasks-lede">Open work</p>
+
+      {error ? <p className="error">{error}</p> : null}
+
+      {loading ? (
+        <p className="tasks-muted">Loading…</p>
+      ) : tasks.length === 0 ? (
+        <p className="tasks-muted">No open tasks.</p>
+      ) : (
+        <ul className="tasks-list">
+          {tasks.map((t) => (
+            <li key={t.id} className="tasks-item">
+              <div className="tasks-item-main">
+                <span className="tasks-title">{t.title}</span>
+                {t.description ? (
+                  <span className="tasks-desc">{t.description}</span>
+                ) : null}
+                {t.assignee_name.trim() || t.due_date ? (
+                  <span className="tasks-meta">
+                    {t.assignee_name.trim()
+                      ? `Assigned: ${t.assignee_name.trim()}`
+                      : ""}
+                    {t.assignee_name.trim() && t.due_date ? " · " : ""}
+                    {t.due_date ? `Due ${t.due_date}` : ""}
+                  </span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="outline tasks-done"
+                disabled={busyId === t.id}
+                onClick={() => void onComplete(t.id)}
+              >
+                {busyId === t.id ? "…" : "Done"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form className="tasks-add-form" onSubmit={onAdd}>
+        <input
+          type="text"
+          className="tasks-add-input"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="New task title"
+          disabled={adding || loading}
+          aria-label="New task title"
+        />
+        <button type="submit" disabled={adding || loading || !newTitle.trim()}>
+          {adding ? "Adding…" : "Add"}
+        </button>
+      </form>
+    </>
+  );
+}

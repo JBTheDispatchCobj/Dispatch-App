@@ -292,3 +292,95 @@ button.dispatch-save {
   font-size: 0.8125rem;
   color: color-mix(in srgb, var(--foreground) 58%, transparent);
 }
+
+.tasks-lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.tasks-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.tasks-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tasks-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  margin: 0;
+}
+
+.tasks-item:last-child {
+  border-bottom: none;
+}
+
+.tasks-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tasks-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.tasks-desc {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+}
+
+.tasks-meta {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+button.tasks-done {
+  flex-shrink: 0;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.tasks-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.tasks-add-input {
+  flex: 1;
+  min-width: 8rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9375rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.shell-section--tasks form.tasks-add-form button[type="submit"] {
+  min-height: 2.5rem;
+}
