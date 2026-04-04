@@ -187,3 +187,102 @@ main.home-shell {
   line-height: 1.45;
   color: color-mix(in srgb, var(--foreground) 58%, transparent);
 }
+
+.dispatch-date {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.dispatch-muted {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.dispatch-block {
+  margin-bottom: 1rem;
+}
+
+.dispatch-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 0.35rem;
+  color: color-mix(in srgb, var(--foreground) 78%, transparent);
+}
+
+.dispatch-textarea {
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  min-height: 5rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  resize: vertical;
+  font-family: inherit;
+}
+
+.dispatch-watchlist {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dispatch-watchlist li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.dispatch-watchlist li:last-child {
+  border-bottom: none;
+}
+
+.dispatch-watchlist-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+button.dispatch-remove {
+  flex-shrink: 0;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.dispatch-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dispatch-add-input {
+  flex: 1;
+  min-width: 8rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9375rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+button.dispatch-save {
+  margin-top: 0.5rem;
+}
