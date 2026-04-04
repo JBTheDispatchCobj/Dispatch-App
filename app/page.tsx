@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DispatchSection from "./dispatch-section";
 import SignOutButton from "./sign-out-button";
+import StaffSection from "./staff-section";
 import TasksSection from "./tasks-section";
 
 export default function Home() {
@@ -65,9 +66,8 @@ export default function Home() {
         <li className="shell-section shell-section--tasks">
           <TasksSection />
         </li>
-        <li className="shell-section">
-          <h2>Staff</h2>
-          <p>Team list and notes will appear here.</p>
+        <li className="shell-section shell-section--staff">
+          <StaffSection />
         </li>
       </ul>
     </main>

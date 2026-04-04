@@ -316,8 +316,8 @@ button.dispatch-save {
 
 .tasks-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
@@ -329,11 +329,18 @@ button.dispatch-save {
 }
 
 .tasks-item-main {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+
+.tasks-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-self: flex-start;
 }
 
 .tasks-title {
@@ -354,11 +361,57 @@ button.dispatch-save {
   color: color-mix(in srgb, var(--foreground) 52%, transparent);
 }
 
-button.tasks-done {
+button.tasks-done,
+button.tasks-edit-btn {
   flex-shrink: 0;
   min-height: 2rem;
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
+}
+
+.tasks-edit-form {
+  flex: 1 1 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tasks-edit-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
+}
+
+.tasks-edit-input,
+.tasks-edit-textarea {
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+.tasks-edit-textarea {
+  resize: vertical;
+  min-height: 3rem;
+}
+
+.tasks-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.tasks-edit-actions button[type="submit"] {
+  min-height: 2.5rem;
 }
 
 .tasks-add-form {
@@ -382,5 +435,209 @@ button.tasks-done {
 }
 
 .shell-section--tasks form.tasks-add-form button[type="submit"] {
+  min-height: 2.5rem;
+}
+
+.staff-lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.staff-muted {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.staff-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.staff-list-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+  margin: 0;
+}
+
+.staff-list-item:last-child {
+  border-bottom: none;
+}
+
+.staff-list-item--inactive {
+  opacity: 0.72;
+}
+
+.staff-row-main {
+  flex: 1 1 10rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.staff-row-main:hover .staff-row-name {
+  text-decoration: underline;
+}
+
+.staff-row-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.staff-row-role {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+}
+
+.staff-row-status {
+  font-size: 0.7rem;
+  text-transform: capitalize;
+  color: color-mix(in srgb, var(--foreground) 48%, transparent);
+}
+
+button.staff-toggle {
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.staff-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.staff-add-input {
+  flex: 1;
+  min-width: 6rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9375rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.shell-section--staff .staff-add-form button[type="submit"] {
+  min-height: 2.5rem;
+}
+
+.staff-detail-nav {
+  margin-bottom: 1rem;
+}
+
+.staff-detail-nav a {
+  font-size: 0.875rem;
+}
+
+.staff-detail-title {
+  margin-bottom: 1rem;
+}
+
+.staff-detail-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+}
+
+.staff-detail-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--foreground) 72%, transparent);
+}
+
+.staff-detail-input,
+.staff-detail-textarea {
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.9375rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+}
+
+.staff-detail-textarea {
+  resize: vertical;
+  min-height: 5rem;
+  line-height: 1.45;
+}
+
+.staff-detail-form button[type="submit"] {
+  align-self: flex-start;
+  margin-top: 0.35rem;
+  min-height: 2.5rem;
+}
+
+.staff-outcomes-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.staff-outcomes-lede {
+  margin-top: 0;
+}
+
+.staff-outcomes-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.staff-outcomes-item {
+  margin: 0;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.staff-outcomes-item:last-child {
+  border-bottom: none;
+}
+
+.staff-outcomes-body {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.staff-outcomes-time {
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--foreground) 48%, transparent);
+}
+
+.staff-outcome-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.staff-outcome-add button[type="submit"] {
   min-height: 2.5rem;
 }
