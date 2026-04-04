@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { activityType, logActivity } from "@/lib/activity-log";
 import { supabase } from "@/lib/supabase";
 
 function localDateKey(d: Date): string {
@@ -79,6 +80,10 @@ export default function DispatchSection() {
       return;
     }
     setWatchlist(trimmed);
+    void logActivity(
+      activityType.dispatchSaved,
+      `Dispatch saved for ${day}`,
+    );
     setSaveLine("Saved");
     savedTimerRef.current = setTimeout(() => {
       setSaveLine(null);

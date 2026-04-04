@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { activityType, logActivity } from "@/lib/activity-log";
 import { supabase } from "@/lib/supabase";
 
 type TaskRow = {
@@ -79,10 +80,13 @@ export default function TasksSection() {
       return;
     }
     setNewTitle("");
+    void logActivity(activityType.taskCreated, `Task created: ${title}`);
     void load();
   }
 
   async function onComplete(id: string) {
+    const t = tasks.find((x) => x.id === id);
+    const label = t?.title ?? "Task";
     setBusyId(id);
     setError(null);
     const { error: upError } = await supabase
@@ -94,6 +98,10 @@ export default function TasksSection() {
       setError(upError.message);
       return;
     }
+    void logActivity(
+      activityType.taskCompleted,
+      `Task completed: ${label}`,
+    );
     void load();
   }
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { activityType, logActivity } from "@/lib/activity-log";
 import { supabase } from "@/lib/supabase";
 
 type StaffRow = {
@@ -60,6 +61,7 @@ export default function StaffSection() {
     }
     setNewName("");
     setNewRole("");
+    void logActivity(activityType.staffAdded, `Staff added: ${name}`);
     void load();
   }
 
@@ -76,6 +78,10 @@ export default function StaffSection() {
       setError(upError.message);
       return;
     }
+    void logActivity(
+      activityType.staffStatusChanged,
+      `${s.name} set to ${next}`,
+    );
     void load();
   }
 

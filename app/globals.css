@@ -641,3 +641,46 @@ button.staff-toggle {
 .staff-outcome-add button[type="submit"] {
   min-height: 2.5rem;
 }
+
+.activity-lede {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.activity-muted {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 52%, transparent);
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-item {
+  margin: 0;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-message {
+  margin: 0 0 0.2rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.activity-time {
+  font-size: 0.72rem;
+  color: color-mix(in srgb, var(--foreground) 48%, transparent);
+}

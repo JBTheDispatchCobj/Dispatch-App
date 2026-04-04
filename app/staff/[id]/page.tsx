@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { activityType, logActivity } from "@/lib/activity-log";
 import { supabase } from "@/lib/supabase";
 
 type StaffRow = {
@@ -37,6 +38,7 @@ export default function StaffDetailPage() {
   const [outcomes, setOutcomes] = useState<OutcomeRow[]>([]);
   const [outcomeDraft, setOutcomeDraft] = useState("");
   const [addingOutcome, setAddingOutcome] = useState(false);
+  const statusLoadedRef = useRef<string>("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -83,7 +85,9 @@ export default function StaffDetailPage() {
     const row = data as StaffRow;
     setName(row.name);
     setRole(row.role ?? "");
-    setStatus(row.status === "inactive" ? "inactive" : "active");
+    const st = row.status === "inactive" ? "inactive" : "active";
+    setStatus(st);
+    statusLoadedRef.current = st;
     setNotes(row.notes ?? "");
     setLoading(false);
   }, [id]);
@@ -127,6 +131,14 @@ export default function StaffDetailPage() {
       setError(upError.message);
       return;
     }
+    const prev = statusLoadedRef.current;
+    if (status !== prev) {
+      void logActivity(
+        activityType.staffStatusChanged,
+        `${n}: ${prev} → ${status}`,
+      );
+      statusLoadedRef.current = status;
+    }
     void loadStaff();
   }
 
@@ -146,6 +158,12 @@ export default function StaffDetailPage() {
       return;
     }
     setOutcomeDraft("");
+    const snippet =
+      body.length > 120 ? `${body.slice(0, 117)}…` : body;
+    void logActivity(
+      activityType.staffOutcomeAdded,
+      `Outcome (${name}): ${snippet}`,
+    );
     void loadOutcomes();
   }
 
