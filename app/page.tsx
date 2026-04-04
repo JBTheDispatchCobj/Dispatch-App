@@ -43,12 +43,33 @@ export default function Home() {
   }
 
   return (
-    <main className="wrap">
-      <h1>Home</h1>
-      <p>You are signed in.</p>
-      <nav>
+    <main className="wrap home-shell">
+      <header className="shell-header">
+        <div>
+          <h1>Dispatch</h1>
+          <p className="shell-lede">Today&apos;s operations</p>
+        </div>
         <SignOutButton />
-      </nav>
+      </header>
+
+      <ul className="shell-sections">
+        <li className="shell-section">
+          <h2>Dispatch</h2>
+          <p>Daily brief and watchlist will appear here.</p>
+        </li>
+        <li className="shell-section">
+          <h2>Activity</h2>
+          <p>Recent changes will appear here.</p>
+        </li>
+        <li className="shell-section">
+          <h2>Tasks</h2>
+          <p>Assigned work will appear here.</p>
+        </li>
+        <li className="shell-section">
+          <h2>Staff</h2>
+          <p>Team list and notes will appear here.</p>
+        </li>
+      </ul>
     </main>
   );
 }

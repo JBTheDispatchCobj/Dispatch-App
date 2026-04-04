@@ -133,3 +133,57 @@ main.login-screen {
     color: #f87171;
   }
 }
+
+main.home-shell {
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+.shell-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.shell-header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.shell-lede {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 62%, transparent);
+}
+
+.shell-sections {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.shell-section {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.shell-section h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  letter-spacing: 0.01em;
+}
+
+.shell-section p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+}
