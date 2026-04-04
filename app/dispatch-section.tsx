@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 function localDateKey(d: Date): string {
@@ -18,6 +18,14 @@ export default function DispatchSection() {
   const [brief, setBrief] = useState("");
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [draftItem, setDraftItem] = useState("");
+  const [saveLine, setSaveLine] = useState<string | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,8 +56,13 @@ export default function DispatchSection() {
   }, [load]);
 
   async function onSave() {
+    if (savedTimerRef.current) {
+      clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = null;
+    }
     setSaving(true);
     setError(null);
+    setSaveLine("Saving...");
     const trimmed = watchlist.map((s) => s.trim()).filter(Boolean);
     const { error: upError } = await supabase.from("dispatch_day").upsert(
       {
@@ -61,10 +74,16 @@ export default function DispatchSection() {
     );
     setSaving(false);
     if (upError) {
+      setSaveLine(null);
       setError(upError.message);
       return;
     }
     setWatchlist(trimmed);
+    setSaveLine("Saved");
+    savedTimerRef.current = setTimeout(() => {
+      setSaveLine(null);
+      savedTimerRef.current = null;
+    }, 2500);
   }
 
   function addItem() {
@@ -161,8 +180,13 @@ export default function DispatchSection() {
             disabled={saving}
             onClick={() => void onSave()}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving..." : "Save"}
           </button>
+          {saveLine ? (
+            <p className="dispatch-save-status" aria-live="polite">
+              {saveLine}
+            </p>
+          ) : null}
         </>
       )}
     </>

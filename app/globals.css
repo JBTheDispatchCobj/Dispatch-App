@@ -286,3 +286,9 @@ button.dispatch-remove {
 button.dispatch-save {
   margin-top: 0.5rem;
 }
+
+.dispatch-save-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+}
