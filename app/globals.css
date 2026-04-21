@@ -2743,3 +2743,161 @@ main.wrap.card-page {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ================================================================
+   Arrivals card — cool blue/teal theme
+   ================================================================ */
+
+.arrivals-card {
+  --arrivals-bg: #eef6f7;
+  --arrivals-border: #a7d0d6;
+  --arrivals-accent: #2b6a77;
+  --arrivals-chip-active-bg: #2b6a77;
+  --arrivals-chip-active-fg: #ffffff;
+  --arrivals-requests-bg: #fffbea;
+  --arrivals-requests-border: #f0c940;
+  --arrivals-requests-label: #92600a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .arrivals-card {
+    --arrivals-bg: #0d2226;
+    --arrivals-border: #2a5d65;
+    --arrivals-accent: #5bb8c8;
+    --arrivals-chip-active-bg: #1e5c68;
+    --arrivals-chip-active-fg: #ffffff;
+    --arrivals-requests-bg: #221e00;
+    --arrivals-requests-border: #7a6000;
+    --arrivals-requests-label: #e0aa40;
+  }
+}
+
+.arrivals-card__room {
+  color: var(--arrivals-accent);
+}
+
+/* Single-column guest info panel */
+.arrivals-card__guest {
+  background: var(--arrivals-bg);
+  border: 1px solid var(--arrivals-border);
+  border-radius: 10px;
+  padding: 0.875rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.arrivals-card__col-heading {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--arrivals-accent);
+}
+
+.arrivals-card__guest-name {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.arrivals-card__guest-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.75rem;
+  margin: 0 0 0.35rem;
+}
+
+.arrivals-card__guest-meta span {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 68%, transparent);
+}
+
+.arrivals-card__conf {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  letter-spacing: 0.02em;
+}
+
+.arrivals-card__source {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.arrivals-card__no-guest {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  font-style: italic;
+}
+
+/* Special requests callout */
+.arrivals-card__requests {
+  background: var(--arrivals-requests-bg);
+  border: 1.5px solid var(--arrivals-requests-border);
+  border-radius: 8px;
+  padding: 0.75rem 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.arrivals-card__requests-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--arrivals-requests-label);
+}
+
+.arrivals-card__requests-body {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+/* Readiness status chip row */
+.arrivals-card__chips {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+  flex-wrap: nowrap;
+}
+
+.arrivals-card__chip {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
+  border: 1.5px solid var(--arrivals-border);
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.arrivals-card__chip:hover:not(:disabled) {
+  border-color: var(--arrivals-accent);
+  color: var(--arrivals-accent);
+}
+
+.arrivals-card__chip--active {
+  background: var(--arrivals-chip-active-bg);
+  border-color: var(--arrivals-chip-active-bg);
+  color: var(--arrivals-chip-active-fg);
+  font-weight: 700;
+}
+
+.arrivals-card__chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import ArrivalsCard from "./ArrivalsCard";
 import DeparturesCard from "./DeparturesCard";
 import {
   useCallback,
@@ -390,9 +391,38 @@ export default function StaffTaskExecutionPage() {
       : null;
   const stepsLocked = checklistInteractionDisabled(task.status);
 
+  // Route to card-type-specific views before falling back to generic.
+  const ct = task.card_type.toLowerCase();
+
+  if (ct === "arrival" || ct.includes("arrival") || ct.includes("checkin")) {
+    return (
+      <ArrivalsCard
+        task={task}
+        userId={userId}
+        displayName={displayName}
+        checklist={checklist}
+        comments={comments}
+        inlineError={inlineError}
+        setInlineError={setInlineError}
+        noteBody={noteBody}
+        setNoteBody={setNoteBody}
+        noteBusy={noteBusy}
+        helpBusy={helpBusy}
+        doneBusy={doneBusy}
+        pauseBusy={pauseBusy}
+        resumeBusy={resumeBusy}
+        onToggleItem={toggleItem}
+        onNeedHelp={onNeedHelp}
+        onImDone={onImDone}
+        onPause={onPause}
+        onResume={onResume}
+        onPostNote={onPostNote}
+      />
+    );
+  }
+
   // Route housekeeping_turn cards (and any card_type that explicitly names a
   // departure/checkout) to the dedicated visual treatment.
-  const ct = task.card_type.toLowerCase();
   if (
     ct === "housekeeping_turn" ||
     ct.includes("departure") ||
