@@ -58,6 +58,15 @@ export type CommentRow = {
   created_at: string;
 };
 
+export type GuestContext = {
+  guestName?: string;
+  checkoutTime?: string;
+  lateCheckout?: boolean;
+  vip?: boolean;
+  specialRequests?: string;
+  notes?: string;
+};
+
 export function normalizeStaff(raw: unknown): StaffEmbed {
   if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
     const n = (raw[0] as { name?: string }).name;

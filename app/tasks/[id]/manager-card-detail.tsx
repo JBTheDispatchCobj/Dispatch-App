@@ -61,6 +61,13 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [commentBusy, setCommentBusy] = useState(false);
   const [displayName, setDisplayName] = useState("");
 
+  const [guestName, setGuestName] = useState("");
+  const [checkoutTime, setCheckoutTime] = useState("");
+  const [lateCheckout, setLateCheckout] = useState(false);
+  const [vip, setVip] = useState(false);
+  const [specialRequests, setSpecialRequests] = useState("");
+  const [guestNotes, setGuestNotes] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -105,6 +112,22 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
     setMgrDueDate(t.due_date ?? "");
     setMgrDueTime(t.due_time ?? "");
     setMgrStaffId(t.staff_id ?? "");
+    const gCtx = t.context.guest as Record<string, unknown> | null | undefined;
+    if (gCtx && typeof gCtx === "object") {
+      setGuestName(typeof gCtx.guestName === "string" ? gCtx.guestName : "");
+      setCheckoutTime(typeof gCtx.checkoutTime === "string" ? gCtx.checkoutTime : "");
+      setLateCheckout(gCtx.lateCheckout === true);
+      setVip(gCtx.vip === true);
+      setSpecialRequests(typeof gCtx.specialRequests === "string" ? gCtx.specialRequests : "");
+      setGuestNotes(typeof gCtx.notes === "string" ? gCtx.notes : "");
+    } else {
+      setGuestName("");
+      setCheckoutTime("");
+      setLateCheckout(false);
+      setVip(false);
+      setSpecialRequests("");
+      setGuestNotes("");
+    }
 
     const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
       supabase
@@ -180,6 +203,21 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
         due_time: mgrDueTime.trim() || null,
         staff_id: staffIdParsed,
         assignee_name: assigneeName,
+        ...(task.card_type === "housekeeping_turn"
+          ? {
+              context: {
+                ...(task.context ?? {}),
+                guest: {
+                  guestName: guestName.trim(),
+                  checkoutTime: checkoutTime.trim(),
+                  lateCheckout: lateCheckout || undefined,
+                  vip: vip || undefined,
+                  specialRequests: specialRequests.trim(),
+                  notes: guestNotes.trim(),
+                },
+              },
+            }
+          : {}),
       })
       .eq("id", task.id);
     setMgrSaving(false);
@@ -506,6 +544,62 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
               </option>
             ))}
           </select>
+          {task.card_type === "housekeeping_turn" ? (
+            <>
+              <label className="card-label">Guest name</label>
+              <input
+                className="card-input"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Smith"
+              />
+              <label className="card-label">Check-out time</label>
+              <input
+                className="card-input"
+                type="time"
+                value={checkoutTime}
+                onChange={(e) => setCheckoutTime(e.target.value)}
+                disabled={mgrSaving}
+              />
+              <label className="card-check-label">
+                <input
+                  type="checkbox"
+                  checked={lateCheckout}
+                  onChange={(e) => setLateCheckout(e.target.checked)}
+                  disabled={mgrSaving}
+                />
+                Late check-out
+              </label>
+              <label className="card-check-label">
+                <input
+                  type="checkbox"
+                  checked={vip}
+                  onChange={(e) => setVip(e.target.checked)}
+                  disabled={mgrSaving}
+                />
+                VIP guest
+              </label>
+              <label className="card-label">Special requests</label>
+              <textarea
+                className="card-textarea"
+                rows={2}
+                value={specialRequests}
+                onChange={(e) => setSpecialRequests(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Extra pillows"
+              />
+              <label className="card-label">Guest notes</label>
+              <textarea
+                className="card-textarea"
+                rows={2}
+                value={guestNotes}
+                onChange={(e) => setGuestNotes(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="Internal notes for housekeeping"
+              />
+            </>
+          ) : null}
           <button type="submit" disabled={mgrSaving || !mgrTitle.trim()}>
             {mgrSaving ? "Saving…" : "Save card"}
           </button>

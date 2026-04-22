@@ -5,6 +5,7 @@ import { useCallback, useState, type FormEvent } from "react";
 import {
   displayAssignee,
   type CommentRow,
+  type GuestContext,
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
 import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
@@ -30,18 +31,6 @@ const DEPARTURE_STATUS_CHIPS: ReadonlyArray<{
   { value: "done", label: "Done" },
 ];
 
-type OutgoingGuest = {
-  name: string | null;
-  checkout_time: string | null;
-  notes: string | null;
-};
-
-type IncomingGuest = {
-  name: string | null;
-  checkin_time: string | null;
-  notes: string | null;
-};
-
 // ---------------------------------------------------------------------------
 // Context parsers — all safe, never throw
 // ---------------------------------------------------------------------------
@@ -51,36 +40,30 @@ function parseDepartureStatus(raw: unknown): DepartureStatus {
   return "open";
 }
 
-function parseOutgoingGuest(ctx: Record<string, unknown>): OutgoingGuest | null {
-  const raw = ctx.outgoing_guest;
+function parseGuestContext(ctx: Record<string, unknown>): GuestContext | null {
+  const raw = ctx.guest;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const g = raw as Record<string, unknown>;
-  const name =
-    typeof g.name === "string" && g.name.trim() ? g.name.trim() : null;
-  const checkout_time =
-    typeof g.checkout_time === "string" && g.checkout_time.trim()
-      ? g.checkout_time.trim()
-      : null;
+  const guestName =
+    typeof g.guestName === "string" && g.guestName.trim()
+      ? g.guestName.trim()
+      : undefined;
+  const checkoutTime =
+    typeof g.checkoutTime === "string" && g.checkoutTime.trim()
+      ? g.checkoutTime.trim()
+      : undefined;
+  const lateCheckout = g.lateCheckout === true ? true : undefined;
+  const vip = g.vip === true ? true : undefined;
+  const specialRequests =
+    typeof g.specialRequests === "string" && g.specialRequests.trim()
+      ? g.specialRequests.trim()
+      : undefined;
   const notes =
-    typeof g.notes === "string" && g.notes.trim() ? g.notes.trim() : null;
-  if (!name && !checkout_time && !notes) return null;
-  return { name, checkout_time, notes };
-}
-
-function parseIncomingGuest(ctx: Record<string, unknown>): IncomingGuest | null {
-  const raw = ctx.incoming_guest;
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const g = raw as Record<string, unknown>;
-  const name =
-    typeof g.name === "string" && g.name.trim() ? g.name.trim() : null;
-  const checkin_time =
-    typeof g.checkin_time === "string" && g.checkin_time.trim()
-      ? g.checkin_time.trim()
-      : null;
-  const notes =
-    typeof g.notes === "string" && g.notes.trim() ? g.notes.trim() : null;
-  if (!name && !checkin_time && !notes) return null;
-  return { name, checkin_time, notes };
+    typeof g.notes === "string" && g.notes.trim() ? g.notes.trim() : undefined;
+  if (!guestName && !checkoutTime && !lateCheckout && !vip && !specialRequests && !notes) {
+    return null;
+  }
+  return { guestName, checkoutTime, lateCheckout, vip, specialRequests, notes };
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +217,7 @@ export default function DeparturesCard({
     [userId, statusBusy, departureStatus, task, setInlineError],
   );
 
-  const outgoing = parseOutgoingGuest(task.context);
-  const incoming = parseIncomingGuest(task.context);
+  const guest = parseGuestContext(task.context);
 
   const taskDone = task.status === "done";
   const inProgress = task.status === "in_progress";
@@ -288,50 +270,43 @@ export default function DeparturesCard({
         </p>
 
         {/* ----------------------------------------------------------------
-            Departures-specific: two-column guest info
+            Departures-specific: guest info panel
         ---------------------------------------------------------------- */}
-        <div className="departures-card__guests" aria-label="Guest info">
-          <div className="departures-card__guest-col">
-            <h3 className="departures-card__col-heading">Outgoing</h3>
-            {outgoing ? (
-              <>
-                {outgoing.name ? (
-                  <p className="departures-card__guest-name">{outgoing.name}</p>
+        {guest ? (
+          <section className="departures-card__guests" aria-label="Guest info">
+            <h3 className="departures-card__col-heading">Guest info</h3>
+            {guest.guestName ? (
+              <p className="departures-card__guest-name">{guest.guestName}</p>
+            ) : null}
+            {guest.checkoutTime ? (
+              <p className="departures-card__guest-time">
+                Check-out: {guest.checkoutTime}
+              </p>
+            ) : null}
+            {guest.lateCheckout || guest.vip ? (
+              <div className="departures-card__guest-badges">
+                {guest.lateCheckout ? (
+                  <span className="departures-card__chip departures-card__chip--active">
+                    Late check-out
+                  </span>
                 ) : null}
-                {outgoing.checkout_time ? (
-                  <p className="departures-card__guest-time">
-                    Check-out: {outgoing.checkout_time}
-                  </p>
+                {guest.vip ? (
+                  <span className="departures-card__chip departures-card__chip--active">
+                    VIP
+                  </span>
                 ) : null}
-                {outgoing.notes ? (
-                  <p className="departures-card__guest-notes">{outgoing.notes}</p>
-                ) : null}
-              </>
-            ) : (
-              <p className="departures-card__no-guest">No guest info</p>
-            )}
-          </div>
-          <div className="departures-card__guest-col">
-            <h3 className="departures-card__col-heading">Incoming</h3>
-            {incoming ? (
-              <>
-                {incoming.name ? (
-                  <p className="departures-card__guest-name">{incoming.name}</p>
-                ) : null}
-                {incoming.checkin_time ? (
-                  <p className="departures-card__guest-time">
-                    Check-in: {incoming.checkin_time}
-                  </p>
-                ) : null}
-                {incoming.notes ? (
-                  <p className="departures-card__guest-notes">{incoming.notes}</p>
-                ) : null}
-              </>
-            ) : (
-              <p className="departures-card__no-guest">No guest info</p>
-            )}
-          </div>
-        </div>
+              </div>
+            ) : null}
+            {guest.specialRequests ? (
+              <p className="departures-card__guest-notes">
+                Special: {guest.specialRequests}
+              </p>
+            ) : null}
+            {guest.notes ? (
+              <p className="departures-card__guest-notes">{guest.notes}</p>
+            ) : null}
+          </section>
+        ) : null}
 
         {/* ----------------------------------------------------------------
             Departures-specific: turnover status chip row

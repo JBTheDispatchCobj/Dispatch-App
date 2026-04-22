@@ -192,6 +192,13 @@ export default function TasksSection() {
   const [editBucket, setEditBucket] = useState<StaffHomeBucket>("start_of_day");
   const [editContext, setEditContext] = useState<Record<string, unknown>>({});
 
+  const [newGuestName, setNewGuestName] = useState("");
+  const [newCheckoutTime, setNewCheckoutTime] = useState("");
+  const [newLateCheckout, setNewLateCheckout] = useState(false);
+  const [newVip, setNewVip] = useState(false);
+  const [newSpecialRequests, setNewSpecialRequests] = useState("");
+  const [newGuestNotes, setNewGuestNotes] = useState("");
+
   const loadStaff = useCallback(async () => {
     setStaffListError(null);
     const result = await fetchAssignableStaffOptions(supabase);
@@ -341,7 +348,21 @@ export default function TasksSection() {
       created_by_user_id: createdByUserId,
       card_type: bucketToCardType(bucket),
       source: "manual",
-      context: { staff_home_bucket: bucket },
+      context: {
+        staff_home_bucket: bucket,
+        ...(bucket === "departures"
+          ? {
+              guest: {
+                guestName: newGuestName.trim(),
+                checkoutTime: newCheckoutTime.trim(),
+                lateCheckout: newLateCheckout || undefined,
+                vip: newVip || undefined,
+                specialRequests: newSpecialRequests.trim(),
+                notes: newGuestNotes.trim(),
+              },
+            }
+          : {}),
+      },
     };
     if (process.env.NODE_ENV === "development") {
       console.log("[tasks-section] create task", {
@@ -386,6 +407,12 @@ export default function TasksSection() {
     setNewStaffId("");
     setNewPriority("medium");
     setNewBucket("");
+    setNewGuestName("");
+    setNewCheckoutTime("");
+    setNewLateCheckout(false);
+    setNewVip(false);
+    setNewSpecialRequests("");
+    setNewGuestNotes("");
     void logActivity(
       activityType.taskCreated,
       `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
@@ -778,6 +805,86 @@ export default function TasksSection() {
             ))}
           </select>
         </div>
+        {newBucket === "departures" ? (
+          <>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-guest-name">
+                Guest name
+              </label>
+              <input
+                id="tasks-new-guest-name"
+                className="tasks-add-input"
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Smith"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-checkout-time">
+                Check-out time
+              </label>
+              <input
+                id="tasks-new-checkout-time"
+                className="tasks-add-input"
+                type="time"
+                value={newCheckoutTime}
+                onChange={(e) => setNewCheckoutTime(e.target.value)}
+                disabled={adding || loading}
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label tasks-add-label--check">
+                <input
+                  type="checkbox"
+                  checked={newLateCheckout}
+                  onChange={(e) => setNewLateCheckout(e.target.checked)}
+                  disabled={adding || loading}
+                />
+                Late check-out
+              </label>
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label tasks-add-label--check">
+                <input
+                  type="checkbox"
+                  checked={newVip}
+                  onChange={(e) => setNewVip(e.target.checked)}
+                  disabled={adding || loading}
+                />
+                VIP guest
+              </label>
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-special-requests">
+                Special requests
+              </label>
+              <textarea
+                id="tasks-new-special-requests"
+                className="tasks-add-input"
+                rows={2}
+                value={newSpecialRequests}
+                onChange={(e) => setNewSpecialRequests(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Extra pillows"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-guest-notes">
+                Guest notes
+              </label>
+              <textarea
+                id="tasks-new-guest-notes"
+                className="tasks-add-input"
+                rows={2}
+                value={newGuestNotes}
+                onChange={(e) => setNewGuestNotes(e.target.value)}
+                disabled={adding || loading}
+                placeholder="Internal notes for housekeeping"
+              />
+            </div>
+          </>
+        ) : null}
         <button type="submit" disabled={adding || loading || !newTitle.trim() || !newBucket}>
           {adding ? "Creating…" : "Create card"}
         </button>
