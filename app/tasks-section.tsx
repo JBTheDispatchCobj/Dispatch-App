@@ -199,6 +199,10 @@ export default function TasksSection() {
   const [newSpecialRequests, setNewSpecialRequests] = useState("");
   const [newGuestNotes, setNewGuestNotes] = useState("");
 
+  const [newDailyLocation, setNewDailyLocation] = useState("");
+  const [newDailyFrequency, setNewDailyFrequency] = useState("");
+  const [newDailyInstructions, setNewDailyInstructions] = useState("");
+
   const loadStaff = useCallback(async () => {
     setStaffListError(null);
     const result = await fetchAssignableStaffOptions(supabase);
@@ -362,6 +366,15 @@ export default function TasksSection() {
               },
             }
           : {}),
+        ...(bucket === "dailys"
+          ? {
+              daily_task: {
+                location: newDailyLocation.trim(),
+                frequency: newDailyFrequency.trim(),
+                instructions: newDailyInstructions.trim(),
+              },
+            }
+          : {}),
       },
     };
     if (process.env.NODE_ENV === "development") {
@@ -413,6 +426,9 @@ export default function TasksSection() {
     setNewVip(false);
     setNewSpecialRequests("");
     setNewGuestNotes("");
+    setNewDailyLocation("");
+    setNewDailyFrequency("");
+    setNewDailyInstructions("");
     void logActivity(
       activityType.taskCreated,
       `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
@@ -881,6 +897,50 @@ export default function TasksSection() {
                 onChange={(e) => setNewGuestNotes(e.target.value)}
                 disabled={adding || loading}
                 placeholder="Internal notes for housekeeping"
+              />
+            </div>
+          </>
+        ) : null}
+        {newBucket === "dailys" ? (
+          <>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-daily-location">
+                Location
+              </label>
+              <input
+                id="tasks-new-daily-location"
+                className="tasks-add-input"
+                value={newDailyLocation}
+                onChange={(e) => setNewDailyLocation(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Lobby"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-daily-frequency">
+                Frequency
+              </label>
+              <input
+                id="tasks-new-daily-frequency"
+                className="tasks-add-input"
+                value={newDailyFrequency}
+                onChange={(e) => setNewDailyFrequency(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Daily, Weekly, Monday/Wednesday/Friday"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-daily-instructions">
+                Instructions
+              </label>
+              <textarea
+                id="tasks-new-daily-instructions"
+                className="tasks-add-input"
+                rows={4}
+                value={newDailyInstructions}
+                onChange={(e) => setNewDailyInstructions(e.target.value)}
+                disabled={adding || loading}
+                placeholder="Step-by-step instructions for staff"
               />
             </div>
           </>

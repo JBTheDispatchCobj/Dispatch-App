@@ -68,6 +68,10 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [specialRequests, setSpecialRequests] = useState("");
   const [guestNotes, setGuestNotes] = useState("");
 
+  const [dailyLocation, setDailyLocation] = useState("");
+  const [dailyFrequency, setDailyFrequency] = useState("");
+  const [dailyInstructions, setDailyInstructions] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -127,6 +131,16 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       setVip(false);
       setSpecialRequests("");
       setGuestNotes("");
+    }
+    const dtCtx = t.context.daily_task as Record<string, unknown> | null | undefined;
+    if (dtCtx && typeof dtCtx === "object") {
+      setDailyLocation(typeof dtCtx.location === "string" ? dtCtx.location : "");
+      setDailyFrequency(typeof dtCtx.frequency === "string" ? dtCtx.frequency : "");
+      setDailyInstructions(typeof dtCtx.instructions === "string" ? dtCtx.instructions : "");
+    } else {
+      setDailyLocation("");
+      setDailyFrequency("");
+      setDailyInstructions("");
     }
 
     const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
@@ -214,6 +228,19 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                   vip: vip || undefined,
                   specialRequests: specialRequests.trim(),
                   notes: guestNotes.trim(),
+                },
+              },
+            }
+          : {}),
+        ...(task.card_type === "dailys"
+          ? {
+              context: {
+                ...(task.context ?? {}),
+                daily_task: {
+                  ...((task.context.daily_task as Record<string, unknown> | undefined) ?? {}),
+                  location: dailyLocation.trim(),
+                  frequency: dailyFrequency.trim(),
+                  instructions: dailyInstructions.trim(),
                 },
               },
             }
@@ -597,6 +624,35 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                 onChange={(e) => setGuestNotes(e.target.value)}
                 disabled={mgrSaving}
                 placeholder="Internal notes for housekeeping"
+              />
+            </>
+          ) : null}
+          {task.card_type === "dailys" ? (
+            <>
+              <label className="card-label">Location</label>
+              <input
+                className="card-input"
+                value={dailyLocation}
+                onChange={(e) => setDailyLocation(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Lobby"
+              />
+              <label className="card-label">Frequency</label>
+              <input
+                className="card-input"
+                value={dailyFrequency}
+                onChange={(e) => setDailyFrequency(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Daily, Weekly, Monday/Wednesday/Friday"
+              />
+              <label className="card-label">Instructions</label>
+              <textarea
+                className="card-textarea"
+                rows={4}
+                value={dailyInstructions}
+                onChange={(e) => setDailyInstructions(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="Step-by-step instructions for staff"
               />
             </>
           ) : null}

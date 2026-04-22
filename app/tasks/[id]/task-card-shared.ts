@@ -67,6 +67,13 @@ export type GuestContext = {
   notes?: string;
 };
 
+export type DailyTaskContext = {
+  location?: string;
+  frequency?: string;
+  instructions?: string;
+  last_completed_at?: string;
+};
+
 export function normalizeStaff(raw: unknown): StaffEmbed {
   if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
     const n = (raw[0] as { name?: string }).name;
