@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ArrivalsCard from "./ArrivalsCard";
 import DeparturesCard from "./DeparturesCard";
+import EODCard from "./EODCard";
 import StayoversCard from "./StayoversCard";
 import {
   useCallback,
@@ -394,6 +395,33 @@ export default function StaffTaskExecutionPage() {
 
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
+
+  if (ct === "eod" || ct.includes("end_of_day") || ct.includes("eod")) {
+    return (
+      <EODCard
+        task={task}
+        userId={userId}
+        displayName={displayName}
+        checklist={checklist}
+        comments={comments}
+        inlineError={inlineError}
+        setInlineError={setInlineError}
+        noteBody={noteBody}
+        setNoteBody={setNoteBody}
+        noteBusy={noteBusy}
+        helpBusy={helpBusy}
+        doneBusy={doneBusy}
+        pauseBusy={pauseBusy}
+        resumeBusy={resumeBusy}
+        onToggleItem={toggleItem}
+        onNeedHelp={onNeedHelp}
+        onImDone={onImDone}
+        onPause={onPause}
+        onResume={onResume}
+        onPostNote={onPostNote}
+      />
+    );
+  }
 
   if (ct === "stayover" || ct.includes("stayover") || ct.includes("stay_over")) {
     return (

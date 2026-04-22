@@ -10,7 +10,8 @@ export type StaffHomeBucket =
   | "start_of_day"
   | "departures"
   | "arrivals"
-  | "stayovers";
+  | "stayovers"
+  | "eod";
 
 export const STAFF_HOME_BUCKET_OPTIONS: ReadonlyArray<{
   value: StaffHomeBucket;
@@ -20,6 +21,7 @@ export const STAFF_HOME_BUCKET_OPTIONS: ReadonlyArray<{
   { value: "departures", label: "Departures" },
   { value: "arrivals", label: "Arrivals" },
   { value: "stayovers", label: "Stayovers" },
+  { value: "eod", label: "End of Day" },
 ];
 
 function parseContext(raw: unknown): Record<string, unknown> {
@@ -69,6 +71,9 @@ export function staffHomeBucketForTask(row: {
   if (raw === "stayover" || raw === "stayovers" || raw === "s") {
     return "stayovers";
   }
+  if (raw === "eod" || raw === "end_of_day") {
+    return "eod";
+  }
   if (
     raw === "start_of_day" ||
     raw === "sod" ||
@@ -83,6 +88,9 @@ export function staffHomeBucketForTask(row: {
   if (ct.includes("arrival")) return "arrivals";
   if (ct.includes("stayover") || ct.includes("stay_over")) {
     return "stayovers";
+  }
+  if (ct === "eod" || ct.includes("end_of_day")) {
+    return "eod";
   }
   if (ct.includes("start_of_day") || ct.includes("sod")) {
     return "start_of_day";
@@ -99,6 +107,7 @@ export function partitionStaffHomeTasks<
     departures: [],
     arrivals: [],
     stayovers: [],
+    eod: [],
   };
   for (const t of tasks) {
     out[staffHomeBucketForTask(t)].push(t);

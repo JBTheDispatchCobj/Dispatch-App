@@ -3046,3 +3046,170 @@ main.wrap.card-page {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   EOD CARD — muted purple/lavender, night wind-down feel
+   ========================================================================== */
+
+.eod-card {
+  --eod-bg: #f2eff6;
+  --eod-border: #c7b8d6;
+  --eod-accent: #5e4a77;
+  --eod-heading: #4a3860;
+  --eod-chip-active-bg: #5e4a77;
+  --eod-chip-active-fg: #ffffff;
+  --eod-handoff-bg: #ebe5f2;
+  --eod-handoff-border: #c7b8d6;
+  --eod-handoff-label: #5e4a77;
+  --eod-stat-open: #8a4a1a;
+  background-color: var(--eod-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .eod-card {
+    --eod-bg: #1a1520;
+    --eod-border: #3d2e52;
+    --eod-accent: #b09fd4;
+    --eod-heading: #cbbfe8;
+    --eod-chip-active-bg: #5e4a77;
+    --eod-chip-active-fg: #ffffff;
+    --eod-handoff-bg: #221c2e;
+    --eod-handoff-border: #3d2e52;
+    --eod-handoff-label: #b09fd4;
+    --eod-stat-open: #d4884a;
+  }
+}
+
+/* Day label at the top */
+.eod-card__day-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--eod-accent);
+  margin: 0 0 0.75rem;
+}
+
+/* Shift summary panel */
+.eod-card__summary {
+  background: color-mix(in srgb, var(--eod-bg) 50%, white);
+  border: 1px solid var(--eod-border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .eod-card__summary {
+    background: color-mix(in srgb, var(--eod-bg) 50%, black);
+  }
+}
+
+.eod-card__summary-heading {
+  margin: 0 0 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--eod-heading);
+}
+
+.eod-card__summary-stats {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.eod-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.eod-card__stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--eod-accent);
+}
+
+.eod-card__stat--open .eod-card__stat-value {
+  color: var(--eod-stat-open);
+}
+
+.eod-card__stat-label {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--foreground) 60%, transparent);
+}
+
+.eod-card__shift-lead {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+}
+
+/* Handoff notes block — subtle, not the yellow guest-callout style */
+.eod-card__handoff {
+  background: var(--eod-handoff-bg);
+  border: 1px solid var(--eod-handoff-border);
+  border-left: 3px solid var(--eod-accent);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.eod-card__handoff-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--eod-handoff-label);
+}
+
+.eod-card__handoff-body {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Workflow status chip row */
+.eod-card__chips {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+  flex-wrap: nowrap;
+}
+
+.eod-card__chip {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
+  border: 1.5px solid var(--eod-border);
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.eod-card__chip:hover:not(:disabled) {
+  border-color: var(--eod-accent);
+  color: var(--eod-accent);
+}
+
+.eod-card__chip--active {
+  background: var(--eod-chip-active-bg);
+  border-color: var(--eod-chip-active-bg);
+  color: var(--eod-chip-active-fg);
+  font-weight: 700;
+}
+
+.eod-card__chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
