@@ -151,6 +151,12 @@ function normalizeTaskRow(raw: Record<string, unknown>): TaskRow {
   };
 }
 
+function bucketLabel(ctx: Record<string, unknown>): string {
+  const raw = String(ctx.staff_home_bucket ?? "").trim();
+  const found = STAFF_HOME_BUCKET_OPTIONS.find((o) => o.value === raw);
+  return found?.label ?? "";
+}
+
 function taskActivityMeta(assigneeName: string, priority: TaskPriority): string {
   const pr = `${priority} priority`;
   const a = assigneeName.trim();
@@ -502,6 +508,7 @@ export default function TasksSection() {
           {visibleTasks.map((t) => {
             const who = displayAssigneeName(t);
             const overdue = isOverdue(t, today);
+            const bucket = bucketLabel(t.context);
             return (
               <li key={t.id} className="tasks-item">
                 {editingId === t.id ? (
@@ -643,6 +650,9 @@ export default function TasksSection() {
                         <span className={priorityClassName(t.priority)}>
                           {priorityLabel(t.priority)} priority
                         </span>
+                        {bucket ? (
+                          <span className="tasks-priority-low">{bucket}</span>
+                        ) : null}
                       </div>
                       {t.description ? (
                         <span className="tasks-desc">{t.description}</span>
@@ -687,13 +697,7 @@ export default function TasksSection() {
         </ul>
       )}
 
-      <h3 className="tasks-add-heading">New housekeeping card</h3>
-      <p className="tasks-test-hint">
-        Choose <strong>Assign to staff</strong> so it appears on their{" "}
-        <strong>/staff</strong> list. After <strong>Create card</strong> you
-        land on the manager card page; use the staff URL there when signed in
-        as that user.
-      </p>
+      <h3 className="tasks-add-heading">New card</h3>
       <form className="tasks-add-form" onSubmit={onAdd}>
         <div className="tasks-add-field">
           <label className="tasks-add-label" htmlFor="tasks-new-title">

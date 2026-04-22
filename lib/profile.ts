@@ -115,7 +115,6 @@ function stampProfileRouting(user: User, row: ProfileRow, source: string, detail
     source,
     ...(details ? { details } : {}),
   };
-  console.log("[profile-routing]", payload);
   if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     (window as Window & { __profileRoutingDebug?: ProfileRoutingDebug }).__profileRoutingDebug =
       payload;
@@ -177,25 +176,6 @@ export async function fetchProfile(
     .select("id, role, staff_id, display_name, app_role:role")
     .eq("id", user.id)
     .maybeSingle();
-
-  if (data) {
-    console.log("[profile-routing] profiles row (full raw from Supabase)", JSON.stringify(data));
-    console.log("[profile-routing] profiles row keys", Object.keys(data));
-  }
-
-  console.log("[profile-routing] profiles.select", {
-    eqColumn: "id",
-    eqValue: user.id,
-    authEmail: user.email,
-    selectError: error?.message ?? null,
-    selectCode: error?.code ?? null,
-    hasRow: !!data,
-    rowRoleRaw: data?.role ?? null,
-    rowAppRoleAlias: (data as { app_role?: unknown } | null)?.app_role ?? null,
-    typeofRowRole: data ? typeof data.role : null,
-    hasRoleKey: data ? Object.prototype.hasOwnProperty.call(data, "role") : false,
-    hasAppRoleKey: data ? Object.prototype.hasOwnProperty.call(data, "app_role")  : false,
-  });
 
   if (error) {
     return {

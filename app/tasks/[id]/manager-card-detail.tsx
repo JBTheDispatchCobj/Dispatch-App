@@ -394,43 +394,45 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
 
       {error ? <p className="error">{error}</p> : null}
 
-      <section className="card-panel card-inspect" aria-label="Test IDs and URL">
-        <h3 className="card-h3">Test / debug</h3>
-        <dl className="card-inspect-dl">
-          <div>
-            <dt>Task ID</dt>
-            <dd>
-              <code className="card-inspect-code">{task.id}</code>
-            </dd>
-          </div>
-          <div>
-            <dt>Type · source</dt>
-            <dd>
-              {task.card_type} · {task.source}
-            </dd>
-          </div>
-          <div>
-            <dt>Staff row ID</dt>
-            <dd>
-              {task.staff_id ? (
-                <code className="card-inspect-code">{task.staff_id}</code>
-              ) : (
-                "—"
-              )}
-            </dd>
-          </div>
-          {task.due_time ? (
+      {process.env.NODE_ENV === "development" ? (
+        <section className="card-panel card-inspect" aria-label="Test IDs and URL">
+          <h3 className="card-h3">Test / debug</h3>
+          <dl className="card-inspect-dl">
             <div>
-              <dt>Due time</dt>
-              <dd>{task.due_time}</dd>
+              <dt>Task ID</dt>
+              <dd>
+                <code className="card-inspect-code">{task.id}</code>
+              </dd>
             </div>
-          ) : null}
-        </dl>
-        <p className="card-inspect-links">
-          <span className="card-inspect-muted">Staff execution path:</span>{" "}
-          <code className="card-inspect-code">/staff/task/{task.id}</code>
-        </p>
-      </section>
+            <div>
+              <dt>Type · source</dt>
+              <dd>
+                {task.card_type} · {task.source}
+              </dd>
+            </div>
+            <div>
+              <dt>Staff row ID</dt>
+              <dd>
+                {task.staff_id ? (
+                  <code className="card-inspect-code">{task.staff_id}</code>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+            {task.due_time ? (
+              <div>
+                <dt>Due time</dt>
+                <dd>{task.due_time}</dd>
+              </div>
+            ) : null}
+          </dl>
+          <p className="card-inspect-links">
+            <span className="card-inspect-muted">Staff execution path:</span>{" "}
+            <code className="card-inspect-code">/staff/task/{task.id}</code>
+          </p>
+        </section>
+      ) : null}
 
       <section className="card-panel">
         <form className="card-form" onSubmit={onManagerSave}>
