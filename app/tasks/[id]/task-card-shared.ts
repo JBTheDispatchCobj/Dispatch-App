@@ -74,6 +74,13 @@ export type DailyTaskContext = {
   last_completed_at?: string;
 };
 
+export type EODSummaryContext = {
+  shift_lead?: string;
+  handoff_notes?: string;
+  tasks_done_count?: number;
+  tasks_open_count?: number;
+};
+
 export function normalizeStaff(raw: unknown): StaffEmbed {
   if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
     const n = (raw[0] as { name?: string }).name;

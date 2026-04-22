@@ -203,6 +203,9 @@ export default function TasksSection() {
   const [newDailyFrequency, setNewDailyFrequency] = useState("");
   const [newDailyInstructions, setNewDailyInstructions] = useState("");
 
+  const [newEodShiftLead, setNewEodShiftLead] = useState("");
+  const [newEodHandoffNotes, setNewEodHandoffNotes] = useState("");
+
   const loadStaff = useCallback(async () => {
     setStaffListError(null);
     const result = await fetchAssignableStaffOptions(supabase);
@@ -375,6 +378,14 @@ export default function TasksSection() {
               },
             }
           : {}),
+        ...(bucket === "eod"
+          ? {
+              eod_summary: {
+                shift_lead: newEodShiftLead.trim(),
+                handoff_notes: newEodHandoffNotes.trim(),
+              },
+            }
+          : {}),
       },
     };
     if (process.env.NODE_ENV === "development") {
@@ -429,6 +440,8 @@ export default function TasksSection() {
     setNewDailyLocation("");
     setNewDailyFrequency("");
     setNewDailyInstructions("");
+    setNewEodShiftLead("");
+    setNewEodHandoffNotes("");
     void logActivity(
       activityType.taskCreated,
       `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
@@ -941,6 +954,37 @@ export default function TasksSection() {
                 onChange={(e) => setNewDailyInstructions(e.target.value)}
                 disabled={adding || loading}
                 placeholder="Step-by-step instructions for staff"
+              />
+            </div>
+          </>
+        ) : null}
+        {newBucket === "eod" ? (
+          <>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-eod-shift-lead">
+                Shift lead
+              </label>
+              <input
+                id="tasks-new-eod-shift-lead"
+                className="tasks-add-input"
+                value={newEodShiftLead}
+                onChange={(e) => setNewEodShiftLead(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Maria"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-eod-handoff-notes">
+                Handoff notes
+              </label>
+              <textarea
+                id="tasks-new-eod-handoff-notes"
+                className="tasks-add-input"
+                rows={4}
+                value={newEodHandoffNotes}
+                onChange={(e) => setNewEodHandoffNotes(e.target.value)}
+                disabled={adding || loading}
+                placeholder="Notes for the closing team"
               />
             </div>
           </>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { fetchMentionTargets, fetchProfile } from "@/lib/profile";
 import {
@@ -30,6 +31,7 @@ import {
 type StaffOpt = { id: string; name: string };
 
 export default function ManagerCardDetail({ taskId }: { taskId: string }) {
+  const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [task, setTask] = useState<TaskCard | null>(null);
   const [checklist, setChecklist] = useState<CheckRow[]>([]);
@@ -71,6 +73,9 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [dailyLocation, setDailyLocation] = useState("");
   const [dailyFrequency, setDailyFrequency] = useState("");
   const [dailyInstructions, setDailyInstructions] = useState("");
+
+  const [eodShiftLead, setEodShiftLead] = useState("");
+  const [eodHandoffNotes, setEodHandoffNotes] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -141,6 +146,14 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       setDailyLocation("");
       setDailyFrequency("");
       setDailyInstructions("");
+    }
+    const eodCtx = t.context.eod_summary as Record<string, unknown> | null | undefined;
+    if (eodCtx && typeof eodCtx === "object") {
+      setEodShiftLead(typeof eodCtx.shift_lead === "string" ? eodCtx.shift_lead : "");
+      setEodHandoffNotes(typeof eodCtx.handoff_notes === "string" ? eodCtx.handoff_notes : "");
+    } else {
+      setEodShiftLead("");
+      setEodHandoffNotes("");
     }
 
     const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
@@ -245,6 +258,18 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
               },
             }
           : {}),
+        ...(task.card_type === "eod"
+          ? {
+              context: {
+                ...(task.context ?? {}),
+                eod_summary: {
+                  ...((task.context.eod_summary as Record<string, unknown> | undefined) ?? {}),
+                  shift_lead: eodShiftLead.trim(),
+                  handoff_notes: eodHandoffNotes.trim(),
+                },
+              },
+            }
+          : {}),
       })
       .eq("id", task.id);
     setMgrSaving(false);
@@ -285,6 +310,7 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
         );
       }
     }
+    router.refresh();
     await load();
   }
 
@@ -653,6 +679,27 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                 onChange={(e) => setDailyInstructions(e.target.value)}
                 disabled={mgrSaving}
                 placeholder="Step-by-step instructions for staff"
+              />
+            </>
+          ) : null}
+          {task.card_type === "eod" ? (
+            <>
+              <label className="card-label">Shift lead</label>
+              <input
+                className="card-input"
+                value={eodShiftLead}
+                onChange={(e) => setEodShiftLead(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Maria"
+              />
+              <label className="card-label">Handoff notes</label>
+              <textarea
+                className="card-textarea"
+                rows={4}
+                value={eodHandoffNotes}
+                onChange={(e) => setEodHandoffNotes(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="Notes for the closing team"
               />
             </>
           ) : null}
