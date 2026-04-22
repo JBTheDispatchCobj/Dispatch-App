@@ -3213,3 +3213,150 @@ main.wrap.card-page {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   DAILYS CARD — muted gray/stone palette, infrastructure tone
+   ========================================================================== */
+
+.dailys-card {
+  --dailys-bg: #f5f5f4;
+  --dailys-border: #d6d3d1;
+  --dailys-accent: #57534e;
+  --dailys-heading: #44403c;
+  --dailys-chip-active-bg: #57534e;
+  --dailys-chip-active-fg: #ffffff;
+  --dailys-info-bg: #eeeeec;
+  --dailys-info-border: #d6d3d1;
+  --dailys-instructions-bg: #eae9e7;
+  --dailys-instructions-border: #c8c5c2;
+  --dailys-instructions-label: #57534e;
+  background-color: var(--dailys-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .dailys-card {
+    --dailys-bg: #1c1a18;
+    --dailys-border: #3a3632;
+    --dailys-accent: #a8a29e;
+    --dailys-heading: #c4bfbc;
+    --dailys-chip-active-bg: #57534e;
+    --dailys-chip-active-fg: #ffffff;
+    --dailys-info-bg: #242220;
+    --dailys-info-border: #3a3632;
+    --dailys-instructions-bg: #221f1c;
+    --dailys-instructions-border: #3a3632;
+    --dailys-instructions-label: #a8a29e;
+  }
+}
+
+/* Location header — primary identifier */
+.dailys-card__location {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--dailys-accent);
+  margin: 0 0 0.75rem;
+}
+
+/* Frequency + last done info block */
+.dailys-card__info {
+  background: var(--dailys-info-bg);
+  border: 1px solid var(--dailys-info-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.dailys-card__info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}
+
+.dailys-card__info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.875rem;
+}
+
+.dailys-card__info-k {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dailys-heading);
+  display: block;
+}
+
+.dailys-card__no-detail {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  font-style: italic;
+}
+
+/* Instructions block — quiet, not yellow or purple */
+.dailys-card__instructions {
+  background: var(--dailys-instructions-bg);
+  border: 1px solid var(--dailys-instructions-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.dailys-card__instructions-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dailys-instructions-label);
+}
+
+.dailys-card__instructions-body {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* Three-chip status row */
+.dailys-card__chips {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+  flex-wrap: nowrap;
+}
+
+.dailys-card__chip {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0.25rem;
+  border: 1.5px solid var(--dailys-border);
+  border-radius: 8px;
+  background: transparent;
+  color: color-mix(in srgb, var(--foreground) 65%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dailys-card__chip:hover:not(:disabled) {
+  border-color: var(--dailys-accent);
+  color: var(--dailys-accent);
+}
+
+.dailys-card__chip--active {
+  background: var(--dailys-chip-active-bg);
+  border-color: var(--dailys-chip-active-bg);
+  color: var(--dailys-chip-active-fg);
+  font-weight: 700;
+}
+
+.dailys-card__chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -66,6 +66,7 @@ const BUCKET_ORDER: StaffHomeBucket[] = [
   "arrivals",
   "stayovers",
   "eod",
+  "dailys",
 ];
 
 const BUCKET_LABEL: Record<StaffHomeBucket, string> = {
@@ -74,6 +75,7 @@ const BUCKET_LABEL: Record<StaffHomeBucket, string> = {
   arrivals: "Arrivals",
   stayovers: "Stayovers",
   eod: "End of Day",
+  dailys: "Dailys",
 };
 
 function formatDateHeading(d: Date): string {

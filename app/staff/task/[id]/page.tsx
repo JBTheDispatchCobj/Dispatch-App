@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ArrivalsCard from "./ArrivalsCard";
+import DailysCard from "./DailysCard";
 import DeparturesCard from "./DeparturesCard";
 import EODCard from "./EODCard";
 import StayoversCard from "./StayoversCard";
@@ -395,6 +396,33 @@ export default function StaffTaskExecutionPage() {
 
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
+
+  if (ct === "dailys" || ct === "daily" || ct.includes("daily")) {
+    return (
+      <DailysCard
+        task={task}
+        userId={userId}
+        displayName={displayName}
+        checklist={checklist}
+        comments={comments}
+        inlineError={inlineError}
+        setInlineError={setInlineError}
+        noteBody={noteBody}
+        setNoteBody={setNoteBody}
+        noteBusy={noteBusy}
+        helpBusy={helpBusy}
+        doneBusy={doneBusy}
+        pauseBusy={pauseBusy}
+        resumeBusy={resumeBusy}
+        onToggleItem={toggleItem}
+        onNeedHelp={onNeedHelp}
+        onImDone={onImDone}
+        onPause={onPause}
+        onResume={onResume}
+        onPostNote={onPostNote}
+      />
+    );
+  }
 
   if (ct === "eod" || ct.includes("end_of_day") || ct.includes("eod")) {
     return (
