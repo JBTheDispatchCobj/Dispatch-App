@@ -300,6 +300,15 @@ export default function TasksSection() {
     );
   }
 
+  function bucketToCardType(bucket: StaffHomeBucket): string {
+    if (bucket === "eod") return "eod";
+    if (bucket === "dailys") return "dailys";
+    if (bucket === "departures") return "housekeeping_turn";
+    if (bucket === "arrivals") return "arrival";
+    if (bucket === "stayovers") return "stayover";
+    return "generic";
+  }
+
   async function onAdd(e: FormEvent) {
     e.preventDefault();
     const title = newTitle.trim();
@@ -324,7 +333,7 @@ export default function TasksSection() {
       assignee_name: assigneeName,
       priority: newPriority,
       created_by_user_id: createdByUserId,
-      card_type: "housekeeping_turn",
+      card_type: bucketToCardType(bucket),
       source: "manual",
       context: { staff_home_bucket: bucket },
     };

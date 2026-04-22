@@ -481,6 +481,11 @@ export default function DeparturesCard({
                     </time>
                   </div>
                   <p className="staff-task-exec-note-body">{c.body}</p>
+                  {c.image_url ? (
+                    <a href={c.image_url} target="_blank" rel="noreferrer">
+                      <img src={c.image_url} alt="" className="staff-comment-img" />
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
