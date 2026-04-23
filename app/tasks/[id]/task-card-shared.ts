@@ -81,6 +81,17 @@ export type EODSummaryContext = {
   tasks_open_count?: number;
 };
 
+export type IncomingGuest = {
+  name?: string;
+  checkin_time?: string;
+  checkout_date?: string;
+  nights?: number;
+  party_size?: number;
+  confirmation_number?: string;
+  source?: string;
+  special_requests?: string;
+};
+
 export function normalizeStaff(raw: unknown): StaffEmbed {
   if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
     const n = (raw[0] as { name?: string }).name;

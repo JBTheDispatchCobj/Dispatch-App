@@ -30,6 +30,11 @@ import {
 
 type StaffOpt = { id: string; name: string };
 
+function parseNumField(s: string): number | undefined {
+  const n = Number(s.trim());
+  return s.trim() !== "" && Number.isFinite(n) ? n : undefined;
+}
+
 export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
@@ -76,6 +81,15 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
 
   const [eodShiftLead, setEodShiftLead] = useState("");
   const [eodHandoffNotes, setEodHandoffNotes] = useState("");
+
+  const [arrName, setArrName] = useState("");
+  const [arrCheckinTime, setArrCheckinTime] = useState("");
+  const [arrCheckoutDate, setArrCheckoutDate] = useState("");
+  const [arrNights, setArrNights] = useState("");
+  const [arrPartySize, setArrPartySize] = useState("");
+  const [arrConfirmationNumber, setArrConfirmationNumber] = useState("");
+  const [arrSource, setArrSource] = useState("");
+  const [arrSpecialRequests, setArrSpecialRequests] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -154,6 +168,26 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
     } else {
       setEodShiftLead("");
       setEodHandoffNotes("");
+    }
+    const igCtx = t.context.incoming_guest as Record<string, unknown> | null | undefined;
+    if (igCtx && typeof igCtx === "object") {
+      setArrName(typeof igCtx.name === "string" ? igCtx.name : "");
+      setArrCheckinTime(typeof igCtx.checkin_time === "string" ? igCtx.checkin_time : "");
+      setArrCheckoutDate(typeof igCtx.checkout_date === "string" ? igCtx.checkout_date : "");
+      setArrNights(igCtx.nights !== null && igCtx.nights !== undefined ? String(igCtx.nights) : "");
+      setArrPartySize(igCtx.party_size !== null && igCtx.party_size !== undefined ? String(igCtx.party_size) : "");
+      setArrConfirmationNumber(typeof igCtx.confirmation_number === "string" ? igCtx.confirmation_number : "");
+      setArrSource(typeof igCtx.source === "string" ? igCtx.source : "");
+      setArrSpecialRequests(typeof igCtx.special_requests === "string" ? igCtx.special_requests : "");
+    } else {
+      setArrName("");
+      setArrCheckinTime("");
+      setArrCheckoutDate("");
+      setArrNights("");
+      setArrPartySize("");
+      setArrConfirmationNumber("");
+      setArrSource("");
+      setArrSpecialRequests("");
     }
 
     const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
@@ -266,6 +300,24 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                   ...((task.context.eod_summary as Record<string, unknown> | undefined) ?? {}),
                   shift_lead: eodShiftLead.trim(),
                   handoff_notes: eodHandoffNotes.trim(),
+                },
+              },
+            }
+          : {}),
+        ...(task.card_type === "arrival"
+          ? {
+              context: {
+                ...(task.context ?? {}),
+                incoming_guest: {
+                  ...((task.context.incoming_guest as Record<string, unknown> | undefined) ?? {}),
+                  name: arrName.trim(),
+                  checkin_time: arrCheckinTime.trim(),
+                  checkout_date: arrCheckoutDate.trim(),
+                  nights: parseNumField(arrNights),
+                  party_size: parseNumField(arrPartySize),
+                  confirmation_number: arrConfirmationNumber.trim(),
+                  source: arrSource.trim(),
+                  special_requests: arrSpecialRequests.trim(),
                 },
               },
             }
@@ -700,6 +752,79 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                 onChange={(e) => setEodHandoffNotes(e.target.value)}
                 disabled={mgrSaving}
                 placeholder="Notes for the closing team"
+              />
+            </>
+          ) : null}
+          {task.card_type === "arrival" ? (
+            <>
+              <label className="card-label">Guest name</label>
+              <input
+                className="card-input"
+                value={arrName}
+                onChange={(e) => setArrName(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Johnson"
+              />
+              <label className="card-label">Check-in time</label>
+              <input
+                className="card-input"
+                type="time"
+                value={arrCheckinTime}
+                onChange={(e) => setArrCheckinTime(e.target.value)}
+                disabled={mgrSaving}
+              />
+              <label className="card-label">Check-out date</label>
+              <input
+                className="card-input"
+                type="date"
+                value={arrCheckoutDate}
+                onChange={(e) => setArrCheckoutDate(e.target.value)}
+                disabled={mgrSaving}
+              />
+              <label className="card-label">Nights</label>
+              <input
+                className="card-input"
+                type="number"
+                min="1"
+                value={arrNights}
+                onChange={(e) => setArrNights(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. 2"
+              />
+              <label className="card-label">Party size</label>
+              <input
+                className="card-input"
+                type="number"
+                min="1"
+                value={arrPartySize}
+                onChange={(e) => setArrPartySize(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. 2"
+              />
+              <label className="card-label">Confirmation number</label>
+              <input
+                className="card-input"
+                value={arrConfirmationNumber}
+                onChange={(e) => setArrConfirmationNumber(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. RES-10042"
+              />
+              <label className="card-label">Source</label>
+              <input
+                className="card-input"
+                value={arrSource}
+                onChange={(e) => setArrSource(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Direct, Expedia"
+              />
+              <label className="card-label">Special requests</label>
+              <textarea
+                className="card-textarea"
+                rows={3}
+                value={arrSpecialRequests}
+                onChange={(e) => setArrSpecialRequests(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Extra pillows, crib needed"
               />
             </>
           ) : null}

@@ -36,6 +36,11 @@ type TaskRow = {
   context: Record<string, unknown>;
 };
 
+function parseNumField(s: string): number | undefined {
+  const n = Number(s.trim());
+  return s.trim() !== "" && Number.isFinite(n) ? n : undefined;
+}
+
 function localDateKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -205,6 +210,15 @@ export default function TasksSection() {
 
   const [newEodShiftLead, setNewEodShiftLead] = useState("");
   const [newEodHandoffNotes, setNewEodHandoffNotes] = useState("");
+
+  const [newArrName, setNewArrName] = useState("");
+  const [newArrCheckinTime, setNewArrCheckinTime] = useState("");
+  const [newArrCheckoutDate, setNewArrCheckoutDate] = useState("");
+  const [newArrNights, setNewArrNights] = useState("");
+  const [newArrPartySize, setNewArrPartySize] = useState("");
+  const [newArrConfirmationNumber, setNewArrConfirmationNumber] = useState("");
+  const [newArrSource, setNewArrSource] = useState("");
+  const [newArrSpecialRequests, setNewArrSpecialRequests] = useState("");
 
   const loadStaff = useCallback(async () => {
     setStaffListError(null);
@@ -386,6 +400,20 @@ export default function TasksSection() {
               },
             }
           : {}),
+        ...(bucket === "arrivals"
+          ? {
+              incoming_guest: {
+                name: newArrName.trim(),
+                checkin_time: newArrCheckinTime.trim(),
+                checkout_date: newArrCheckoutDate.trim(),
+                nights: parseNumField(newArrNights),
+                party_size: parseNumField(newArrPartySize),
+                confirmation_number: newArrConfirmationNumber.trim(),
+                source: newArrSource.trim(),
+                special_requests: newArrSpecialRequests.trim(),
+              },
+            }
+          : {}),
       },
     };
     if (process.env.NODE_ENV === "development") {
@@ -442,6 +470,14 @@ export default function TasksSection() {
     setNewDailyInstructions("");
     setNewEodShiftLead("");
     setNewEodHandoffNotes("");
+    setNewArrName("");
+    setNewArrCheckinTime("");
+    setNewArrCheckoutDate("");
+    setNewArrNights("");
+    setNewArrPartySize("");
+    setNewArrConfirmationNumber("");
+    setNewArrSource("");
+    setNewArrSpecialRequests("");
     void logActivity(
       activityType.taskCreated,
       `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
@@ -985,6 +1021,119 @@ export default function TasksSection() {
                 onChange={(e) => setNewEodHandoffNotes(e.target.value)}
                 disabled={adding || loading}
                 placeholder="Notes for the closing team"
+              />
+            </div>
+          </>
+        ) : null}
+        {newBucket === "arrivals" ? (
+          <>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-name">
+                Guest name
+              </label>
+              <input
+                id="tasks-new-arr-name"
+                className="tasks-add-input"
+                value={newArrName}
+                onChange={(e) => setNewArrName(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Johnson"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-checkin-time">
+                Check-in time
+              </label>
+              <input
+                id="tasks-new-arr-checkin-time"
+                className="tasks-add-input"
+                type="time"
+                value={newArrCheckinTime}
+                onChange={(e) => setNewArrCheckinTime(e.target.value)}
+                disabled={adding || loading}
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-checkout-date">
+                Check-out date
+              </label>
+              <input
+                id="tasks-new-arr-checkout-date"
+                className="tasks-add-input"
+                type="date"
+                value={newArrCheckoutDate}
+                onChange={(e) => setNewArrCheckoutDate(e.target.value)}
+                disabled={adding || loading}
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-nights">
+                Nights
+              </label>
+              <input
+                id="tasks-new-arr-nights"
+                className="tasks-add-input"
+                type="number"
+                min="1"
+                value={newArrNights}
+                onChange={(e) => setNewArrNights(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. 2"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-party-size">
+                Party size
+              </label>
+              <input
+                id="tasks-new-arr-party-size"
+                className="tasks-add-input"
+                type="number"
+                min="1"
+                value={newArrPartySize}
+                onChange={(e) => setNewArrPartySize(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. 2"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-conf">
+                Confirmation number
+              </label>
+              <input
+                id="tasks-new-arr-conf"
+                className="tasks-add-input"
+                value={newArrConfirmationNumber}
+                onChange={(e) => setNewArrConfirmationNumber(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. RES-10042"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-source">
+                Source
+              </label>
+              <input
+                id="tasks-new-arr-source"
+                className="tasks-add-input"
+                value={newArrSource}
+                onChange={(e) => setNewArrSource(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Direct, Expedia"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-arr-special-requests">
+                Special requests
+              </label>
+              <textarea
+                id="tasks-new-arr-special-requests"
+                className="tasks-add-input"
+                rows={3}
+                value={newArrSpecialRequests}
+                onChange={(e) => setNewArrSpecialRequests(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Extra pillows, crib needed"
               />
             </div>
           </>
