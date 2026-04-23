@@ -91,6 +91,13 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [arrSource, setArrSource] = useState("");
   const [arrSpecialRequests, setArrSpecialRequests] = useState("");
 
+  const [stayName, setStayName] = useState("");
+  const [stayCheckinDate, setStayCheckinDate] = useState("");
+  const [stayCheckoutDate, setStayCheckoutDate] = useState("");
+  const [stayNightsRemaining, setStayNightsRemaining] = useState("");
+  const [stayPartySize, setStayPartySize] = useState("");
+  const [staySpecialRequests, setStaySpecialRequests] = useState("");
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -188,6 +195,22 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       setArrConfirmationNumber("");
       setArrSource("");
       setArrSpecialRequests("");
+    }
+    const cgCtx = t.context.current_guest as Record<string, unknown> | null | undefined;
+    if (cgCtx && typeof cgCtx === "object") {
+      setStayName(typeof cgCtx.name === "string" ? cgCtx.name : "");
+      setStayCheckinDate(typeof cgCtx.checkin_date === "string" ? cgCtx.checkin_date : "");
+      setStayCheckoutDate(typeof cgCtx.checkout_date === "string" ? cgCtx.checkout_date : "");
+      setStayNightsRemaining(cgCtx.nights_remaining !== null && cgCtx.nights_remaining !== undefined ? String(cgCtx.nights_remaining) : "");
+      setStayPartySize(cgCtx.party_size !== null && cgCtx.party_size !== undefined ? String(cgCtx.party_size) : "");
+      setStaySpecialRequests(typeof cgCtx.special_requests === "string" ? cgCtx.special_requests : "");
+    } else {
+      setStayName("");
+      setStayCheckinDate("");
+      setStayCheckoutDate("");
+      setStayNightsRemaining("");
+      setStayPartySize("");
+      setStaySpecialRequests("");
     }
 
     const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
@@ -318,6 +341,22 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                   confirmation_number: arrConfirmationNumber.trim(),
                   source: arrSource.trim(),
                   special_requests: arrSpecialRequests.trim(),
+                },
+              },
+            }
+          : {}),
+        ...(task.card_type === "stayover"
+          ? {
+              context: {
+                ...(task.context ?? {}),
+                current_guest: {
+                  ...((task.context.current_guest as Record<string, unknown> | undefined) ?? {}),
+                  name: stayName.trim(),
+                  checkin_date: stayCheckinDate.trim(),
+                  checkout_date: stayCheckoutDate.trim(),
+                  nights_remaining: parseNumField(stayNightsRemaining),
+                  party_size: parseNumField(stayPartySize),
+                  special_requests: staySpecialRequests.trim(),
                 },
               },
             }
@@ -825,6 +864,63 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
                 onChange={(e) => setArrSpecialRequests(e.target.value)}
                 disabled={mgrSaving}
                 placeholder="e.g. Extra pillows, crib needed"
+              />
+            </>
+          ) : null}
+          {task.card_type === "stayover" ? (
+            <>
+              <label className="card-label">Guest name</label>
+              <input
+                className="card-input"
+                value={stayName}
+                onChange={(e) => setStayName(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Williams"
+              />
+              <label className="card-label">Check-in date</label>
+              <input
+                className="card-input"
+                type="date"
+                value={stayCheckinDate}
+                onChange={(e) => setStayCheckinDate(e.target.value)}
+                disabled={mgrSaving}
+              />
+              <label className="card-label">Check-out date</label>
+              <input
+                className="card-input"
+                type="date"
+                value={stayCheckoutDate}
+                onChange={(e) => setStayCheckoutDate(e.target.value)}
+                disabled={mgrSaving}
+              />
+              <label className="card-label">Nights remaining</label>
+              <input
+                className="card-input"
+                type="number"
+                min="1"
+                value={stayNightsRemaining}
+                onChange={(e) => setStayNightsRemaining(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. 2"
+              />
+              <label className="card-label">Party size</label>
+              <input
+                className="card-input"
+                type="number"
+                min="1"
+                value={stayPartySize}
+                onChange={(e) => setStayPartySize(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. 2"
+              />
+              <label className="card-label">Special requests</label>
+              <textarea
+                className="card-textarea"
+                rows={3}
+                value={staySpecialRequests}
+                onChange={(e) => setStaySpecialRequests(e.target.value)}
+                disabled={mgrSaving}
+                placeholder="e.g. Extra towels, quiet room"
               />
             </>
           ) : null}

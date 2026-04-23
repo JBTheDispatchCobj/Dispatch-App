@@ -220,6 +220,13 @@ export default function TasksSection() {
   const [newArrSource, setNewArrSource] = useState("");
   const [newArrSpecialRequests, setNewArrSpecialRequests] = useState("");
 
+  const [newStayName, setNewStayName] = useState("");
+  const [newStayCheckinDate, setNewStayCheckinDate] = useState("");
+  const [newStayCheckoutDate, setNewStayCheckoutDate] = useState("");
+  const [newStayNightsRemaining, setNewStayNightsRemaining] = useState("");
+  const [newStayPartySize, setNewStayPartySize] = useState("");
+  const [newStaySpecialRequests, setNewStaySpecialRequests] = useState("");
+
   const loadStaff = useCallback(async () => {
     setStaffListError(null);
     const result = await fetchAssignableStaffOptions(supabase);
@@ -414,6 +421,18 @@ export default function TasksSection() {
               },
             }
           : {}),
+        ...(bucket === "stayovers"
+          ? {
+              current_guest: {
+                name: newStayName.trim(),
+                checkin_date: newStayCheckinDate.trim(),
+                checkout_date: newStayCheckoutDate.trim(),
+                nights_remaining: parseNumField(newStayNightsRemaining),
+                party_size: parseNumField(newStayPartySize),
+                special_requests: newStaySpecialRequests.trim(),
+              },
+            }
+          : {}),
       },
     };
     if (process.env.NODE_ENV === "development") {
@@ -478,6 +497,12 @@ export default function TasksSection() {
     setNewArrConfirmationNumber("");
     setNewArrSource("");
     setNewArrSpecialRequests("");
+    setNewStayName("");
+    setNewStayCheckinDate("");
+    setNewStayCheckoutDate("");
+    setNewStayNightsRemaining("");
+    setNewStayPartySize("");
+    setNewStaySpecialRequests("");
     void logActivity(
       activityType.taskCreated,
       `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
@@ -1134,6 +1159,93 @@ export default function TasksSection() {
                 onChange={(e) => setNewArrSpecialRequests(e.target.value)}
                 disabled={adding || loading}
                 placeholder="e.g. Extra pillows, crib needed"
+              />
+            </div>
+          </>
+        ) : null}
+        {newBucket === "stayovers" ? (
+          <>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-name">
+                Guest name
+              </label>
+              <input
+                id="tasks-new-stay-name"
+                className="tasks-add-input"
+                value={newStayName}
+                onChange={(e) => setNewStayName(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Williams"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-checkin-date">
+                Check-in date
+              </label>
+              <input
+                id="tasks-new-stay-checkin-date"
+                className="tasks-add-input"
+                type="date"
+                value={newStayCheckinDate}
+                onChange={(e) => setNewStayCheckinDate(e.target.value)}
+                disabled={adding || loading}
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-checkout-date">
+                Check-out date
+              </label>
+              <input
+                id="tasks-new-stay-checkout-date"
+                className="tasks-add-input"
+                type="date"
+                value={newStayCheckoutDate}
+                onChange={(e) => setNewStayCheckoutDate(e.target.value)}
+                disabled={adding || loading}
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-nights-remaining">
+                Nights remaining
+              </label>
+              <input
+                id="tasks-new-stay-nights-remaining"
+                className="tasks-add-input"
+                type="number"
+                min="1"
+                value={newStayNightsRemaining}
+                onChange={(e) => setNewStayNightsRemaining(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. 2"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-party-size">
+                Party size
+              </label>
+              <input
+                id="tasks-new-stay-party-size"
+                className="tasks-add-input"
+                type="number"
+                min="1"
+                value={newStayPartySize}
+                onChange={(e) => setNewStayPartySize(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. 2"
+              />
+            </div>
+            <div className="tasks-add-field">
+              <label className="tasks-add-label" htmlFor="tasks-new-stay-special-requests">
+                Special requests
+              </label>
+              <textarea
+                id="tasks-new-stay-special-requests"
+                className="tasks-add-input"
+                rows={3}
+                value={newStaySpecialRequests}
+                onChange={(e) => setNewStaySpecialRequests(e.target.value)}
+                disabled={adding || loading}
+                placeholder="e.g. Extra towels, quiet room"
               />
             </div>
           </>

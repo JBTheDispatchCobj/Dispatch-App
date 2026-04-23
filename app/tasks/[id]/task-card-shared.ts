@@ -92,6 +92,15 @@ export type IncomingGuest = {
   special_requests?: string;
 };
 
+export type CurrentGuest = {
+  name?: string;
+  checkin_date?: string;
+  checkout_date?: string;
+  nights_remaining?: number;
+  party_size?: number;
+  special_requests?: string;
+};
+
 export function normalizeStaff(raw: unknown): StaffEmbed {
   if (Array.isArray(raw) && raw[0] && typeof raw[0] === "object") {
     const n = (raw[0] as { name?: string }).name;
