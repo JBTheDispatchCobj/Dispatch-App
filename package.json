@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "next start"
+    "start": "next start",
+    "orchestrate": "node --env-file=.env.local --experimental-strip-types scripts/run-orchestrator.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
