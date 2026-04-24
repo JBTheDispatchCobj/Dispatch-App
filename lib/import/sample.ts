@@ -1,14 +1,39 @@
-// Synthetic TSV anchored to 2026-04-23.
-// Row 1: arrival (checkin today)
-// Row 2: departure (checkout today)
-// Row 3: stayover (checkin < today < checkout)
-// Row 4: skip (future checkin — not relevant today)
-// Row 5: duplicate of row 1 — tests dedup path
-export const SAMPLE_PASTE = [
-  "confirmation_number\tguest_name\tcheckin_date\tcheckout_date\tnights\tparty_size\troom_number\tbooking_source\tspecial_requests",
-  "CONF-2026-001\tAlice Martin\t2026-04-23\t2026-04-25\t2\t2\t101\tDirect\tHigh floor preferred",
-  "CONF-2026-002\tBob Chen\t2026-04-21\t2026-04-23\t2\t1\t205\tBooking.com\t",
-  "CONF-2026-003\tCarol Davis\t2026-04-18\t2026-04-30\t12\t3\t312\tExpedia\tExtra pillows please",
-  "CONF-2026-004\tDave Smith\t2026-04-25\t2026-04-28\t3\t2\t108\tDirect\t",
-  "CONF-2026-001\tAlice Martin\t2026-04-23\t2026-04-25\t2\t2\t101\tDirect\tHigh floor preferred",
-].join("\n");
+function todayChicago(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function shiftDate(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// Row layout (relative to today in America/Chicago):
+// CONF-2026-001 — arrival  (checkin=today,   checkout=today+2)
+// CONF-2026-002 — departure (checkin=today-2, checkout=today)
+// CONF-2026-003 — stayover  (checkin=today-1, checkout=today+1)
+// CONF-2026-001 duplicate   → intra-paste dedup
+// CONF-2026-004 — future skip (checkin=today+1, checkout=today+3)
+export function getSamplePaste(): string {
+  const t0 = todayChicago();
+  const tm2 = shiftDate(t0, -2);
+  const tm1 = shiftDate(t0, -1);
+  const tp1 = shiftDate(t0, 1);
+  const tp2 = shiftDate(t0, 2);
+  const tp3 = shiftDate(t0, 3);
+
+  const rows: string[][] = [
+    ["confirmation_number", "guest_name", "checkin_date", "checkout_date", "nights", "party_size", "room_number", "booking_source", "special_requests"],
+    ["CONF-2026-001", "Alice Nguyen", t0,   tp2, "2", "2", "101", "Direct",      "Early check-in requested"],
+    ["CONF-2026-002", "Bob Chen",     tm2,  t0,  "2", "1", "205", "Booking.com", ""],
+    ["CONF-2026-003", "Carol Park",   tm1,  tp1, "2", "3", "312", "Expedia",     "Extra towels"],
+    ["CONF-2026-001", "Alice Nguyen", t0,   tp2, "2", "2", "101", "Direct",      "Early check-in requested"],
+    ["CONF-2026-004", "Dave Smith",   tp1,  tp3, "2", "2", "108", "Direct",      ""],
+  ];
+
+  return rows.map((cols) => cols.join("\t")).join("\n");
+}

@@ -8,7 +8,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../profile-load-error";
-import { SAMPLE_PASTE } from "@/lib/import/sample";
+import { getSamplePaste } from "@/lib/import/sample";
 import { runImport, type ImportActionResult } from "@/lib/import/actions";
 
 export default function ImportPage() {
@@ -85,7 +85,7 @@ export default function ImportPage() {
           type="button"
           className="outline"
           onClick={() => {
-            setPaste(SAMPLE_PASTE);
+            setPaste(getSamplePaste());
             setResult(null);
           }}
         >
