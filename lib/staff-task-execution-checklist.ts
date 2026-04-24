@@ -17,6 +17,22 @@ export function checklistCompletionPercent(
 }
 
 /**
+ * Canonical 7-item departures execution checklist.
+ * Used as the display list for the DeparturesCard tile; DB items are matched
+ * by title to carry persisted done-state. Items without a DB match render
+ * disabled until the task_checklist_items trigger is updated to seed all 7.
+ */
+export const DEPARTURES_CANONICAL_CHECKLIST: ReadonlyArray<string> = [
+  "Open/Strip",
+  "Bed",
+  "Report/Doc",
+  "Prep",
+  "Clean",
+  "Close Out",
+  "Restock",
+];
+
+/**
  * Load checklist rows from Supabase. Default rows are created by DB trigger
  * on task insert (housekeeping) or milestone backfill — no client mock path.
  */
