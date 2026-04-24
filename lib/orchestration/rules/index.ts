@@ -1,7 +1,7 @@
-import type { InboundEvent, TaskDraft } from "../types";
-import { arrivalsRule } from "./arrivals";
-import { departuresRule } from "./departures";
-import { stayoversRule } from "./stayovers";
+import type { InboundEvent, TaskDraft } from "../types.ts";
+import { arrivalsRule } from "./arrivals.ts";
+import { departuresRule } from "./departures.ts";
+import { stayoversRule } from "./stayovers.ts";
 
 type RuleFn = (event: InboundEvent) => TaskDraft[];
 

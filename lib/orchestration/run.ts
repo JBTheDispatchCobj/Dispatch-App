@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { dispatch } from "./rules/index";
-import type { InboundEvent, TaskDraft } from "./types";
+import { dispatch } from "./rules/index.ts";
+import type { InboundEvent, TaskDraft } from "./types.ts";
 
 function makeServiceRoleClient() {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();

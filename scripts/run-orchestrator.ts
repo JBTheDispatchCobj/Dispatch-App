@@ -1,4 +1,4 @@
-import { run } from "../lib/orchestration/run";
+import { run } from "../lib/orchestration/run.ts";
 
 void (async () => {
   try {
