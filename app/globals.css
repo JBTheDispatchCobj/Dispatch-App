@@ -2630,6 +2630,12 @@ main.wrap.card-page {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow:
+    0 2px 3px rgba(0,0,0,0.2),
+    0 8px 16px rgba(0,0,0,0.22),
+    0 26px 44px rgba(0,0,0,0.24),
+    inset 0 1px 0 var(--departures-highlight),
+    inset 0 -1px 0 rgba(0,0,0,0.25);
 }
 
 /* ——— Inline action pair (replaces pinned footer bar for departures) ——— */
@@ -2685,12 +2691,21 @@ main.wrap.card-page {
   opacity: 0.88;
 }
 
-/* ——— Card header strip ——— */
+/* ——— Card header strip — raised (gradient + highlight + letterpress) ——— */
 .departures-card__header {
-  background: var(--departures-header);
+  background: linear-gradient(180deg, var(--departures-highlight) 0%, rgba(0,0,0,0) 35%), var(--departures-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
-  border-bottom: 1px solid rgba(225, 245, 238, 0.15);
+  border-bottom: 1px solid rgba(0,0,0,0.3);
+  position: relative;
+}
+
+.departures-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--departures-highlight);
 }
 
 .departures-card__hero {
@@ -2699,13 +2714,13 @@ main.wrap.card-page {
   gap: 4px;
 }
 
-/* Fix 3: hero 22px → 26px */
 .departures-card__hero-type {
   font-family: var(--font-mono);
   font-size: 26px;
   letter-spacing: 0.08em;
   font-weight: 500;
   color: var(--departures-text);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
 
 .departures-card__hero-meta {
@@ -2723,60 +2738,70 @@ main.wrap.card-page {
   padding: 16px 18px 20px;
 }
 
-/* ——— Cream panels ——— */
+/* ——— Cream panels — raised (drop shadow + inset top highlight) ——— */
 .departures-card__panel {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
+  overflow: hidden;
   color: var(--departures-header);
   margin-bottom: 10px;
+  border: 1px solid rgba(0,0,0,0.22);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.18), 0 3px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .departures-card__panel--dual {
-  padding: 14px 16px 16px;
+  padding: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 18px;
 }
 
 @media (max-width: 420px) {
   .departures-card__panel--dual {
     grid-template-columns: 1fr;
-    row-gap: 14px;
   }
 }
 
-/* Fix 3: panel col-head 11px → 14px */
-.departures-card__col-head {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0.16em;
-  font-weight: 500;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(0, 61, 48, 0.14);
-  color: var(--departures-header);
+/* Column divider */
+.departures-card__col + .departures-card__col {
+  border-left: 1px solid rgba(0,0,0,0.18);
 }
 
-/* Fix 3: field grid tracks widen for larger type */
+/* Col body bottom spacing */
+.departures-card__col {
+  padding-bottom: 12px;
+}
+
+/* ——— Section header: flat solid block, weight 600, no letterpress ——— */
+.departures-card__col-head {
+  background: var(--departures-header);
+  color: var(--departures-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  margin-bottom: 12px;
+}
+
 .departures-card__field {
   display: grid;
   grid-template-columns: 96px 1fr;
   gap: 6px;
   line-height: 1.5;
   margin-bottom: 4px;
+  padding: 0 14px;
 }
 
-/* Fix 3: field key 11px → 14px */
 .departures-card__field-k {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--departures-header);
 }
 
-/* Fix 3: field value 12px → 15px */
 .departures-card__field-v {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--departures-header);
   opacity: 0.82;
@@ -2784,26 +2809,29 @@ main.wrap.card-page {
 
 .departures-card__incoming-notes {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--departures-header);
   opacity: 0.82;
+  padding: 0 14px;
 }
 
 .departures-card__panel--single {
-  padding: 12px 16px 14px;
+  padding: 0;
 }
 
-/* Fix 3: panel label 11px → 14px */
+/* ——— Section header: flat solid block ——— */
 .departures-card__panel-label {
+  display: block;
+  background: var(--departures-header);
+  color: var(--departures-text);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 0.16em;
-  font-weight: 500;
-  margin-bottom: 6px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid rgba(0, 61, 48, 0.14);
-  color: var(--departures-header);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  margin-bottom: 0;
 }
 
 .departures-card__panel-value {
@@ -2812,6 +2840,7 @@ main.wrap.card-page {
   font-weight: 400;
   color: var(--departures-header);
   opacity: 0.88;
+  padding: 12px 14px;
 }
 
 /* ——— Status row (inline on teal) ——— */
@@ -2894,24 +2923,26 @@ main.wrap.card-page {
 
 .departures-card__tile {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 130px;
+  border: 1px solid rgba(0,0,0,0.22);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.18), 0 3px 6px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
-/* Fix 3: tile head 11px → 15px, padding bump */
+/* Section header: flat solid block, weight 600 */
 .departures-card__tile-head {
   background: var(--departures-header);
   color: var(--departures-text);
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 15px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
-  text-align: center;
+  letter-spacing: 0.12em;
+  font-weight: 600;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
 }
 
 .departures-card__tile-body {
@@ -3084,6 +3115,12 @@ main.wrap.card-page {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow:
+    0 2px 3px rgba(44,22,8,0.14),
+    0 8px 16px rgba(44,22,8,0.18),
+    0 26px 44px rgba(44,22,8,0.2),
+    inset 0 1px 0 var(--arrivals-highlight),
+    inset 0 -1px 0 rgba(0,0,0,0.18);
 }
 
 /* ——— Inline action pair (replaces pinned footer bar) ——— */
@@ -3138,12 +3175,21 @@ main.wrap.card-page {
   opacity: 0.88;
 }
 
-/* ——— Card header strip ——— */
+/* ——— Card header strip — raised (gradient + highlight + letterpress) ——— */
 .arrivals-card__header {
-  background: var(--arrivals-header);
+  background: linear-gradient(180deg, var(--arrivals-highlight) 0%, rgba(0,0,0,0) 35%), var(--arrivals-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
-  border-bottom: 1px solid rgba(44, 22, 8, 0.18);
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  position: relative;
+}
+
+.arrivals-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--arrivals-highlight);
 }
 
 .arrivals-card__hero {
@@ -3158,6 +3204,7 @@ main.wrap.card-page {
   letter-spacing: 0.08em;
   font-weight: 500;
   color: var(--arrivals-text);
+  text-shadow: 0 1px 0 var(--arrivals-highlight);
 }
 
 .arrivals-card__hero-meta {
@@ -3175,49 +3222,58 @@ main.wrap.card-page {
   padding: 16px 18px 20px;
 }
 
-/* ——— Cream info panel (single-column rows with dividers) ——— */
+/* ——— Cream info panel — raised, label column is full-background block ——— */
 .arrivals-card__panel {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
+  overflow: hidden;
   color: var(--arrivals-header);
   margin-bottom: 10px;
-  padding: 0 16px;
+  padding: 0;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .arrivals-card__row {
   display: grid;
   grid-template-columns: 100px 1fr;
-  gap: 8px;
-  padding: 11px 0;
-  border-bottom: 1px solid rgba(44, 22, 8, 0.12);
-  align-items: baseline;
+  border-top: 1px solid rgba(0,0,0,0.18);
+  align-items: stretch;
 }
 
-.arrivals-card__row:last-child {
-  border-bottom: none;
+.arrivals-card__row:first-child {
+  border-top: 0;
 }
 
+/* ——— Section header: flat solid label column ——— */
 .arrivals-card__row-k {
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  color: var(--arrivals-header);
-  opacity: 0.75;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  background: var(--arrivals-header);
+  color: var(--arrivals-text);
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(0,0,0,0.18);
 }
 
 .arrivals-card__row-v {
   font-size: 15px;
   font-weight: 500;
-  color: var(--arrivals-header);
+  color: #2C1608;
   line-height: 1.35;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
 }
 
 .arrivals-card__row-v--note {
   font-size: 14px;
   font-weight: 400;
-  opacity: 0.88;
   line-height: 1.45;
+  align-items: flex-start;
 }
 
 /* ——— Status row (inline on mustard) ——— */
@@ -3298,11 +3354,13 @@ main.wrap.card-page {
 
 .arrivals-card__tile {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 130px;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .arrivals-card__tile-head {
@@ -3311,9 +3369,9 @@ main.wrap.card-page {
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 15px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
-  text-align: center;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
   flex-shrink: 0;
 }
 
@@ -3468,6 +3526,8 @@ main.wrap.card-page {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow: 0 2px 3px rgba(44,22,8,0.2), 0 8px 16px rgba(44,22,8,0.22), 0 26px 44px rgba(44,22,8,0.24),
+    inset 0 1px 0 var(--stayovers-highlight), inset 0 -1px 0 rgba(0,0,0,0.2);
 }
 
 /* ——— Inline action pair ——— */
@@ -3522,12 +3582,21 @@ main.wrap.card-page {
   opacity: 0.88;
 }
 
-/* ——— Card header strip ——— */
+/* ——— Card header strip — raised (gradient + highlight + letterpress) ——— */
 .stayover-card__header {
-  background: var(--stayovers-header);
+  background: linear-gradient(180deg, var(--stayovers-highlight) 0%, rgba(0,0,0,0) 35%), var(--stayovers-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
-  border-bottom: 1px solid rgba(44, 22, 8, 0.18);
+  border-bottom: 1px solid rgba(0,0,0,0.25);
+  position: relative;
+}
+
+.stayover-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--stayovers-highlight);
 }
 
 .stayover-card__hero {
@@ -3542,6 +3611,7 @@ main.wrap.card-page {
   letter-spacing: 0.08em;
   font-weight: 500;
   color: var(--stayovers-text);
+  text-shadow: 0 1px 0 var(--stayovers-highlight);
 }
 
 .stayover-card__hero-meta {
@@ -3559,13 +3629,16 @@ main.wrap.card-page {
   padding: 16px 18px 20px;
 }
 
-/* ——— Cream panels ——— */
+/* ——— Cream panels — raised (drop shadow + inset top highlight) ——— */
 .stayover-card__panel {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
   color: var(--stayovers-header);
   margin-bottom: 10px;
-  padding: 0 16px;
+  padding: 0;
+  border: 1px solid rgba(0,0,0,0.22);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
+  overflow: hidden;
 }
 
 .stayover-card__panel--status {
@@ -3652,38 +3725,39 @@ main.wrap.card-page {
 /* ——— Guest info rows ——— */
 .stayover-card__row {
   display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: 8px;
-  padding: 11px 0;
-  border-bottom: 1px solid rgba(44, 22, 8, 0.12);
-  align-items: baseline;
+  grid-template-columns: 100px 1fr;
+  border-top: 1px solid rgba(0,0,0,0.18);
+  align-items: stretch;
 }
 
-.stayover-card__row:last-child {
-  border-bottom: none;
-}
+.stayover-card__row:first-child { border-top: 0; }
 
 .stayover-card__row-k {
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  color: var(--stayovers-header);
-  opacity: 0.75;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  background: var(--stayovers-header);
+  color: var(--shell-cream);
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid rgba(0,0,0,0.22);
 }
 
 .stayover-card__row-v {
   font-size: 15px;
   font-weight: 500;
-  color: var(--stayovers-header);
-  line-height: 1.35;
+  color: #2C1608;
+  padding: 13px 14px;
+  display: flex;
+  align-items: center;
 }
 
 .stayover-card__row-v--note {
   font-size: 14px;
   font-weight: 400;
-  opacity: 0.88;
-  line-height: 1.45;
+  align-items: flex-start;
 }
 
 .stayover-card__error {
@@ -3700,22 +3774,24 @@ main.wrap.card-page {
 
 .stayover-card__tile {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 130px;
+  border: 1px solid rgba(0,0,0,0.22);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .stayover-card__tile-head {
   background: var(--stayovers-header);
-  color: var(--stayovers-text);
+  color: var(--shell-cream);
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 15px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
-  text-align: center;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
   flex-shrink: 0;
 }
 
@@ -3875,13 +3951,25 @@ main.wrap.card-page {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow: 0 2px 3px rgba(74,27,12,0.2), 0 8px 16px rgba(74,27,12,0.22), 0 26px 44px rgba(74,27,12,0.22),
+    inset 0 1px 0 var(--eod-highlight), inset 0 -1px 0 rgba(0,0,0,0.2);
 }
 
-/* Card header strip */
+/* Card header strip — raised (gradient + highlight + letterpress) */
 .eod-card__header {
-  background: var(--eod-header);
+  background: linear-gradient(180deg, var(--eod-highlight) 0%, rgba(0,0,0,0) 35%), var(--eod-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  position: relative;
+}
+
+.eod-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--eod-highlight);
 }
 
 .eod-card__hero {
@@ -3898,6 +3986,7 @@ main.wrap.card-page {
   line-height: 1;
   color: var(--shell-cream);
   font-family: var(--font-mono);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
 }
 
 .eod-card__hero-meta {
@@ -3916,11 +4005,14 @@ main.wrap.card-page {
   gap: 10px;
 }
 
-/* Cream panel */
+/* Cream panel — raised */
 .eod-card__panel {
   background: var(--shell-cream);
-  border-radius: 8px;
+  border-radius: 5px;
   overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
+  margin-bottom: 10px;
 }
 
 .eod-card__panel-body {
@@ -3953,8 +4045,9 @@ main.wrap.card-page {
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 15px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
 }
 
 /* Error */
@@ -3971,8 +4064,10 @@ main.wrap.card-page {
 
 .eod-card__tile {
   background: var(--shell-cream);
-  border-radius: 8px;
+  border-radius: 5px;
   overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .eod-card__tile-body {
@@ -4002,12 +4097,14 @@ main.wrap.card-page {
   line-height: 1.35;
 }
 
-/* Notes panel below tile grid */
+/* Notes panel below tile grid — raised */
 .eod-card__notes-panel {
   background: var(--shell-cream);
-  border-radius: 8px;
+  border-radius: 5px;
   overflow: hidden;
   padding: 10px 12px 12px;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -4114,6 +4211,8 @@ main.wrap.card-page {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow: 0 2px 3px rgba(27,34,51,0.2), 0 8px 16px rgba(27,34,51,0.2), 0 26px 44px rgba(27,34,51,0.22),
+    inset 0 1px 0 var(--dailys-highlight), inset 0 -1px 0 rgba(0,0,0,0.18);
 }
 
 /* ——— Inline action pair ——— */
@@ -4168,12 +4267,21 @@ main.wrap.card-page {
   opacity: 0.88;
 }
 
-/* ——— Card header strip ——— */
+/* ——— Card header strip — raised (gradient + highlight + letterpress) ——— */
 .dailys-card__header {
-  background: var(--dailys-header);
+  background: linear-gradient(180deg, var(--dailys-highlight) 0%, rgba(0,0,0,0) 35%), var(--dailys-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
-  border-bottom: 1px solid rgba(27, 34, 51, 0.18);
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  position: relative;
+}
+
+.dailys-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--dailys-highlight);
 }
 
 .dailys-card__hero {
@@ -4188,6 +4296,7 @@ main.wrap.card-page {
   letter-spacing: 0.08em;
   font-weight: 500;
   color: var(--dailys-text);
+  text-shadow: 0 1px 0 var(--dailys-highlight);
 }
 
 .dailys-card__hero-meta {
@@ -4205,23 +4314,25 @@ main.wrap.card-page {
   padding: 16px 18px 20px;
 }
 
-/* ——— Cream panels (Team Updates + Notes) ——— */
+/* ——— Cream panels (Team Updates + Notes) — raised ——— */
 .dailys-card__panel {
   background: var(--shell-cream);
-  border-radius: 10px;
+  border-radius: 5px;
   overflow: hidden;
   margin-bottom: 10px;
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .dailys-card__tile-head {
   background: var(--dailys-header);
-  color: var(--dailys-text);
+  color: var(--shell-cream);
   padding: 10px 12px;
   font-family: var(--font-mono);
   font-size: 15px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
-  text-align: center;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
   flex-shrink: 0;
 }
 
@@ -4325,13 +4436,15 @@ main.wrap.card-page {
 
 .dailys-card__task-row {
   background: var(--shell-cream);
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 9px 11px 10px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   color: var(--dailys-text);
+  border: 1px solid rgba(0,0,0,0.18);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .dailys-card__task-row--done {
@@ -4534,14 +4647,25 @@ main.wrap--wide {
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 0.5rem;
+  box-shadow: 0 2px 3px rgba(44,22,8,0.2), 0 8px 16px rgba(44,22,8,0.22), 0 26px 44px rgba(44,22,8,0.22),
+    inset 0 1px 0 var(--arrivals-highlight), inset 0 -1px 0 rgba(0,0,0,0.18);
 }
 
-/* Mustard header strip */
+/* Mustard header strip — raised (gradient + highlight + letterpress) */
 .sod-card__header {
-  background: var(--arrivals-header);
+  background: linear-gradient(180deg, var(--arrivals-highlight) 0%, rgba(0,0,0,0) 35%), var(--arrivals-header);
   padding: 16px 18px;
   border-radius: 10px 10px 0 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--arrivals-text) 22%, transparent);
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+  position: relative;
+}
+
+.sod-card__header::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: var(--arrivals-highlight);
 }
 
 .sod-card__hero {
@@ -4557,6 +4681,7 @@ main.wrap--wide {
   line-height: 1;
   color: var(--arrivals-text);
   font-family: var(--font-mono);
+  text-shadow: 0 1px 0 var(--arrivals-highlight);
 }
 
 .sod-card__hero-meta {
@@ -4579,9 +4704,10 @@ main.wrap--wide {
 /* Brief info panel — white inset, populated from context.sod_brief */
 .sod-card__brief-panel {
   background: #ffffff;
-  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
-  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 5px;
   padding: 14px 16px 16px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .sod-card__date-line {
@@ -4637,32 +4763,32 @@ main.wrap--wide {
   opacity: 0.88;
 }
 
-/* Generic panel (UPDATES, NOTES) — white inset */
+/* Generic panel (UPDATES, NOTES) — white inset, raised */
 .sod-card__panel {
   background: #ffffff;
-  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
-  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 5px;
   overflow: hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .sod-card__panel-head {
-  padding: 10px 14px 0;
-}
-
-.sod-card__panel-label {
-  display: inline-block;
   background: var(--arrivals-header);
   color: var(--arrivals-text);
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 6px;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.22);
+}
+
+.sod-card__panel-label {
+  display: contents;
 }
 
 .sod-card__panel-body {
-  padding: 8px 14px 12px;
+  padding: 10px 14px 12px;
   font-size: 13px;
   line-height: 1.55;
   color: var(--arrivals-text);
@@ -4758,13 +4884,14 @@ main.wrap--wide {
 
 .sod-card__task-row {
   background: #ffffff;
-  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
-  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 5px;
   padding: 9px 11px 10px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1), 0 3px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
 }
 
 .sod-card__task-row--done {
@@ -4904,6 +5031,16 @@ main.wrap--wide {
   --eod-body:   #FF8888;
   --eod-header: #C75F5F;
   --eod-text:   #4A1B0C;
+
+  /* -------------------------------------------------------------------------
+     Bucket highlight tones — for hero header gradient + text-shadow
+     (raised-paper letterpress treatment on top hero strip only)
+  ------------------------------------------------------------------------- */
+  --arrivals-highlight:   rgba(255,240,200,0.7);
+  --departures-highlight: rgba(225,245,238,0.4);
+  --stayovers-highlight:  rgba(255,228,198,0.55);
+  --dailys-highlight:     rgba(236,243,252,0.55);
+  --eod-highlight:        rgba(255,230,222,0.55);
 
   /* -------------------------------------------------------------------------
      Dulled-bucket variants — admin modals + long-form notes views
