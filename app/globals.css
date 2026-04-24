@@ -3074,161 +3074,387 @@ main.wrap.card-page {
 }
 
 /* ================================================================
-   Arrivals card — cool blue/teal theme
+   Arrivals card — mustard #FFDA64 theme
    ================================================================ */
 
-.arrivals-card {
-  --arrivals-bg: #eef6f7;
-  --arrivals-border: #a7d0d6;
-  --arrivals-accent: #2b6a77;
-  --arrivals-chip-active-bg: #2b6a77;
-  --arrivals-chip-active-fg: #ffffff;
-  --arrivals-requests-bg: #fffbea;
-  --arrivals-requests-border: #f0c940;
-  --arrivals-requests-label: #92600a;
+/* Unified mustard card surface (header strip + body + panels + tiles) */
+.arrivals-card__card {
+  background: var(--arrivals-body);
+  color: var(--arrivals-text);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .arrivals-card {
-    --arrivals-bg: #0d2226;
-    --arrivals-border: #2a5d65;
-    --arrivals-accent: #5bb8c8;
-    --arrivals-chip-active-bg: #1e5c68;
-    --arrivals-chip-active-fg: #ffffff;
-    --arrivals-requests-bg: #221e00;
-    --arrivals-requests-border: #7a6000;
-    --arrivals-requests-label: #e0aa40;
-  }
-}
-
-.arrivals-card__room {
-  color: var(--arrivals-accent);
-}
-
-/* Single-column guest info panel */
-.arrivals-card__guest {
-  background: var(--arrivals-bg);
-  border: 1px solid var(--arrivals-border);
-  border-radius: 10px;
-  padding: 0.875rem;
-  margin: 0.5rem 0 0.75rem;
-}
-
-.arrivals-card__col-heading {
-  margin: 0 0 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--arrivals-accent);
-}
-
-.arrivals-card__guest-name {
-  margin: 0 0 0.4rem;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.arrivals-card__guest-meta {
+/* ——— Inline action pair (replaces pinned footer bar) ——— */
+.arrivals-card__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 0.75rem;
-  margin: 0 0 0.35rem;
+  gap: 0.5rem;
+  margin-top: var(--sp-5);
+  padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
 }
 
-.arrivals-card__guest-meta span {
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--foreground) 68%, transparent);
-}
-
-.arrivals-card__conf {
-  margin: 0.15rem 0 0;
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--foreground) 55%, transparent);
-  font-family: ui-monospace, "Cascadia Code", monospace;
-  letter-spacing: 0.02em;
-}
-
-.arrivals-card__source {
-  margin: 0.15rem 0 0;
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--foreground) 45%, transparent);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.arrivals-card__no-guest {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--foreground) 40%, transparent);
-  font-style: italic;
-}
-
-/* Special requests callout */
-.arrivals-card__requests {
-  background: var(--arrivals-requests-bg);
-  border: 1.5px solid var(--arrivals-requests-border);
-  border-radius: 8px;
-  padding: 0.75rem 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.arrivals-card__requests-label {
-  margin: 0 0 0.3rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--arrivals-requests-label);
-}
-
-.arrivals-card__requests-body {
-  margin: 0;
-  font-size: 0.9375rem;
+.arrivals-card__action-btn {
+  flex: 1;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.14em;
+  text-align: center;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arrivals-card__action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.arrivals-card__action-btn--secondary {
+  background: transparent;
+  border: 1.5px solid var(--arrivals-header);
+  color: var(--arrivals-header);
+}
+
+.arrivals-card__action-btn--secondary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.arrivals-card__action-btn--secondary:active:not(:disabled) {
+  opacity: 0.75;
+}
+
+.arrivals-card__action-btn--primary {
+  flex: 1.4;
+  background: var(--arrivals-header);
+  border: none;
+  color: var(--arrivals-text);
+}
+
+.arrivals-card__action-btn--primary:active:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* ——— Card header strip ——— */
+.arrivals-card__header {
+  background: var(--arrivals-header);
+  padding: 16px 18px;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid rgba(44, 22, 8, 0.18);
+}
+
+.arrivals-card__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arrivals-card__hero-type {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--arrivals-text);
+}
+
+.arrivals-card__hero-meta {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  color: var(--arrivals-text);
+  opacity: 0.72;
+}
+
+/* ——— Card body ——— */
+.arrivals-card__body {
+  border-radius: 0 0 10px 10px;
+  padding: 16px 18px 20px;
+}
+
+/* ——— Cream info panel (single-column rows with dividers) ——— */
+.arrivals-card__panel {
+  background: var(--shell-cream);
+  border-radius: 10px;
+  color: var(--arrivals-header);
+  margin-bottom: 10px;
+  padding: 0 16px;
+}
+
+.arrivals-card__row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(44, 22, 8, 0.12);
+  align-items: baseline;
+}
+
+.arrivals-card__row:last-child {
+  border-bottom: none;
+}
+
+.arrivals-card__row-k {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--arrivals-header);
+  opacity: 0.75;
+}
+
+.arrivals-card__row-v {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--arrivals-header);
+  line-height: 1.35;
+}
+
+.arrivals-card__row-v--note {
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.88;
   line-height: 1.45;
 }
 
-/* Readiness status chip row */
-.arrivals-card__chips {
+/* ——— Status row (inline on mustard) ——— */
+.arrivals-card__status-row {
   display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-  margin-bottom: 1.1rem;
-  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 16px;
+  flex-wrap: wrap;
 }
 
-.arrivals-card__chip {
-  flex: 1;
-  min-width: 0;
-  padding: 0.5rem 0.25rem;
-  border: 1.5px solid var(--arrivals-border);
-  border-radius: 8px;
-  background: transparent;
-  color: color-mix(in srgb, var(--foreground) 65%, transparent);
-  font-size: 0.8125rem;
+.arrivals-card__status-label {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.18em;
   font-weight: 500;
+  color: var(--arrivals-text);
+  opacity: 0.9;
+}
+
+.arrivals-card__status-opts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.arrivals-card__status-opt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  color: var(--arrivals-text);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  background: transparent;
+  border: none;
+  padding: 0;
   cursor: pointer;
+  opacity: 0.78;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arrivals-card__status-opt--active {
+  opacity: 1;
+}
+
+.arrivals-card__status-opt:disabled {
+  cursor: not-allowed;
+}
+
+.arrivals-card__status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(44, 22, 8, 0.35);
+  background: transparent;
+  flex-shrink: 0;
+  display: block;
+}
+
+.arrivals-card__status-opt--active .arrivals-card__status-dot {
+  background: var(--arrivals-text);
+  border-color: var(--arrivals-text);
+  box-shadow: inset 0 0 0 3px var(--arrivals-body);
+}
+
+.arrivals-card__error {
+  margin: 0 0 12px;
+  font-size: var(--type-body);
+}
+
+/* ——— 2-tile grid ——— */
+.arrivals-card__tile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.arrivals-card__tile {
+  background: var(--shell-cream);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 130px;
+}
+
+.arrivals-card__tile-head {
+  background: var(--arrivals-header);
+  color: var(--arrivals-text);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  font-weight: 500;
   text-align: center;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.arrivals-card__chip:hover:not(:disabled) {
-  border-color: var(--arrivals-accent);
-  color: var(--arrivals-accent);
+.arrivals-card__tile-body {
+  flex: 1;
+  padding: 11px 12px 10px;
+  color: var(--arrivals-header);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.arrivals-card__chip--active {
-  background: var(--arrivals-chip-active-bg);
-  border-color: var(--arrivals-chip-active-bg);
-  color: var(--arrivals-chip-active-fg);
-  font-weight: 700;
+.arrivals-card__tile--checklist .arrivals-card__tile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.arrivals-card__chip:disabled {
+.arrivals-card__check-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--arrivals-header);
+  min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arrivals-card__check-item:disabled {
+  color: var(--arrivals-header);
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.arrivals-card__check-ring {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(44, 22, 8, 0.4);
+  flex-shrink: 0;
+  display: inline-block;
+  position: relative;
+}
+
+.arrivals-card__check-item--done .arrivals-card__check-ring {
+  background: var(--arrivals-header);
+  border-color: var(--arrivals-header);
+}
+
+.arrivals-card__check-item--done .arrivals-card__check-ring::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 3px;
+  border-left: 1.5px solid var(--arrivals-body);
+  border-bottom: 1.5px solid var(--arrivals-body);
+  transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+.arrivals-card__check-txt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+/* Notes tile */
+.arrivals-card__tile-note-count {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--arrivals-header);
+  opacity: 0.72;
+}
+
+.arrivals-card__note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.arrivals-card__note-input {
+  flex: 1;
+  border: 1px solid rgba(44, 22, 8, 0.22);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  resize: none;
+  background: rgba(44, 22, 8, 0.05);
+  color: var(--arrivals-header);
+  min-height: 48px;
+}
+
+.arrivals-card__note-input::placeholder {
+  color: var(--arrivals-header);
+  opacity: 0.4;
+}
+
+.arrivals-card__note-send {
+  background: var(--arrivals-header);
+  color: var(--arrivals-text);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.arrivals-card__note-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.arrivals-card__plus-glyph {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--arrivals-header);
+  opacity: 0.4;
+  margin: auto;
 }
 
 /* ==========================================================================
