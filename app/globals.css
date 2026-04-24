@@ -4521,6 +4521,352 @@ main.wrap--wide {
   line-height: 1.5;
 }
 
+/* ==========================================================================
+   START OF DAY CARD — cream body, mustard header accent (not a bucket card)
+   Uses --arrivals-header (mustard) and --arrivals-text (dark brown) for
+   accent colour; --shell-cream for the card body.
+   ========================================================================== */
+
+/* Unified cream card surface */
+.sod-card__card {
+  background: var(--shell-cream);
+  color: var(--arrivals-text);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+/* Mustard header strip */
+.sod-card__header {
+  background: var(--arrivals-header);
+  padding: 16px 18px;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--arrivals-text) 22%, transparent);
+}
+
+.sod-card__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sod-card__hero-type {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--arrivals-text);
+  font-family: var(--font-mono);
+}
+
+.sod-card__hero-meta {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--arrivals-text);
+  opacity: 0.72;
+  font-family: var(--font-mono);
+}
+
+/* Card body */
+.sod-card__body {
+  padding: 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Brief info panel — white inset, populated from context.sod_brief */
+.sod-card__brief-panel {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
+  border-radius: 10px;
+  padding: 14px 16px 16px;
+}
+
+.sod-card__date-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
+}
+
+.sod-card__date {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--arrivals-text);
+}
+
+.sod-card__date-accent {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--arrivals-text);
+  opacity: 0.85;
+}
+
+.sod-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sod-card__field {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  align-items: baseline;
+}
+
+.sod-card__field-k {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--arrivals-text);
+  text-transform: uppercase;
+}
+
+.sod-card__field-v {
+  font-weight: 400;
+  color: var(--arrivals-text);
+  opacity: 0.88;
+}
+
+/* Generic panel (UPDATES, NOTES) — white inset */
+.sod-card__panel {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sod-card__panel-head {
+  padding: 10px 14px 0;
+}
+
+.sod-card__panel-label {
+  display: inline-block;
+  background: var(--arrivals-header);
+  color: var(--arrivals-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.sod-card__panel-body {
+  padding: 8px 14px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--arrivals-text);
+  opacity: 0.88;
+}
+
+.sod-card__panel-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--arrivals-text);
+  line-height: 1.5;
+}
+
+.sod-card__plus-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--arrivals-text);
+  opacity: 0.45;
+  line-height: 1;
+}
+
+/* Notes form elements */
+.sod-card__note-count {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  color: var(--arrivals-text);
+  opacity: 0.7;
+  font-family: var(--font-mono);
+}
+
+.sod-card__note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sod-card__note-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--arrivals-text) 25%, transparent);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  background: #f9f7f2;
+  color: var(--arrivals-text);
+}
+
+.sod-card__note-input:focus {
+  outline: none;
+  border-color: var(--arrivals-text);
+}
+
+.sod-card__note-send {
+  align-self: flex-end;
+  background: var(--arrivals-header);
+  color: var(--arrivals-text);
+  border: none;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+}
+
+.sod-card__note-send:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Error */
+.sod-card__error {
+  margin: 0;
+}
+
+/* 2-col daily task grid */
+.sod-card__task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sod-card__task-row {
+  background: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--arrivals-text) 12%, transparent);
+  border-radius: 8px;
+  padding: 9px 11px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sod-card__task-row--done {
+  opacity: 0.55;
+}
+
+.sod-card__task-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sod-card__task-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--arrivals-text);
+  line-height: 1.25;
+}
+
+.sod-card__task-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Complete pill: dark brown bg + mustard text (matches artifact) */
+.sod-card__complete-pill {
+  background: var(--arrivals-text);
+  color: var(--arrivals-header);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+}
+
+.sod-card__complete-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sod-card__complete-pill--done {
+  background: transparent;
+  color: var(--arrivals-text);
+  border: 1px solid color-mix(in srgb, var(--arrivals-text) 35%, transparent);
+  opacity: 0.7;
+}
+
+.sod-card__details-link {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--arrivals-text);
+  opacity: 0.6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: default;
+}
+
+/* Action pair — inline below card, not pinned to viewport */
+.sod-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: var(--sp-5);
+  padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+}
+
+.sod-card__action-btn {
+  flex: 1;
+  padding: 14px 0;
+  border-radius: 28px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  text-align: center;
+}
+
+.sod-card__action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sod-card__action-btn--secondary {
+  background: transparent;
+  border: 1.5px solid var(--arrivals-text);
+  color: var(--arrivals-text);
+}
+
+.sod-card__action-btn--primary {
+  flex: 1.4;
+  background: var(--arrivals-header);
+  border: none;
+  color: var(--arrivals-text);
+}
+
 /* ===========================================================================
    DESIGN SYSTEM FOUNDATION — Day 16
    All tokens on :root so they're available to every component.

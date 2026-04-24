@@ -6,6 +6,7 @@ import ArrivalsCard from "./ArrivalsCard";
 import DailysCard from "./DailysCard";
 import DeparturesCard from "./DeparturesCard";
 import EODCard from "./EODCard";
+import StartOfDayCard from "./StartOfDayCard";
 import StayoversCard from "./StayoversCard";
 import {
   useCallback,
@@ -396,6 +397,33 @@ export default function StaffTaskExecutionPage() {
 
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
+
+  if (ct === "start_of_day" || ct.includes("start_of_day") || ct === "sod") {
+    return (
+      <StartOfDayCard
+        task={task}
+        userId={userId}
+        displayName={displayName}
+        checklist={checklist}
+        comments={comments}
+        inlineError={inlineError}
+        setInlineError={setInlineError}
+        noteBody={noteBody}
+        setNoteBody={setNoteBody}
+        noteBusy={noteBusy}
+        helpBusy={helpBusy}
+        doneBusy={doneBusy}
+        pauseBusy={pauseBusy}
+        resumeBusy={resumeBusy}
+        onToggleItem={toggleItem}
+        onNeedHelp={onNeedHelp}
+        onImDone={onImDone}
+        onPause={onPause}
+        onResume={onResume}
+        onPostNote={onPostNote}
+      />
+    );
+  }
 
   if (ct === "dailys" || ct === "daily" || ct.includes("daily")) {
     return (
