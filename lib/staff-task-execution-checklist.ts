@@ -36,6 +36,10 @@ export const DEPARTURES_CANONICAL_CHECKLIST: ReadonlyArray<string> = [
 // needed on whether arrivals should have distinct welcome-oriented steps.
 export const ARRIVALS_CANONICAL_CHECKLIST = DEPARTURES_CANONICAL_CHECKLIST;
 
+// Currently aliased to DEPARTURES_CANONICAL_CHECKLIST — post-beta decision
+// needed on whether stayovers should have distinct mid-stay service steps.
+export const STAYOVERS_CANONICAL_CHECKLIST = DEPARTURES_CANONICAL_CHECKLIST;
+
 /**
  * Load checklist rows from Supabase. Default rows are created by DB trigger
  * on task insert (housekeeping) or milestone backfill — no client mock path.
