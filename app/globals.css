@@ -3360,3 +3360,95 @@ main.wrap.card-page {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ---------------------------------------------------------------------------
+   Admin shell — wider than main.wrap for table surfaces
+--------------------------------------------------------------------------- */
+main.wrap--wide {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   admin-drafts: draft review table
+--------------------------------------------------------------------------- */
+.admin-drafts__filter {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 1rem;
+}
+
+.admin-drafts__filter-label {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--foreground) 68%, transparent);
+}
+
+.admin-drafts__filter-select {
+  min-height: 2.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.admin-drafts__filter-count {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+}
+
+.admin-drafts__table-wrap {
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 8px;
+}
+
+.admin-drafts__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.admin-drafts__table th {
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  white-space: nowrap;
+}
+
+.admin-drafts__table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
+  vertical-align: middle;
+}
+
+.admin-drafts__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-drafts__table tbody tr:hover td {
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.admin-drafts__cell--mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.admin-drafts__empty {
+  margin: 3rem 0;
+  text-align: center;
+  font-size: 0.9375rem;
+  color: color-mix(in srgb, var(--foreground) 50%, transparent);
+  line-height: 1.5;
+}

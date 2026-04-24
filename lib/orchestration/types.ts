@@ -12,6 +12,13 @@ export type InboundEvent = {
   processed_at: string | null;
 };
 
+// Read shape for task_drafts — includes auto-generated columns for the review UI.
+export type TaskDraftRow = TaskDraft & {
+  id: string;
+  drafted_at: string;
+  created_at: string;
+};
+
 // Insert shape for task_drafts — excludes auto-generated id, drafted_at, created_at.
 // Rule functions return these; orchestrator sets source_event_id before inserting.
 export type TaskDraft = {
