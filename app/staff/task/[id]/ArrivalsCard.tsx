@@ -43,8 +43,6 @@ type IncomingGuest = {
   checkin_time: string | null;
   nights: number | null;
   party_size: number | null;
-  confirmation_number: string | null;
-  source: string | null;
   special_requests: string | null;
 };
 
@@ -72,8 +70,6 @@ function parseIncomingGuest(ctx: Record<string, unknown>): IncomingGuest | null 
     checkin_time: str("checkin_time"),
     nights: num("nights"),
     party_size: num("party_size"),
-    confirmation_number: str("confirmation_number"),
-    source: str("source"),
     special_requests: str("special_requests"),
   };
 }
@@ -242,13 +238,6 @@ export default function ArrivalsCard({
       : guest.name
     : "—";
 
-  const sourceDisplay =
-    guest?.source && guest?.confirmation_number
-      ? `${guest.source} · Conf #${guest.confirmation_number}`
-      : guest?.source ?? guest?.confirmation_number
-        ? `${guest.source ?? ""}${guest.confirmation_number ? ` · Conf #${guest.confirmation_number}` : ""}`
-        : "—";
-
   const nightsDisplay =
     guest?.nights !== null && guest?.nights !== undefined
       ? String(guest.nights)
@@ -316,10 +305,6 @@ export default function ArrivalsCard({
               <div className="arrivals-card__row">
                 <span className="arrivals-card__row-k mono">NIGHTS</span>
                 <span className="arrivals-card__row-v">{nightsDisplay}</span>
-              </div>
-              <div className="arrivals-card__row">
-                <span className="arrivals-card__row-k mono">SOURCE</span>
-                <span className="arrivals-card__row-v">{sourceDisplay}</span>
               </div>
               <div className="arrivals-card__row">
                 <span className="arrivals-card__row-k mono">EXTRAS</span>
