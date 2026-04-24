@@ -4032,150 +4032,329 @@ main.wrap.card-page {
 }
 
 /* ==========================================================================
-   DAILYS CARD — muted gray/stone palette, infrastructure tone
+   DAILYS CARD — lavender #A8B8D0 theme
    ========================================================================== */
 
-.dailys-card {
-  --dailys-bg: #f5f5f4;
-  --dailys-border: #d6d3d1;
-  --dailys-accent: #57534e;
-  --dailys-heading: #44403c;
-  --dailys-chip-active-bg: #57534e;
-  --dailys-chip-active-fg: #ffffff;
-  --dailys-info-bg: #eeeeec;
-  --dailys-info-border: #d6d3d1;
-  --dailys-instructions-bg: #eae9e7;
-  --dailys-instructions-border: #c8c5c2;
-  --dailys-instructions-label: #57534e;
-  background-color: var(--dailys-bg);
+/* Unified lavender card surface (header strip + body + panels + task grid) */
+.dailys-card__card {
+  background: var(--dailys-body);
+  color: var(--dailys-text);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .dailys-card {
-    --dailys-bg: #1c1a18;
-    --dailys-border: #3a3632;
-    --dailys-accent: #a8a29e;
-    --dailys-heading: #c4bfbc;
-    --dailys-chip-active-bg: #57534e;
-    --dailys-chip-active-fg: #ffffff;
-    --dailys-info-bg: #242220;
-    --dailys-info-border: #3a3632;
-    --dailys-instructions-bg: #221f1c;
-    --dailys-instructions-border: #3a3632;
-    --dailys-instructions-label: #a8a29e;
+/* ——— Inline action pair ——— */
+.dailys-card__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: var(--sp-5);
+  padding-bottom: calc(var(--sp-5) + env(safe-area-inset-bottom, 0px));
+}
+
+.dailys-card__action-btn {
+  flex: 1;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-align: center;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dailys-card__action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dailys-card__action-btn--secondary {
+  background: transparent;
+  border: 1.5px solid var(--dailys-header);
+  color: var(--dailys-header);
+}
+
+.dailys-card__action-btn--secondary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.dailys-card__action-btn--secondary:active:not(:disabled) {
+  opacity: 0.75;
+}
+
+.dailys-card__action-btn--primary {
+  flex: 1.4;
+  background: var(--dailys-header);
+  border: none;
+  color: var(--dailys-text);
+}
+
+.dailys-card__action-btn--primary:active:not(:disabled) {
+  opacity: 0.88;
+}
+
+/* ——— Card header strip ——— */
+.dailys-card__header {
+  background: var(--dailys-header);
+  padding: 16px 18px;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid rgba(27, 34, 51, 0.18);
+}
+
+.dailys-card__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dailys-card__hero-type {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--dailys-text);
+}
+
+.dailys-card__hero-meta {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  color: var(--dailys-text);
+  opacity: 0.72;
+}
+
+/* ——— Card body ——— */
+.dailys-card__body {
+  border-radius: 0 0 10px 10px;
+  padding: 16px 18px 20px;
+}
+
+/* ——— Cream panels (Team Updates + Notes) ——— */
+.dailys-card__panel {
+  background: var(--shell-cream);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.dailys-card__tile-head {
+  background: var(--dailys-header);
+  color: var(--dailys-text);
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  font-weight: 500;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dailys-card__panel-body {
+  padding: 12px 16px 14px;
+  color: var(--dailys-header);
+  display: flex;
+  flex-direction: column;
+  min-height: 56px;
+}
+
+.dailys-card__panel-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dailys-text);
+  opacity: 0.88;
+}
+
+.dailys-card__plus-glyph {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--dailys-header);
+  opacity: 0.4;
+  margin: auto;
+}
+
+.dailys-card__note-count {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--dailys-header);
+  opacity: 0.72;
+}
+
+.dailys-card__note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dailys-card__note-input {
+  border: 1px solid rgba(27, 34, 51, 0.20);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  resize: none;
+  background: rgba(27, 34, 51, 0.05);
+  color: var(--dailys-text);
+  min-height: 48px;
+}
+
+.dailys-card__note-input::placeholder {
+  color: var(--dailys-header);
+  opacity: 0.4;
+}
+
+.dailys-card__note-send {
+  background: var(--dailys-header);
+  color: var(--dailys-text);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  align-self: flex-end;
+}
+
+.dailys-card__note-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dailys-card__error {
+  margin: 0 0 12px;
+  font-size: var(--type-body);
+}
+
+/* ——— 2-column task grid (checklist items as compact rows) ——— */
+.dailys-card__task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 380px) {
+  .dailys-card__task-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-/* Location header — primary identifier */
-.dailys-card__location {
-  font-size: 1.0625rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--dailys-accent);
-  margin: 0 0 0.75rem;
-}
-
-/* Frequency + last done info block */
-.dailys-card__info {
-  background: var(--dailys-info-bg);
-  border: 1px solid var(--dailys-info-border);
+.dailys-card__task-row {
+  background: var(--shell-cream);
   border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.dailys-card__info-row {
+  padding: 9px 11px 10px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.5rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--dailys-text);
 }
 
-.dailys-card__info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  font-size: 0.875rem;
+.dailys-card__task-row--done {
+  opacity: 0.55;
 }
 
-.dailys-card__info-k {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--dailys-heading);
-  display: block;
-}
-
-.dailys-card__no-detail {
-  margin: 0 0 0.75rem;
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--foreground) 45%, transparent);
-  font-style: italic;
-}
-
-/* Instructions block — quiet, not yellow or purple */
-.dailys-card__instructions {
-  background: var(--dailys-instructions-bg);
-  border: 1px solid var(--dailys-instructions-border);
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.dailys-card__instructions-label {
-  margin: 0 0 0.3rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--dailys-instructions-label);
-}
-
-.dailys-card__instructions-body {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
-}
-
-/* Three-chip status row */
-.dailys-card__chips {
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-  margin-bottom: 1.1rem;
-  flex-wrap: nowrap;
-}
-
-.dailys-card__chip {
+.dailys-card__task-info {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.25rem;
-  border: 1.5px solid var(--dailys-border);
-  border-radius: 8px;
-  background: transparent;
-  color: color-mix(in srgb, var(--foreground) 65%, transparent);
-  font-size: 0.8125rem;
+}
+
+.dailys-card__task-title {
+  font-size: 12.5px;
   font-weight: 500;
+  color: var(--dailys-text);
+  margin-bottom: 3px;
+  line-height: 1.25;
+}
+
+.dailys-card__task-row--done .dailys-card__task-title {
+  text-decoration: line-through;
+}
+
+.dailys-card__task-meta {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: var(--dailys-text);
+  opacity: 0.78;
+}
+
+.dailys-card__task-meta-k {
+  font-weight: 500;
+}
+
+.dailys-card__task-meta-v {
+  font-weight: 400;
+}
+
+.dailys-card__task-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dailys-card__complete-pill {
+  background: var(--dailys-header);
+  color: var(--dailys-text);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: none;
   cursor: pointer;
-  text-align: center;
-  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.dailys-card__chip:hover:not(:disabled) {
-  border-color: var(--dailys-accent);
-  color: var(--dailys-accent);
+.dailys-card__complete-pill--done {
+  background: transparent;
+  border: 1.5px solid var(--dailys-header);
+  color: var(--dailys-header);
+  cursor: default;
 }
 
-.dailys-card__chip--active {
-  background: var(--dailys-chip-active-bg);
-  border-color: var(--dailys-chip-active-bg);
-  color: var(--dailys-chip-active-fg);
-  font-weight: 700;
-}
-
-.dailys-card__chip:disabled {
-  opacity: 0.45;
+.dailys-card__complete-pill:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* post-beta: per-item Details link inert */
+.dailys-card__details-link {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  color: var(--dailys-text);
+  opacity: 0.55;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dailys-card__empty {
+  margin: 0;
+  font-size: var(--type-label);
+  color: var(--dailys-text);
+  opacity: 0.5;
+  grid-column: 1 / -1;
 }
 
 /* ---------------------------------------------------------------------------
