@@ -5052,6 +5052,15 @@ main.wrap--wide {
   --departures-dull-body:   #014A3A;
   --departures-dull-header: #002E25;
 
+  --stayovers-dull-body:   #C38556;
+  --stayovers-dull-header: #8F5A36;
+
+  --dailys-dull-body:   #B8B0D0;
+  --dailys-dull-header: #9F94CC;
+
+  --eod-dull-body:   #E5A8A0;
+  --eod-dull-header: #C78880;
+
   /* -------------------------------------------------------------------------
      Admin palette — sky (profiles) + sage (maintenance)
   ------------------------------------------------------------------------- */
