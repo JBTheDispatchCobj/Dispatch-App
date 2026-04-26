@@ -19,6 +19,7 @@ import {
   partitionStaffHomeTasks,
   type StaffHomeBucket,
 } from "@/lib/staff-home-bucket";
+import styles from "./page.module.css";
 
 type TaskRow = {
   id: string;
@@ -108,6 +109,16 @@ function springKicker(d: Date): string | null {
   return null;
 }
 
+/* Per-bucket CSS variable sets for lead cards / scan wrappers */
+const BUCKET_VARS: Record<StaffHomeBucket, React.CSSProperties> = {
+  start_of_day: {} as React.CSSProperties,
+  departures:   { "--lc-body": "var(--departures-body)",  "--lc-header": "var(--departures-header)",  "--lc-text": "var(--departures-text)"  } as React.CSSProperties,
+  arrivals:     { "--lc-body": "var(--arrivals-body)",    "--lc-header": "var(--arrivals-header)",    "--lc-text": "var(--arrivals-text)"    } as React.CSSProperties,
+  stayovers:    { "--lc-body": "var(--stayovers-body)",   "--lc-header": "var(--stayovers-header)",   "--lc-text": "var(--stayovers-text)"   } as React.CSSProperties,
+  eod:          { "--lc-body": "var(--eod-body)",         "--lc-header": "var(--eod-header)",         "--lc-text": "var(--eod-text)"         } as React.CSSProperties,
+  dailys:       { "--lc-body": "var(--dailys-body)",      "--lc-header": "var(--dailys-header)",      "--lc-text": "var(--dailys-text)"      } as React.CSSProperties,
+};
+
 export default function StaffHomePage() {
   const [ready, setReady] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -120,6 +131,7 @@ export default function StaffHomePage() {
   );
   const [search, setSearch] = useState("");
   const [now] = useState(() => new Date());
+  const [expandedBucket, setExpandedBucket] = useState<StaffHomeBucket | null>(null);
 
   const loadTasks = useCallback(async (sid: string | null) => {
     setLoadingTasks(true);
@@ -235,186 +247,171 @@ export default function StaffHomePage() {
 
   if (!ready) {
     return (
-      <main className="staff-app staff-home">
-        <p className="loading-line">Loading…</p>
-      </main>
+      <div className={styles.page}>
+        <div className={styles.shell}>
+          <p className={styles.emptyState}>Loading…</p>
+        </div>
+      </div>
     );
   }
 
-  const springLine = springKicker(now);
+  const sodList = buckets.start_of_day;
+  const otherBuckets = BUCKET_ORDER.filter((b) => b !== "start_of_day");
 
   return (
-    <main className="staff-app staff-home">
-      <header className="staff-home-header">
-        <div className="staff-home-profile">
-          <div className="staff-home-avatar" aria-hidden>
-            {avatarLetter(displayName)}
+    <div className={styles.page}>
+      <div className={styles.shell}>
+
+        {/* Top bar */}
+        <div className={styles.topbar}>
+          <div className={styles.topLeft}>
+            <p className={styles.greet}>Hi {firstName(displayName)}!</p>
+            <p className={styles.greetDate}>{formatDateHeading(now)}</p>
+          </div>
+          <div className={styles.topRight}>
+            <div className={styles.avatar} aria-hidden>{avatarLetter(displayName)}</div>
+            <div className={styles.signOutWrap}><SignOutButton /></div>
           </div>
         </div>
-        <SignOutButton />
-      </header>
 
-      <p className="staff-weather-strip">
-        High of 40° Low of 21°. Windy.
-      </p>
-
-      <p className="staff-turnover-line" role="status">
-        TURN OVER ROOM 15
-      </p>
-
-      <p className="staff-occupancy-line">
-        Arrivals: 3 · Departures: 2 · Stay overs: 4
-      </p>
-
-      <section className="staff-greeting-block">
-        <p className="staff-home-greeting">Hi {firstName(displayName)}!</p>
-        <p className="staff-home-date">{formatDateHeading(now)}</p>
-        {springLine ? (
-          <p className="staff-home-kicker">{springLine}</p>
-        ) : null}
-      </section>
-
-      <section className="staff-snapshot" aria-label="Today snapshot">
-        <div className="staff-snapshot-grid">
-          <div className="staff-snapshot-cell">
-            <span className="staff-snapshot-label">Status</span>
-            <span className="staff-snapshot-value">On shift</span>
+        {/* Daily Brief */}
+        <div className={styles.dailyBrief}>
+          <div className={styles.briefStrip}>
+            <span>DAILY BRIEF</span>
+            <span>{formatDateHeading(now).toUpperCase()}</span>
           </div>
-          <div className="staff-snapshot-cell">
-            <span className="staff-snapshot-label">Weather</span>
-            <span className="staff-snapshot-value">
-              High 40° / Low 21° · Windy
-            </span>
-          </div>
-          <div className="staff-snapshot-cell staff-snapshot-cell--wide">
-            <span className="staff-snapshot-label">Events</span>
-            <span className="staff-snapshot-value">
-              Dueling Pianos – Balsam Lake Lodge
-              <span className="staff-snapshot-sub">12:00 pm – 6:00 pm</span>
-            </span>
-          </div>
-          <div className="staff-snapshot-cell staff-snapshot-cell--wide">
-            <span className="staff-snapshot-label">Notes</span>
-            <span className="staff-snapshot-value">
-              Room 15 guest prefers 2% milk
-            </span>
+          <div className={styles.briefBody}>
+            <p className={styles.briefHeading}>{formatDateHeading(now)}</p>
+            <p className={styles.briefMeta}>Arrivals: 3 · Departures: 2 · Stayovers: 4</p>
           </div>
         </div>
-      </section>
 
-      <section className="staff-cta-block">
-        <button type="button" className="staff-cta-btn">
-          START LAUNDRY
-        </button>
-      </section>
-
-      <section className="staff-tasks-section" aria-label="Your work">
-        <div className="staff-tasks-head">
-          <h2 className="staff-tasks-title">Today</h2>
-          <span className="staff-tasks-count">{filtered.length}</span>
-        </div>
-        <label className="staff-search-wrap">
-          <span className="staff-search-label">Search</span>
-          <input
-            type="search"
-            className="staff-search-input"
-            placeholder="Filter by title"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
+        {/* Tasks */}
         {!staffId ? (
-          <p className="staff-card-muted">
-            Your account isn’t linked to a staff profile yet. Ask a manager to
-            connect you in the staff directory.
-          </p>
-        ) : null}
-        {error ? <p className="error">{error}</p> : null}
-        {staffId && loadingTasks ? (
-          <p className="staff-card-muted">Loading…</p>
-        ) : null}
-        {staffId && !loadingTasks && filtered.length === 0 ? (
-          <p className="staff-card-muted">No tasks assigned.</p>
-        ) : null}
-        {staffId && !loadingTasks && filtered.length > 0 ? (
-          <div className="staff-exec-buckets">
-            {BUCKET_ORDER.map((bucket) => {
-              const list = buckets[bucket];
-              return (
-                <section
-                  key={bucket}
-                  className="staff-exec-bucket"
-                  aria-label={BUCKET_LABEL[bucket]}
-                >
-                  <div className="staff-exec-bucket-head">
-                    <h3 className="staff-exec-bucket-title">
-                      {BUCKET_LABEL[bucket]}
-                    </h3>
-                    <span className="staff-exec-bucket-count">{list.length}</span>
+          <p className={styles.emptyState}>Not linked to a staff profile yet.</p>
+        ) : error ? (
+          <p className={styles.errorLine}>{error}</p>
+        ) : loadingTasks ? (
+          <p className={styles.emptyState}>Loading tasks…</p>
+        ) : (
+          <>
+            <div className={styles.sectionLabel}>
+              <span>TASKS TODAY</span>
+              <span>{filtered.length} OPEN</span>
+            </div>
+
+            {/* Start of Day — inline mustard card */}
+            <div className={styles.sodCard}>
+              <div className={styles.sodStrip}>
+                <span>START OF DAY</span>
+                <span>{sodList.length} TASKS</span>
+              </div>
+              <div className={styles.sodBody}>
+                {sodList.length === 0 ? (
+                  <p className={styles.sodEmpty}>No tasks assigned.</p>
+                ) : (
+                  <div className={styles.sodRow}>
+                    {sodList.map((t) => (
+                      <Link
+                        key={t.id}
+                        href={`/staff/task/${t.id}`}
+                        className={styles.sodItem}
+                        aria-label={t.title}
+                      >
+                        <div className={styles.sodItemMain}>
+                          <div className={styles.sodItemTitle}>{t.title}</div>
+                          <div className={styles.sodItemMeta}>{formatDueAndPriority(t)}</div>
+                        </div>
+                        <span className={styles.sodChev}>&rsaquo;</span>
+                      </Link>
+                    ))}
                   </div>
-                  {list.length === 0 ? (
-                    <p className="staff-exec-bucket-empty">None</p>
-                  ) : bucket === "start_of_day" ? (
-                    <div className="staff-sod-row" role="list">
-                      {list.map((t) => (
-                        <Link
-                          key={t.id}
-                          href={`/staff/task/${t.id}`}
-                          className="staff-sod-mini"
-                          aria-label={`${t.title}, ${formatDueAndPriority(t)}`}
-                          role="listitem"
-                        >
-                          <span className="staff-sod-mini__title">{t.title}</span>
-                          <span className="staff-sod-mini__meta">
-                            {formatDueAndPriority(t)}
-                          </span>
-                          <span className="staff-sod-mini__status">
-                            {formatStatusShort(t.status)}
-                          </span>
-                        </Link>
-                      ))}
+                )}
+              </div>
+            </div>
+
+            {/* Other buckets as lead cards / scan lists */}
+            {otherBuckets.map((bucket) => {
+              const list = buckets[bucket];
+              const cssVars = BUCKET_VARS[bucket];
+              const hasNextUp = bucket === "departures" && list.some((t) => t.status === "in_progress");
+              const isExpanded = expandedBucket === bucket;
+
+              if (isExpanded) {
+                return (
+                  <div key={bucket} className={styles.scanWrap} style={cssVars}>
+                    <div
+                      className={styles.scanStrip}
+                      onClick={() => setExpandedBucket(null)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedBucket(null); }}
+                    >
+                      <span>{BUCKET_LABEL[bucket].toUpperCase()} · {list.length} TASKS</span>
+                      <span className={styles.scanCollapseIcon}>&#x25BE;</span>
                     </div>
-                  ) : (
-                    <ul className="staff-task-rows staff-scan-rows" role="list">
-                      {list.map((t) => (
-                        <li key={t.id} className="staff-task-rows__item">
+                    {list.length === 0 ? (
+                      <p className={styles.scanEmpty}>No tasks assigned.</p>
+                    ) : (
+                      <div className={styles.scanList}>
+                        {list.map((t) => (
                           <Link
+                            key={t.id}
                             href={`/staff/task/${t.id}`}
-                            className="staff-task-row staff-scan-row"
-                            aria-label={`${t.title}, ${formatDueAndPriority(t)}`}
+                            className={styles.scanRow}
+                            aria-label={t.title}
                           >
-                            <span className="staff-task-row__main">
-                              <span className="staff-task-row__title">
-                                {t.title}
-                              </span>
-                              <span className="staff-task-row__meta">
-                                {formatDueAndPriority(t)}
-                              </span>
-                            </span>
-                            <span className="staff-task-row__chev" aria-hidden>
-                              ›
-                            </span>
+                            <div className={styles.scanRowMain}>
+                              <div className={styles.scanTitle}>{t.title}</div>
+                              <div className={styles.scanMeta}>{formatDueAndPriority(t)}</div>
+                            </div>
+                            <span className={styles.scanChev}>&rsaquo;</span>
                           </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={bucket}
+                  className={styles.leadCard}
+                  style={cssVars}
+                  onClick={() => setExpandedBucket(bucket)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedBucket(bucket); }}
+                  aria-label={`${BUCKET_LABEL[bucket]}, ${list.length} tasks`}
+                >
+                  <div className={styles.leadStrip}>
+                    <span>{BUCKET_LABEL[bucket].toUpperCase()}</span>
+                    <span>{list.length} TASKS</span>
+                  </div>
+                  <div className={styles.leadBody}>
+                    <div className={styles.leadTitle}>{list.length}</div>
+                    <div className={styles.leadSub}>
+                      {hasNextUp && (
+                        <span className={styles.nextUpPill}>
+                          <span className={styles.nextUpDot} />
+                          NEXT UP
+                        </span>
+                      )}
+                      {list.length === 0
+                        ? "No tasks assigned"
+                        : `${list.length} task${list.length !== 1 ? "s" : ""} · tap to open`}
+                    </div>
+                    <span className={styles.leadChev}>&rsaquo;</span>
+                  </div>
+                </div>
               );
             })}
-          </div>
-        ) : null}
-      </section>
+          </>
+        )}
 
-      <nav className="staff-bottom-nav" aria-label="Staff navigation">
-        <span className="staff-bottom-nav-item staff-bottom-nav-item--active">
-          Home
-        </span>
-        <Link href="/staff/report" className="staff-bottom-nav-item">
-          Report
-        </Link>
-      </nav>
-    </main>
+        <div className={styles.footnote}>THE DISPATCH CO · STAFF</div>
+      </div>
+    </div>
   );
 }
