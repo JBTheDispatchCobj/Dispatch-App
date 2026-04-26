@@ -342,7 +342,7 @@
   line-height: 1;
 }
 
-.tpValClosed { color: #5C6B48; }
+.tpValClosed { color: var(--sage-text-soft); }
 .tpValOpen   { color: #8A6A1C; }
 
 .tpLbl {

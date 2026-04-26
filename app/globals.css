@@ -5049,8 +5049,8 @@ main.wrap--wide {
   --arrivals-dull-body:    #E6BF4F;
   --arrivals-dull-header:  #BF9A34;
 
-  --departures-dull-body:   #014A3A;
-  --departures-dull-header: #002E25;
+  --departures-dull-body:   #B8CBC6;
+  --departures-dull-header: #7B9792;
 
   --stayovers-dull-body:   #C38556;
   --stayovers-dull-header: #8F5A36;
@@ -5068,9 +5068,10 @@ main.wrap--wide {
   --sky-header: #85A8B8;
   --sky-text:   #1B3340;
 
-  --sage-body:   #BACBA0;
-  --sage-header: #8A9B75;
-  --sage-text:   #2C3A1D;
+  --sage-body:      #BACBA0;
+  --sage-header:    #8A9B75;
+  --sage-text:      #2C3A1D;
+  --sage-text-soft: #5C6B48;
 
   /* -------------------------------------------------------------------------
      Functional signals — status only, not palette extensions

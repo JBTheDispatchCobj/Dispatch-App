@@ -9,6 +9,12 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../profile-load-error";
+import {
+  AVATAR_COURTNEY,
+  AVATAR_LIZZIE,
+  AVATAR_ANGIE,
+  AVATAR_MARK,
+} from "../staff/data";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -66,17 +72,6 @@ const BAR_COLOR: Record<BucketRow["bucket"], string> = {
 /* Avatar placeholders                                                 */
 /* ------------------------------------------------------------------ */
 
-const AVATAR_COURTNEY =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5D8B8'/><stop offset='1' stop-color='%23D9A87C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%237A4A2E'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%237A4A2E'/></svg>";
-
-const AVATAR_LIZZIE =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23CDE0E4'/><stop offset='1' stop-color='%237FA3A8'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%232C4F54'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%232C4F54'/></svg>";
-
-const AVATAR_ANGIE =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5C8A8'/><stop offset='1' stop-color='%23C68B64'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%235C3320'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%235C3320'/></svg>";
-
-const AVATAR_MARK =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23DAE0C2'/><stop offset='1' stop-color='%239BA67C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%233C4728'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%233C4728'/></svg>";
 
 /* ------------------------------------------------------------------ */
 /* Static data                                                         */

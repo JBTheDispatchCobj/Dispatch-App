@@ -2,8 +2,8 @@
    Admin maintenance work-order detail
    Cream shell + grain, raised sage hero card, white panels
    with sage-body panel heads.
-   --sage-text-soft (#5C6B48) is local to this route —
-   not in globals.css, used for subdued meta text on sage bg.
+   --sage-text-soft is a globals.css token; used here for subdued
+   meta text on sage backgrounds.
    ============================================================ */
 
 .page {
@@ -174,7 +174,7 @@
   letter-spacing: 0.18em;
   font-weight: 500;
   text-transform: uppercase;
-  color: #5C6B48;
+  color: var(--sage-text-soft);
   margin-bottom: 14px;
 }
 
@@ -191,7 +191,7 @@
   letter-spacing: 0.16em;
   font-size: 9px;
   text-transform: uppercase;
-  color: #5C6B48;
+  color: var(--sage-text-soft);
   margin-bottom: 4px;
   font-weight: 500;
 }

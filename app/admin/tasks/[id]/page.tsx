@@ -10,6 +10,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../../profile-load-error";
+import { AVATAR_ANGIE } from "../../staff/data";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -82,8 +83,6 @@ const SDOT_CLASS: Record<DotColor, string> = {
 /* Avatar placeholder                                                  */
 /* ------------------------------------------------------------------ */
 
-const AVATAR_ANGIE =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5C8A8'/><stop offset='1' stop-color='%23C68B64'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%235C3320'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%235C3320'/></svg>";
 
 /* ------------------------------------------------------------------ */
 /* Static task data — TODO: replace with Supabase fetch post-beta     */
