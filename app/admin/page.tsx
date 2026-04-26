@@ -22,22 +22,15 @@ import styles from "./page.module.css";
 /* ------------------------------------------------------------------ */
 
 type DotColor = "green" | "amber" | "red" | "blue" | "mute";
-type CountVariant = "default" | "alert" | "ok";
 type FeedTagType = "done" | "open" | "over";
+
+type LaneItem = { id: string; title: string; body: string; chip: string };
 
 type BriefStat = {
   label: string;
   value: string;
   unit: string;
   compact?: boolean;
-};
-
-type StatusTile = {
-  dot: DotColor;
-  label: string;
-  count: string;
-  countVariant: CountVariant;
-  body: string;
 };
 
 type FeedItem = {
@@ -53,11 +46,6 @@ type FeedItem = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Avatar placeholder SVGs                                             */
-/* ------------------------------------------------------------------ */
-
-
-/* ------------------------------------------------------------------ */
 /* Inline placeholder data — replace with Supabase queries post-beta  */
 /* ------------------------------------------------------------------ */
 
@@ -67,35 +55,29 @@ const BRIEF_STATS: BriefStat[] = [
   { label: "EVENT", value: "Dueling Pianos · Balsam", unit: "", compact: true },
 ];
 
-const STATUS_TILES: StatusTile[] = [
-  {
-    dot: "amber",
-    label: "WATCHLIST",
-    count: "2",
-    countVariant: "default",
-    body: "14 AC still broken · waiting on parts",
-  },
-  {
-    dot: "green",
-    label: "SCHEDULING",
-    count: "OK",
-    countVariant: "ok",
-    body: "Courtney on-call until 10pm",
-  },
-  {
-    dot: "red",
-    label: "CRITICAL",
-    count: "1",
-    countVariant: "alert",
-    body: "Front desk understaffed late shift — hire ASAP",
-  },
-  {
-    dot: "blue",
-    label: "NOTES",
-    count: "3",
-    countVariant: "default",
-    body: "Customer feedback · Halloween plan",
-  },
+// TODO post-beta: wire to real watchlist table
+const WATCHLIST_ITEMS: LaneItem[] = [
+  { id: "wl1", title: "AC compressor — Room 14", body: "Waiting on parts (ETA 5/3)", chip: "MAINTENANCE" },
+  { id: "wl2", title: "Pool pump cycling loud", body: "Vendor scheduled 5/1", chip: "MAINTENANCE" },
+];
+
+// TODO post-beta: wire to real scheduling table
+const SCHEDULING_ITEMS: LaneItem[] = [
+  { id: "sch1", title: "Courtney — on-call", body: "Until 10pm Sat", chip: "ON-CALL" },
+  { id: "sch2", title: "Lizzie — off Sun", body: "Returning Mon AM", chip: "OFF" },
+  { id: "sch3", title: "Mark — late shift swap", body: "Covering for Angie Fri", chip: "SWAP" },
+];
+
+// TODO post-beta: wire to real critical table
+const CRITICAL_ITEMS: LaneItem[] = [
+  { id: "crit1", title: "Front desk understaffed late shift", body: "Hire ASAP — coverage gap weekends", chip: "HIRING" },
+];
+
+// TODO post-beta: wire to real notes table
+const NOTES_ITEMS: LaneItem[] = [
+  { id: "n1", title: "Customer feedback — Mary in 14", body: "AC noise complaint, follow up after repair", chip: "FEEDBACK" },
+  { id: "n2", title: "Halloween plan", body: "Finalize decor budget by 10/15", chip: "EVENT" },
+  { id: "n3", title: "Front desk SOP refresh", body: "Update check-in script for new ResNexus integration", chip: "SOP" },
 ];
 
 const FEED_ITEMS: FeedItem[] = [
@@ -145,12 +127,6 @@ const SDOT_CLASS: Record<DotColor, string> = {
   mute:  styles.sdotMute,
 };
 
-const COUNT_CLASS: Record<CountVariant, string> = {
-  default: styles.tileCount,
-  alert:   `${styles.tileCount} ${styles.tileCountAlert}`,
-  ok:      `${styles.tileCount} ${styles.tileCountOk}`,
-};
-
 const TAG_CLASS: Record<FeedTagType, string> = {
   done: `${styles.feedTag} ${styles.feedTagDone}`,
   open: `${styles.feedTag} ${styles.feedTagOpen}`,
@@ -165,6 +141,10 @@ export default function AdminHomePage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
   const [staffExpanded, setStaffExpanded] = useState(false);
+  const [watchlistExpanded, setWatchlistExpanded] = useState(false);
+  const [schedulingExpanded, setSchedulingExpanded] = useState(false);
+  const [criticalExpanded, setCriticalExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,21 +212,217 @@ export default function AdminHomePage() {
           </div>
         </div>
 
-        {/* 2×2 status tile grid */}
-        <div className={styles.statusGrid}>
-          {STATUS_TILES.map((tile) => (
-            <div key={tile.label} className={styles.tile}>
-              <div className={styles.tileHead}>
-                <span className={styles.tileHeadLeft}>
-                  <span className={SDOT_CLASS[tile.dot]} />
-                  {tile.label}
-                </span>
-                <span className={COUNT_CLASS[tile.countVariant]}>{tile.count}</span>
-              </div>
-              <div className={styles.tileBody}>{tile.body}</div>
+        {/* Watchlist lane */}
+        {watchlistExpanded ? (
+          <>
+            <div
+              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
+              onClick={() => setWatchlistExpanded(false)}
+              role="button"
+              tabIndex={0}
+            >
+              <span>WATCHLIST &middot; {WATCHLIST_ITEMS.length} ITEMS</span>
+              <span className={styles.collapseHint}>
+                TAP TO COLLAPSE
+                <span className={styles.chevDown}>&#9662;</span>
+              </span>
             </div>
-          ))}
-        </div>
+            <div
+              className={styles.laneItemGrid}
+              style={{ "--lchip-bg": "rgba(217,168,44,0.18)", "--lchip-text": "#8A6A1C" } as React.CSSProperties}
+            >
+              {WATCHLIST_ITEMS.slice(0, 5).map((item) => (
+                // TODO post-beta: wire to watchlist item detail
+                <div key={item.id} className={styles.laneItem}>
+                  <div className={styles.laneItemHead}>
+                    <div className={styles.laneItemTitle}>{item.title}</div>
+                    <span className={styles.laneItemChip}>{item.chip}</span>
+                  </div>
+                  <div className={styles.laneItemBody}>{item.body}</div>
+                </div>
+              ))}
+              {WATCHLIST_ITEMS.length > 5 && (
+                <div className={styles.laneItemMore}>+{WATCHLIST_ITEMS.length - 5} more</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            className={styles.lane}
+            onClick={() => setWatchlistExpanded(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={`${styles.laneIcon} ${styles.laneIconWatchlist}`}>&#9651;</div>
+            <div>
+              <div className={styles.laneTitle}>Watchlist</div>
+              <div className={styles.laneSub}>
+                <span className={styles.sdotAmber} />
+                {WATCHLIST_ITEMS.length} items
+              </div>
+            </div>
+            <div className={styles.chev}>&rsaquo;</div>
+          </div>
+        )}
+
+        {/* Scheduling lane */}
+        {schedulingExpanded ? (
+          <>
+            <div
+              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
+              onClick={() => setSchedulingExpanded(false)}
+              role="button"
+              tabIndex={0}
+            >
+              <span>SCHEDULING &middot; {SCHEDULING_ITEMS.length} ITEMS</span>
+              <span className={styles.collapseHint}>
+                TAP TO COLLAPSE
+                <span className={styles.chevDown}>&#9662;</span>
+              </span>
+            </div>
+            <div
+              className={styles.laneItemGrid}
+              style={{ "--lchip-bg": "rgba(46,123,84,0.16)", "--lchip-text": "#1F5C3C" } as React.CSSProperties}
+            >
+              {SCHEDULING_ITEMS.slice(0, 5).map((item) => (
+                // TODO post-beta: wire to scheduling item detail
+                <div key={item.id} className={styles.laneItem}>
+                  <div className={styles.laneItemHead}>
+                    <div className={styles.laneItemTitle}>{item.title}</div>
+                    <span className={styles.laneItemChip}>{item.chip}</span>
+                  </div>
+                  <div className={styles.laneItemBody}>{item.body}</div>
+                </div>
+              ))}
+              {SCHEDULING_ITEMS.length > 5 && (
+                <div className={styles.laneItemMore}>+{SCHEDULING_ITEMS.length - 5} more</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            className={styles.lane}
+            onClick={() => setSchedulingExpanded(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={`${styles.laneIcon} ${styles.laneIconScheduling}`}>&#9681;</div>
+            <div>
+              <div className={styles.laneTitle}>Scheduling</div>
+              <div className={styles.laneSub}>
+                <span className={styles.sdotGreen} />
+                {SCHEDULING_ITEMS.length} on roster
+              </div>
+            </div>
+            <div className={styles.chev}>&rsaquo;</div>
+          </div>
+        )}
+
+        {/* Critical lane */}
+        {criticalExpanded ? (
+          <>
+            <div
+              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
+              onClick={() => setCriticalExpanded(false)}
+              role="button"
+              tabIndex={0}
+            >
+              <span>CRITICAL &middot; {CRITICAL_ITEMS.length} ITEMS</span>
+              <span className={styles.collapseHint}>
+                TAP TO COLLAPSE
+                <span className={styles.chevDown}>&#9662;</span>
+              </span>
+            </div>
+            <div
+              className={styles.laneItemGrid}
+              style={{ "--lchip-bg": "rgba(199,95,95,0.18)", "--lchip-text": "#8A3A3A" } as React.CSSProperties}
+            >
+              {CRITICAL_ITEMS.slice(0, 5).map((item) => (
+                // TODO post-beta: wire to critical item detail
+                <div key={item.id} className={styles.laneItem}>
+                  <div className={styles.laneItemHead}>
+                    <div className={styles.laneItemTitle}>{item.title}</div>
+                    <span className={styles.laneItemChip}>{item.chip}</span>
+                  </div>
+                  <div className={styles.laneItemBody}>{item.body}</div>
+                </div>
+              ))}
+              {CRITICAL_ITEMS.length > 5 && (
+                <div className={styles.laneItemMore}>+{CRITICAL_ITEMS.length - 5} more</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            className={styles.lane}
+            onClick={() => setCriticalExpanded(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={`${styles.laneIcon} ${styles.laneIconCritical}`}>&#9650;</div>
+            <div>
+              <div className={styles.laneTitle}>Critical</div>
+              <div className={styles.laneSub}>
+                <span className={styles.sdotRed} />
+                {CRITICAL_ITEMS.length} active
+              </div>
+            </div>
+            <div className={styles.chev}>&rsaquo;</div>
+          </div>
+        )}
+
+        {/* Notes lane */}
+        {notesExpanded ? (
+          <>
+            <div
+              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
+              onClick={() => setNotesExpanded(false)}
+              role="button"
+              tabIndex={0}
+            >
+              <span>NOTES &middot; {NOTES_ITEMS.length} ITEMS</span>
+              <span className={styles.collapseHint}>
+                TAP TO COLLAPSE
+                <span className={styles.chevDown}>&#9662;</span>
+              </span>
+            </div>
+            <div
+              className={styles.laneItemGrid}
+              style={{ "--lchip-bg": "rgba(74,127,168,0.18)", "--lchip-text": "#2B6C8A" } as React.CSSProperties}
+            >
+              {NOTES_ITEMS.slice(0, 5).map((item) => (
+                // TODO post-beta: wire to notes item detail
+                <div key={item.id} className={styles.laneItem}>
+                  <div className={styles.laneItemHead}>
+                    <div className={styles.laneItemTitle}>{item.title}</div>
+                    <span className={styles.laneItemChip}>{item.chip}</span>
+                  </div>
+                  <div className={styles.laneItemBody}>{item.body}</div>
+                </div>
+              ))}
+              {NOTES_ITEMS.length > 5 && (
+                <div className={styles.laneItemMore}>+{NOTES_ITEMS.length - 5} more</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div
+            className={styles.lane}
+            onClick={() => setNotesExpanded(true)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={`${styles.laneIcon} ${styles.laneIconNotes}`}>&#9678;</div>
+            <div>
+              <div className={styles.laneTitle}>Notes</div>
+              <div className={styles.laneSub}>
+                <span className={styles.sdotBlue} />
+                {NOTES_ITEMS.length} items
+              </div>
+            </div>
+            <div className={styles.chev}>&rsaquo;</div>
+          </div>
+        )}
 
         {/* Activity feed */}
         <div className={styles.sectionLabel}>
@@ -378,16 +554,16 @@ export default function AdminHomePage() {
           </div>
         )}
 
-        <div className={styles.lane}>
+        <Link href="/admin/tasks" className={styles.lane}>
           <div className={`${styles.laneIcon} ${styles.laneIconTasks}`}>&#9776;</div>
           <div>
             <div className={styles.laneTitle}>Tasks</div>
             <div className={styles.laneSub}>Housekeeping &middot; Admin &middot; Maint</div>
           </div>
           <div className={styles.chev}>&rsaquo;</div>
-        </div>
+        </Link>
 
-        <div className={styles.lane}>
+        <Link href="/admin/tasks#maintenance" className={styles.lane}>
           <div className={`${styles.laneIcon} ${styles.laneIconMaint}`}>&#9672;</div>
           <div>
             <div className={styles.laneTitle}>Maintenance</div>
@@ -400,7 +576,7 @@ export default function AdminHomePage() {
             </div>
           </div>
           <div className={styles.chev}>&rsaquo;</div>
-        </div>
+        </Link>
 
         <div className={styles.footnote}>THE DISPATCH CO &middot; ADMIN</div>
       </div>

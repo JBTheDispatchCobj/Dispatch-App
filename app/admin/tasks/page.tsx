@@ -249,7 +249,10 @@ export default function AdminTasksDashboardPage() {
         {/* Lane cards */}
         {LANES.map((lane) => (
           <div key={lane.key} className={styles.laneCard}>
-            <div className={LANE_HEAD_CLASS[lane.key]}>
+            <div
+              className={LANE_HEAD_CLASS[lane.key]}
+              id={lane.key === "maintenance" ? "maintenance" : undefined}
+            >
               <span>{lane.label}</span>
               <span className={styles.laneCount}>
                 {lane.tasks.length} TASKS
