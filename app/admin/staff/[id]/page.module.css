@@ -428,3 +428,112 @@
 .notFound a {
   color: var(--sky-text);
 }
+
+/* ——— Chip variants for card_type (task list) ——— */
+.chipDly {
+  background: color-mix(in srgb, var(--dailys-dull-header) 24%, transparent);
+  color: #2C2040;
+}
+
+.chipMnt {
+  background: color-mix(in srgb, var(--sage-header) 22%, transparent);
+  color: var(--sage-text);
+}
+
+/* ——— Task list (live Supabase fetch) ——— */
+.tasksSectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: rgba(27,51,64,0.5);
+  padding: 14px 2px 8px;
+}
+
+.tasksEmpty {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--sage-text-soft);
+  text-align: center;
+  padding: 14px 0 10px;
+  text-transform: uppercase;
+}
+
+.tasksErrorText {
+  font-size: 12px;
+  color: var(--status-overdue);
+  padding: 8px 2px;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.taskRow {
+  display: grid;
+  grid-template-columns: 9px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow:
+    0 1px 2px rgba(30,20,10,0.1),
+    0 3px 8px rgba(30,20,10,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(30,20,10,0.05);
+}
+
+.taskRowMain {
+  min-width: 0;
+}
+
+.taskRowTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sky-text);
+  line-height: 1.28;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskRowMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.taskRowRoom {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  color: rgba(27,51,64,0.5);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.taskStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.taskDotOpen        { background: var(--status-open);    box-shadow: 0 0 0 2px rgba(217,168,44,0.2); }
+.taskDotInProgress  { background: var(--status-active);  box-shadow: 0 0 0 2px rgba(74,127,168,0.2); }
+.taskDotBlocked     { background: var(--status-overdue); box-shadow: 0 0 0 2px rgba(199,95,95,0.2); }
+.taskDotPaused      { background: rgba(44,22,8,0.3); }

@@ -22,8 +22,6 @@ import styles from "./page.module.css";
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
 
-type TaskChip = { count: number; type: "arr" | "sta" | "dep" };
-
 type StaffProfile = {
   slug: string;
   firstName: string;
@@ -39,15 +37,17 @@ type StaffProfile = {
     { label: string; value: number },
     { label: string; value: number },
   ];
-  taskChips: TaskChip[];
   activitySub: string;
   ctaLabel: string;
 };
 
-/* ------------------------------------------------------------------ */
-/* Avatar placeholder SVGs — swap src per record when photos land     */
-/* ------------------------------------------------------------------ */
-
+type TaskRow = {
+  id: string;
+  title: string;
+  card_type: string;
+  status: string;
+  room_number: string | null;
+};
 
 /* ------------------------------------------------------------------ */
 /* Static profile data — replace with Supabase fetch post-beta        */
@@ -69,11 +69,6 @@ const PROFILES: StaffProfile[] = [
       { label: "Open", value: 2 },
       { label: "Done today", value: 9 },
     ],
-    taskChips: [
-      { count: 2, type: "arr" },
-      { count: 1, type: "sta" },
-      { count: 1, type: "dep" },
-    ],
     activitySub: "9 completions · 3 notes today",
     ctaLabel: "Message Courtney",
   },
@@ -91,10 +86,6 @@ const PROFILES: StaffProfile[] = [
       { label: "Rooms", value: 4 },
       { label: "Open", value: 1 },
       { label: "Done today", value: 7 },
-    ],
-    taskChips: [
-      { count: 2, type: "arr" },
-      { count: 1, type: "dep" },
     ],
     activitySub: "7 completions · 1 note today",
     ctaLabel: "Message Lizzie",
@@ -114,10 +105,6 @@ const PROFILES: StaffProfile[] = [
       { label: "Open", value: 3 },
       { label: "Done today", value: 5 },
     ],
-    taskChips: [
-      { count: 3, type: "dep" },
-      { count: 2, type: "sta" },
-    ],
     activitySub: "5 completions · 2 notes today",
     ctaLabel: "Message Angie",
   },
@@ -136,7 +123,6 @@ const PROFILES: StaffProfile[] = [
       { label: "Open", value: 2 },
       { label: "Done today", value: 1 },
     ],
-    taskChips: [{ count: 1, type: "dep" }],
     activitySub: "1 completion today",
     ctaLabel: "Message Mark",
   },
@@ -146,17 +132,43 @@ const PROFILES: StaffProfile[] = [
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-const CHIP_LABELS: Record<TaskChip["type"], string> = {
-  arr: "ARR",
-  sta: "STAY",
-  dep: "DEP",
-};
+function cardTypeLabel(cardType: string): string {
+  const map: Record<string, string> = {
+    housekeeping_turn: "HK TURN",
+    arrival:           "ARRIVAL",
+    departure:         "DEPARTURE",
+    stayover:          "STAYOVER",
+    daily:             "DAILY",
+    dailys:            "DAILY",
+    eod:               "EOD",
+    maintenance:       "MAINT",
+  };
+  return map[cardType] ?? cardType.toUpperCase().slice(0, 8);
+}
 
-const CHIP_STYLE: Record<TaskChip["type"], string> = {
-  arr: styles.chipArr,
-  sta: styles.chipSta,
-  dep: styles.chipDep,
-};
+function cardTypeChipClass(cardType: string): string {
+  const map: Record<string, string> = {
+    housekeeping_turn: styles.chipDep,
+    departure:         styles.chipDep,
+    arrival:           styles.chipArr,
+    stayover:          styles.chipSta,
+    daily:             styles.chipDly,
+    dailys:            styles.chipDly,
+    eod:               styles.chipDly,
+    maintenance:       styles.chipMnt,
+  };
+  return `${styles.chip} ${map[cardType] ?? ""}`.trim();
+}
+
+function statusDotClass(status: string): string {
+  const map: Record<string, string> = {
+    open:        styles.taskDotOpen,
+    in_progress: styles.taskDotInProgress,
+    blocked:     styles.taskDotBlocked,
+    paused:      styles.taskDotPaused,
+  };
+  return `${styles.taskStatusDot} ${map[status] ?? ""}`.trim();
+}
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
@@ -165,6 +177,9 @@ const CHIP_STYLE: Record<TaskChip["type"], string> = {
 export default function StaffProfilePage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+  const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
+  const [tasksError, setTasksError] = useState<string | null>(null);
+
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
 
@@ -196,6 +211,36 @@ export default function StaffProfilePage() {
       cancelled = true;
     };
   }, []);
+
+  // Fetch tasks once auth is confirmed
+  useEffect(() => {
+    if (!ready) return;
+    const member = PROFILES.find((p) => p.slug === id);
+    if (!member) return;
+    let cancelled = false;
+    void (async () => {
+      // Bridge slug → staff UUID via public.staff.name
+      const { data: staffRow } = await supabase
+        .from("staff")
+        .select("id")
+        .eq("name", member.fullName)
+        .maybeSingle();
+      if (cancelled || !staffRow) return;
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, title, card_type, status, room_number")
+        .eq("staff_id", staffRow.id)
+        .neq("status", "done")
+        .order("created_at", { ascending: false });
+      if (!cancelled) {
+        setTaskRows(data ?? []);
+        if (error) setTasksError(error.message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, id]);
 
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
   if (!ready) return null;
@@ -300,23 +345,45 @@ export default function StaffProfilePage() {
             <div className={styles.chev}>&rsaquo;</div>
           </div>
 
-          <div className={styles.navRow}>
-            <div className={styles.navIcon}>☰</div>
-            <div>
-              <div className={styles.navTitle}>Tasks</div>
-              <div className={styles.navSub}>
-                {member.taskChips.map((chip, i) => (
-                  <span
-                    key={i}
-                    className={`${styles.chip} ${CHIP_STYLE[chip.type]}`}
-                  >
-                    {chip.count} {CHIP_LABELS[chip.type]}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className={styles.chev}>&rsaquo;</div>
+          {/* Tasks — live fetch */}
+          <div className={styles.tasksSectionHead}>
+            <span>TASKS</span>
+            <span>{taskRows.length} OPEN</span>
           </div>
+
+          {tasksError && (
+            <div className={styles.tasksErrorText}>{tasksError}</div>
+          )}
+
+          {!tasksError && taskRows.length === 0 && (
+            <div className={styles.tasksEmpty}>No open tasks assigned.</div>
+          )}
+
+          {taskRows.length > 0 && (
+            <div className={styles.taskList}>
+              {taskRows.map((task) => (
+                <Link
+                  key={task.id}
+                  href={`/admin/tasks/${task.id}`}
+                  className={styles.taskRow}
+                >
+                  <span className={statusDotClass(task.status)} />
+                  <div className={styles.taskRowMain}>
+                    <div className={styles.taskRowTitle}>{task.title}</div>
+                    <div className={styles.taskRowMeta}>
+                      <span className={cardTypeChipClass(task.card_type)}>
+                        {cardTypeLabel(task.card_type)}
+                      </span>
+                      {task.room_number && (
+                        <span className={styles.taskRowRoom}>RM {task.room_number}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={styles.chev}>&rsaquo;</div>
+                </Link>
+              ))}
+            </div>
+          )}
 
           <div className={styles.navRow}>
             <div className={styles.navIcon}>⏸</div>
