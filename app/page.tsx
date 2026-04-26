@@ -1,75 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import ActivitySection from "./activity-section";
-import DispatchSection from "./dispatch-section";
-import SignOutButton from "./sign-out-button";
-import StaffSection from "./staff-section";
-import TasksSection from "./tasks-section";
+import { fetchProfile } from "@/lib/profile";
+import {
+  resolveAuthUser,
+  redirectToLoginUnlessLocalDevBypass,
+} from "@/lib/dev-auth-bypass";
 
-export default function Home() {
-  const [ready, setReady] = useState(false);
-
+export default function RootRedirect() {
   useEffect(() => {
     let cancelled = false;
-
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (cancelled) return;
-      if (!session) {
-        window.location.replace("/login");
+      const user = resolveAuthUser(session);
+      if (!user) {
+        redirectToLoginUnlessLocalDevBypass();
         return;
       }
-      setReady(true);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const result = await fetchProfile(supabase, user);
       if (cancelled) return;
-      if (!session) {
-        window.location.replace("/login");
+      if (!result.ok) {
+        redirectToLoginUnlessLocalDevBypass();
+        return;
       }
-    });
-
+      const dest = result.profile.role === "admin" ? "/admin" : "/staff";
+      window.location.replace(dest);
+    })();
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
     };
   }, []);
 
-  if (!ready) {
-    return (
-      <main className="wrap">
-        <p className="loading-line">Loading…</p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="wrap home-shell">
-      <header className="shell-header">
-        <div>
-          <h1>Dispatch</h1>
-          <p className="shell-lede">Today&apos;s operations</p>
-        </div>
-        <SignOutButton />
-      </header>
-
-      <ul className="shell-sections">
-        <li className="shell-section shell-section--dispatch">
-          <DispatchSection />
-        </li>
-        <li className="shell-section shell-section--activity">
-          <ActivitySection />
-        </li>
-        <li className="shell-section shell-section--tasks">
-          <TasksSection />
-        </li>
-        <li className="shell-section shell-section--staff">
-          <StaffSection />
-        </li>
-      </ul>
-    </main>
-  );
+  return null;
 }
