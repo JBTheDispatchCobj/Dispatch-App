@@ -9,6 +9,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../profile-load-error";
+import AddTaskModal from "@/components/admin/AddTaskModal";
 import styles from "./page.module.css";
 import { STAFF } from "./data";
 
@@ -19,6 +20,7 @@ import { STAFF } from "./data";
 export default function StaffRosterPage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,13 +61,13 @@ export default function StaffRosterPage() {
     <div className={styles.page}>
       <div className={styles.shell}>
         <div className={styles.topbar}>
-          <button className={styles.iconBtn} aria-label="Back">
+          <Link href="/admin" className={styles.iconBtn} aria-label="Back to admin">
             &lsaquo;
-          </button>
+          </Link>
           <div className={styles.breadcrumb}>
             ADMIN / <span className={styles.breadcrumbCurrent}>STAFF</span>
           </div>
-          <button className={styles.iconBtn} aria-label="Add staff member">
+          <button className={styles.iconBtn} aria-label="Add task" onClick={() => setModalOpen(true)}>
             +
           </button>
         </div>
@@ -142,6 +144,11 @@ export default function StaffRosterPage() {
 
         <div className={styles.footnote}>TAP A CARD FOR FULL PROFILE</div>
       </div>
+      <AddTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => setModalOpen(false)}
+      />
     </div>
   );
 }
