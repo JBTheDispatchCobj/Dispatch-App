@@ -15,6 +15,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../profile-load-error";
+import AddTaskModal from "@/components/admin/AddTaskModal";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -140,6 +141,7 @@ const TAG_CLASS: Record<FeedTagType, string> = {
 export default function AdminHomePage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [staffExpanded, setStaffExpanded] = useState(false);
   const [watchlistExpanded, setWatchlistExpanded] = useState(false);
   const [schedulingExpanded, setSchedulingExpanded] = useState(false);
@@ -187,7 +189,7 @@ export default function AdminHomePage() {
             <div className={styles.greet}>Hi, Courtney</div>
             <div className={styles.greetDate}>SAT &middot; MAR 21, 2026</div>
           </div>
-          <button className={styles.addBtn} aria-label="Add">+</button>
+          <button className={styles.addBtn} aria-label="Add task" onClick={() => setModalOpen(true)}>+</button>
         </div>
 
         {/* Daily Brief */}
@@ -580,6 +582,11 @@ export default function AdminHomePage() {
 
         <div className={styles.footnote}>THE DISPATCH CO &middot; ADMIN</div>
       </div>
+      <AddTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => setModalOpen(false)}
+      />
     </div>
   );
 }

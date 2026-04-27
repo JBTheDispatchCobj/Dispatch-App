@@ -9,6 +9,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../profile-load-error";
+import AddTaskModal from "@/components/admin/AddTaskModal";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -174,6 +175,7 @@ const LANES: Lane[] = [
 export default function AdminTasksDashboardPage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,7 +221,7 @@ export default function AdminTasksDashboardPage() {
             <div className={styles.pageTitle}>Tasks</div>
             <div className={styles.pageSub}>SAT &middot; MAR 21, 2026</div>
           </div>
-          <button className={styles.navBtn} aria-label="Add task">+</button>
+          <button className={styles.navBtn} aria-label="Add task" onClick={() => setModalOpen(true)}>+</button>
         </div>
 
         {/* Stats strip — TODO: wire to derived counts post-beta */}
@@ -283,6 +285,11 @@ export default function AdminTasksDashboardPage() {
 
         <div className={styles.footnote}>THE DISPATCH CO &middot; ADMIN &middot; TASKS</div>
       </div>
+      <AddTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={() => { /* task list is static for now; live refresh post-beta */ }}
+      />
     </div>
   );
 }

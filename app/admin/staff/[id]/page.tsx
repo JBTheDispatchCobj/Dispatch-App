@@ -16,6 +16,7 @@ import {
   AVATAR_ANGIE,
   AVATAR_MARK,
 } from "../data";
+import AddTaskModal from "@/components/admin/AddTaskModal";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -179,6 +180,8 @@ export default function StaffProfilePage() {
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [tasksError, setTasksError] = useState<string | null>(null);
+  const [staffRowId, setStaffRowId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
@@ -212,6 +215,17 @@ export default function StaffProfilePage() {
     };
   }, []);
 
+  async function fetchTasks(sid: string) {
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("id, title, card_type, status, room_number")
+      .eq("staff_id", sid)
+      .neq("status", "done")
+      .order("created_at", { ascending: false });
+    setTaskRows(data ?? []);
+    if (error) setTasksError(error.message);
+  }
+
   // Fetch tasks once auth is confirmed
   useEffect(() => {
     if (!ready) return;
@@ -226,21 +240,14 @@ export default function StaffProfilePage() {
         .eq("name", member.fullName)
         .maybeSingle();
       if (cancelled || !staffRow) return;
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, title, card_type, status, room_number")
-        .eq("staff_id", staffRow.id)
-        .neq("status", "done")
-        .order("created_at", { ascending: false });
-      if (!cancelled) {
-        setTaskRows(data ?? []);
-        if (error) setTasksError(error.message);
-      }
+      const sid = staffRow.id as string;
+      if (!cancelled) setStaffRowId(sid);
+      await fetchTasks(sid);
     })();
     return () => {
       cancelled = true;
     };
-  }, [ready, id]);
+  }, [ready, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
   if (!ready) return null;
@@ -348,7 +355,32 @@ export default function StaffProfilePage() {
           {/* Tasks — live fetch */}
           <div className={styles.tasksSectionHead}>
             <span>TASKS</span>
-            <span>{taskRows.length} OPEN</span>
+            <span style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <span>{taskRows.length} OPEN</span>
+              {staffRowId && (
+                <button
+                  onClick={() => setModalOpen(true)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid rgba(27,51,64,0.35)",
+                    borderRadius: "50%",
+                    width: 22,
+                    height: 22,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "rgba(27,51,64,0.65)",
+                    fontSize: 16,
+                    lineHeight: 1,
+                    padding: 0,
+                  }}
+                  aria-label="Add task"
+                >
+                  +
+                </button>
+              )}
+            </span>
           </div>
 
           {tasksError && (
@@ -416,6 +448,15 @@ export default function StaffProfilePage() {
           ADMIN VIEW · {member.firstName.toUpperCase()} · MAR 21
         </div>
       </div>
+      {staffRowId && (
+        <AddTaskModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSuccess={() => void fetchTasks(staffRowId)}
+          preselectedStaffId={staffRowId}
+          preselectedStaffName={member.fullName}
+        />
+      )}
     </div>
   );
 }
