@@ -342,6 +342,7 @@ export default function TasksSection() {
   }
 
   function bucketToCardType(bucket: StaffHomeBucket): string {
+    if (bucket === "start_of_day") return "start_of_day";
     if (bucket === "eod") return "eod";
     if (bucket === "dailys") return "dailys";
     if (bucket === "departures") return "housekeeping_turn";
