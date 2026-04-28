@@ -9,21 +9,15 @@ import {
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 
 // ---------------------------------------------------------------------------
-// Context parsers — all safe, never throw
+// Context parsers — safe, never throw
 // ---------------------------------------------------------------------------
 
-type DailyTaskContext = {
-  location: string | null;
-};
-
-function parseDailyTaskContext(ctx: Record<string, unknown>): DailyTaskContext | null {
+function parseDailyLocation(ctx: Record<string, unknown>): string | null {
   const raw = ctx.daily_task;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const d = raw as Record<string, unknown>;
   const loc = d.location;
-  return {
-    location: typeof loc === "string" && loc.trim() ? loc.trim() : null,
-  };
+  return typeof loc === "string" && loc.trim() ? loc.trim() : null;
 }
 
 function checklistInteractionDisabled(status: string): boolean {
@@ -82,23 +76,22 @@ export default function DailysCard({
   onResume,
   onPostNote,
 }: DailysCardProps) {
-  const daily = parseDailyTaskContext(task.context);
+  const location = parseDailyLocation(task.context) ?? task.location_label;
 
-  const taskDone = task.status === "done";
+  const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";
-  const paused = task.status === "paused";
+  const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
-
-  const locationLabel = daily?.location ?? task.location_label ?? "DAILY";
-  const heroMeta = `${locationLabel.toUpperCase()} · ${checklist.length} TASK${checklist.length !== 1 ? "S" : ""}`;
 
   const descNote =
     task.description?.trim() && task.description.trim().length > 0
       ? task.description.trim()
       : null;
 
+  const allDone = checklist.length > 0 && checklist.every((i) => i.done);
+
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work dailys-card">
+    <main className="staff-app dailys-card">
       <div className="staff-task-exec-scroll">
 
         {/* Toolbar — back + pause/resume */}
@@ -132,35 +125,35 @@ export default function DailysCard({
           ) : null}
         </header>
 
-        {/* Unified lavender card: header strip + all content */}
-        <div className="dailys-card__card">
+        {/* Cream shell */}
+        <div className="dailys-card__shell">
 
-          {/* Card header strip */}
-          <div className="dailys-card__header">
-            <div className="dailys-card__hero">
-              <div className="dailys-card__hero-type mono">DAILYS</div>
-              <div className="dailys-card__hero-meta mono">{heroMeta}</div>
-            </div>
+          {/* Hero — ink-stamp pills */}
+          <div className="dailys-card__hero">
+            <span className="hero-stamp dailys-card__stamp">DAILYS</span>
+            <span className="hero-stamp dailys-card__stamp">PROPERTY ROUND</span>
           </div>
 
-          {/* Card body */}
+          {/* Body */}
           <div className="dailys-card__body">
 
             {/* Team Updates panel */}
             <div className="dailys-card__panel">
-              <div className="dailys-card__tile-head mono">TEAM UPDATES</div>
-              <div className="dailys-card__panel-body">
-                {descNote ? (
-                  <p className="dailys-card__panel-text">{descNote}</p>
-                ) : (
-                  <div className="dailys-card__plus-glyph" aria-hidden>+</div>
-                )}
+              <div className="dailys-card__panel-head">
+                <span>TEAM UPDATES</span>
               </div>
+              {descNote ? (
+                <div className="dailys-card__panel-body">{descNote}</div>
+              ) : (
+                <div className="dailys-card__plus-glyph" aria-hidden>+</div>
+              )}
             </div>
 
             {/* Notes panel */}
             <div className="dailys-card__panel">
-              <div className="dailys-card__tile-head mono">NOTES</div>
+              <div className="dailys-card__panel-head">
+                <span>NOTES</span>
+              </div>
               <div className="dailys-card__panel-body">
                 {comments.length > 0 ? (
                   <p className="dailys-card__note-count mono">
@@ -196,64 +189,77 @@ export default function DailysCard({
               <p className="error dailys-card__error">{inlineError}</p>
             ) : null}
 
-            {/* 2-column task grid (checklist items as compact rows) */}
+            {/* 2-column task grid */}
             {checklist.length > 0 ? (
-              <div className="dailys-card__task-grid">
-                {checklist.map((item) => (
-                  <div
-                    key={item.id}
-                    className={
-                      item.done
-                        ? "dailys-card__task-row dailys-card__task-row--done"
-                        : "dailys-card__task-row"
-                    }
-                  >
-                    <div className="dailys-card__task-info">
-                      <div className="dailys-card__task-title">{item.title}</div>
-                      {/* post-beta: Location and Notes are task-level, not per-checklist-item */}
-                      <div className="dailys-card__task-meta">
-                        <span className="dailys-card__task-meta-k mono">Location</span>
-                        <span className="dailys-card__task-meta-v mono">
-                          {daily?.location ?? "—"}
+              <>
+                <div className="dailys-card__task-grid">
+                  {checklist.map((item) => (
+                    <div
+                      key={item.id}
+                      className={
+                        item.done
+                          ? "dailys-card__task-row dailys-card__task-row--done"
+                          : "dailys-card__task-row"
+                      }
+                    >
+                      <div>
+                        <div className="dailys-card__task-title">{item.title}</div>
+                        {location ? (
+                          <div className="dailys-card__task-meta">{location.toUpperCase()}</div>
+                        ) : null}
+                      </div>
+                      <div className="dailys-card__task-foot">
+                        <button
+                          type="button"
+                          className={
+                            item.done
+                              ? "dailys-card__complete-pill dailys-card__complete-pill--done"
+                              : "dailys-card__complete-pill"
+                          }
+                          onClick={() => onToggleItem(item)}
+                          disabled={taskDone || stepsLocked}
+                        >
+                          {item.done ? "Done" : "Complete"}
+                        </button>
+                        <span className="dailys-card__details-link" aria-hidden>
+                          Details &rsaquo;
                         </span>
                       </div>
-                      <div className="dailys-card__task-meta">
-                        <span className="dailys-card__task-meta-k mono">Notes</span>
-                        <span className="dailys-card__task-meta-v mono">—</span>
-                      </div>
                     </div>
-                    <div className="dailys-card__task-actions">
-                      <button
-                        type="button"
-                        className={
-                          item.done
-                            ? "dailys-card__complete-pill dailys-card__complete-pill--done"
-                            : "dailys-card__complete-pill"
-                        }
-                        onClick={() => onToggleItem(item)}
-                        disabled={taskDone || stepsLocked}
-                      >
-                        {item.done ? "DONE" : "COMPLETE"}
-                      </button>
-                      {/* post-beta: per-item Details link not wired */}
-                      <span className="dailys-card__details-link" aria-hidden>Details</span>
-                    </div>
+                  ))}
+                </div>
+
+                {/* Complete All — circle mark-all button */}
+                {!taskDone && !stepsLocked ? (
+                  <div className="dailys-card__complete-all">
+                    <button
+                      type="button"
+                      className="dailys-card__complete-circle"
+                      aria-label="Mark all tasks done"
+                      disabled={allDone}
+                      onClick={() => {
+                        checklist
+                          .filter((i) => !i.done)
+                          .forEach((i) => onToggleItem(i));
+                      }}
+                    >
+                      &#10003;
+                    </button>
                   </div>
-                ))}
-              </div>
+                ) : null}
+              </>
             ) : (
               <p className="dailys-card__empty mono">No tasks yet.</p>
             )}
 
           </div>
+        </div>{/* end dailys-card__shell */}
 
-        </div>{/* end dailys-card__card */}
-
-        {/* Action pair — inline below card */}
-        <div className="dailys-card__actions" aria-label="Task actions">
+        {/* CTAs — outside shell */}
+        <div className="dailys-card__cta-row" aria-label="Task actions">
           <button
             type="button"
-            className="dailys-card__action-btn dailys-card__action-btn--secondary"
+            className="dailys-card__btn"
             onClick={onNeedHelp}
             disabled={helpBusy || taskDone}
           >
@@ -261,7 +267,7 @@ export default function DailysCard({
           </button>
           <button
             type="button"
-            className="dailys-card__action-btn dailys-card__action-btn--primary"
+            className="dailys-card__btn dailys-card__btn--primary"
             onClick={onImDone}
             disabled={doneBusy || taskDone || paused}
           >

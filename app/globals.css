@@ -3661,7 +3661,7 @@ main.wrap.card-page {
 /* 3-tile grid (2-col, third tile bottom-left) */
 .stayover-card__tile-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
 }
 
