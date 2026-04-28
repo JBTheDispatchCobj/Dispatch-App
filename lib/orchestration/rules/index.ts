@@ -21,3 +21,30 @@ export function dispatch(event: InboundEvent): TaskDraft[] {
   }
   return rule(event);
 }
+
+// ---------------------------------------------------------------------------
+// Declarative rules layer — parallel to the function-based dispatch path.
+// run.ts continues to use dispatch() above; this layer feeds the interpreter
+// (next prompt) that turns GenerationRule[] + InboundEvent → TaskInsert[].
+// ---------------------------------------------------------------------------
+
+import { arrivalRules } from "./arrivals.ts";
+import { departureRules } from "./departures.ts";
+import { stayoverRules } from "./stayovers.ts";
+import { dailyRules } from "./dailys.ts";
+import { eodRules } from "./eod.ts";
+import { maintenanceRules } from "./maintenance.ts";
+import type { GenerationRule } from "./types.ts";
+
+export const allRules: GenerationRule[] = [
+  ...arrivalRules,
+  ...departureRules,
+  ...stayoverRules,
+  ...dailyRules,
+  ...eodRules,
+  ...maintenanceRules,
+];
+
+export function getRulesForEvent(eventType: string): GenerationRule[] {
+  return allRules.filter((r) => r.trigger.event_type === eventType);
+}
