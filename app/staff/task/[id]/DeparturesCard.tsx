@@ -12,6 +12,8 @@ import {
   type ExecutionChecklistItem,
   DEPARTURES_CANONICAL_CHECKLIST,
 } from "@/lib/staff-task-execution-checklist";
+import { resolveChecklist } from "@/lib/checklists/resolve";
+import ChecklistDrillDown from "./ChecklistDrillDown";
 
 // ---------------------------------------------------------------------------
 // Departure-specific types
@@ -23,19 +25,46 @@ const DEPARTURE_STATUS_CHIPS: ReadonlyArray<{
   value: DepartureStatus;
   label: string;
 }> = [
-  { value: "open", label: "Open" },
-  { value: "sheets", label: "Sheets" },
+  { value: "open",     label: "Open" },
+  { value: "sheets",   label: "Sheets" },
   { value: "stripped", label: "Stripped" },
-  { value: "done", label: "Done" },
+  { value: "done",     label: "Done" },
 ];
 
 // ---------------------------------------------------------------------------
-// Parsers
+// Context parsers
 // ---------------------------------------------------------------------------
 
 function parseDepartureStatus(raw: unknown): DepartureStatus {
   if (raw === "stripped" || raw === "sheets" || raw === "done") return raw;
   return "open";
+}
+
+type GuestRecord = {
+  name: string | null;
+  guests: string | null;
+  nights: string | null;
+  clean_type: string | null;
+  party: string | null;
+  notes: string | null;
+};
+
+function parseGuestRecord(raw: unknown): GuestRecord {
+  const empty: GuestRecord = { name: null, guests: null, nights: null, clean_type: null, party: null, notes: null };
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return empty;
+  const g = raw as Record<string, unknown>;
+  const str = (k: string): string | null => {
+    const v = g[k];
+    return typeof v === "string" && v.trim() ? v.trim() : null;
+  };
+  return {
+    name:       str("name"),
+    guests:     str("guests"),
+    nights:     str("nights"),
+    clean_type: str("clean_type"),
+    party:      str("party"),
+    notes:      str("notes"),
+  };
 }
 
 function checklistInteractionDisabled(status: string): boolean {
@@ -51,20 +80,15 @@ type DisplayChecklistItem = {
   dbItem: ExecutionChecklistItem | null;
 };
 
-function buildDisplayChecklist(
-  dbItems: ExecutionChecklistItem[],
-): DisplayChecklistItem[] {
+function buildDisplayChecklist(dbItems: ExecutionChecklistItem[]): DisplayChecklistItem[] {
   return DEPARTURES_CANONICAL_CHECKLIST.map((title) => ({
     displayTitle: title,
-    dbItem:
-      dbItems.find(
-        (i) => i.title.toLowerCase() === title.toLowerCase(),
-      ) ?? null,
+    dbItem: dbItems.find((i) => i.title.toLowerCase() === title.toLowerCase()) ?? null,
   }));
 }
 
 // ---------------------------------------------------------------------------
-// Room display
+// Display helpers
 // ---------------------------------------------------------------------------
 
 function roomFromTitle(title: string | null): string | null {
@@ -79,6 +103,17 @@ function displayRoom(task: TaskCard): string {
   const n = task.room_number?.trim();
   if (n) return n;
   return roomFromTitle(task.title) ?? "—";
+}
+
+function formatDueTime(iso: string | null): string {
+  if (!iso) return "";
+  const m = String(iso).match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return iso;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const d = new Date();
+  d.setHours(h, min, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
 // ---------------------------------------------------------------------------
@@ -138,6 +173,7 @@ export default function DeparturesCard({
     parseDepartureStatus(task.context.departure_status),
   );
   const [statusBusy, setStatusBusy] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const onSetDepartureStatus = useCallback(
     async (next: DepartureStatus) => {
@@ -170,9 +206,13 @@ export default function DeparturesCard({
     [userId, statusBusy, departureStatus, task, setInlineError],
   );
 
-  const taskDone = task.status === "done";
+  const checklistTree = resolveChecklist("housekeeping_turn", task.room_number);
+  const outgoing = parseGuestRecord(task.context.outgoing_guest);
+  const incoming = parseGuestRecord(task.context.incoming_guest);
+
+  const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";
-  const paused = task.status === "paused";
+  const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
 
   const descNote =
@@ -180,15 +220,20 @@ export default function DeparturesCard({
       ? task.description.trim()
       : null;
 
-  const room = displayRoom(task);
-  const heroMeta = task.location_label
-    ? `RM ${room} · ${task.location_label.toUpperCase()}`
-    : `RM ${room}`;
+  const room    = displayRoom(task);
+  const dueTime = formatDueTime(task.due_time);
 
   const displayChecklist = buildDisplayChecklist(checklist);
 
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work departures-card">
+    <main className="staff-app departures-card">
+      {showChecklist ? (
+        <ChecklistDrillDown
+          root={checklistTree}
+          onClose={() => setShowChecklist(false)}
+        />
+      ) : null}
+
       <div className="staff-task-exec-scroll">
 
         {/* Toolbar — back + pause/resume */}
@@ -222,189 +267,207 @@ export default function DeparturesCard({
           ) : null}
         </header>
 
-        {/* Unified teal card: header strip + all content */}
-        <div className="departures-card__card">
+        {/* Cream shell */}
+        <div className="departures-card__shell">
 
-        {/* Card header strip */}
-        <div className="departures-card__header">
+          {/* Hero — three ink-stamp pills */}
           <div className="departures-card__hero">
-            <div className="departures-card__hero-type mono">DEPARTURE</div>
-            <div className="departures-card__hero-meta mono">{heroMeta}</div>
-          </div>
-        </div>
-
-        {/* Card body */}
-        <div className="departures-card__body">
-
-          {/* Dual-column guest panel — OUTGOING/INCOMING */}
-          <div className="departures-card__panel departures-card__panel--dual">
-            <div className="departures-card__col">
-              <div className="departures-card__col-head mono">OUTGOING</div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Guests</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Nights Stayed</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Clean Type</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Extras</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-            </div>
-            <div className="departures-card__col">
-              <div className="departures-card__col-head mono">INCOMING</div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Guest Name</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-              <div className="departures-card__field">
-                <span className="departures-card__field-k mono">Guests</span>
-                <span className="departures-card__field-v">—</span>
-              </div>
-              <p className="departures-card__incoming-notes">
-                <span className="mono" style={{ fontWeight: 500 }}>Notes:</span>{" "}—
-              </p>
-            </div>
+            <span className="hero-stamp departures-card__stamp">DEPARTURE</span>
+            <span className="hero-stamp departures-card__stamp">RM {room}</span>
+            {dueTime ? (
+              <span className="hero-stamp departures-card__stamp">{dueTime}</span>
+            ) : null}
           </div>
 
-          {/* Daily setup panel — from task.description */}
-          {descNote ? (
-            <div className="departures-card__panel departures-card__panel--single">
-              <div className="departures-card__panel-label mono">DAILY SETUP</div>
-              <div className="departures-card__panel-value">{descNote}</div>
+          {/* Body */}
+          <div className="departures-card__body">
+
+            {/* Dual panel — Outgoing / Incoming */}
+            <div className="departures-card__panel">
+              <div className="departures-card__dual">
+                <div className="departures-card__dual-col">
+                  <div className="departures-card__dual-head">OUTGOING</div>
+                  <p className="departures-card__dual-p">{outgoing.name ?? "—"}</p>
+                  <div className="departures-card__dual-k">Guests</div>
+                  <p className="departures-card__dual-p">{outgoing.guests ?? "—"}</p>
+                  <div className="departures-card__dual-k">Nights</div>
+                  <p className="departures-card__dual-p">{outgoing.nights ?? "—"}</p>
+                  <div className="departures-card__dual-k">Clean</div>
+                  <p className="departures-card__dual-p">{outgoing.clean_type ?? "—"}</p>
+                </div>
+                <div className="departures-card__dual-col">
+                  <div className="departures-card__dual-head">INCOMING</div>
+                  <p className="departures-card__dual-p">{incoming.name ?? "—"}</p>
+                  <div className="departures-card__dual-k">Party</div>
+                  <p className="departures-card__dual-p">{incoming.party ?? "—"}</p>
+                  <div className="departures-card__dual-k">Notes</div>
+                  <p className="departures-card__dual-p">{incoming.notes ?? "—"}</p>
+                </div>
+              </div>
             </div>
-          ) : null}
 
-          {/* Status row — radio-dot, same write path as before */}
-          <div
-            className="departures-card__status-row"
-            role="group"
-            aria-label="Room turnover status"
-          >
-            <span className="departures-card__status-label mono">STATUS</span>
-            <div className="departures-card__status-opts">
-              {DEPARTURE_STATUS_CHIPS.map((chip) => (
-                <button
-                  key={chip.value}
-                  type="button"
-                  className={
-                    departureStatus === chip.value
-                      ? "departures-card__status-opt departures-card__status-opt--active"
-                      : "departures-card__status-opt"
-                  }
-                  onClick={() => void onSetDepartureStatus(chip.value)}
-                  disabled={taskDone || statusBusy}
-                  aria-pressed={departureStatus === chip.value}
-                >
-                  <span className="departures-card__status-dot" aria-hidden />
-                  {chip.label}
-                </button>
-              ))}
+            {/* Info ledger — setup + context */}
+            <div className="departures-card__panel">
+              <div className="departures-card__info-list">
+                <div className="departures-card__info-row">
+                  <div className="departures-card__info-label">SETUP</div>
+                  <div className="departures-card__info-val">
+                    {descNote ?? "—"}
+                  </div>
+                </div>
+                <div className="departures-card__info-row">
+                  <div className="departures-card__info-label">STATUS</div>
+                  <div className="departures-card__info-val">
+                    {task.location_label ?? "—"}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {inlineError ? (
-            <p className="error departures-card__error">{inlineError}</p>
-          ) : null}
-
-          {/* 2×2 tile grid */}
-          <div className="departures-card__tile-grid">
-
-            {/* CHECKLIST — canonical 7-item list merged with DB state */}
-            <div className="departures-card__tile departures-card__tile--checklist">
-              <div className="departures-card__tile-head mono">CHECKLIST</div>
-              <div className="departures-card__tile-body">
-                {displayChecklist.map((item, idx) => (
+            {/* Status panel */}
+            <div className="departures-card__panel">
+              <div className="departures-card__panel-head">
+                <span>STATUS</span>
+              </div>
+              <div
+                className="departures-card__status-body"
+                role="group"
+                aria-label="Room turnover status"
+              >
+                {DEPARTURE_STATUS_CHIPS.map((chip) => (
                   <button
-                    key={item.dbItem?.id ?? `canonical-${idx}`}
+                    key={chip.value}
                     type="button"
                     className={
-                      item.dbItem?.done
-                        ? "departures-card__check-item departures-card__check-item--done"
-                        : "departures-card__check-item"
+                      departureStatus === chip.value
+                        ? "departures-card__status-opt departures-card__status-opt--active"
+                        : "departures-card__status-opt"
                     }
-                    onClick={() => {
-                      if (item.dbItem) onToggleItem(item.dbItem);
-                    }}
-                    disabled={taskDone || stepsLocked || !item.dbItem}
-                    aria-pressed={item.dbItem?.done ?? false}
+                    onClick={() => void onSetDepartureStatus(chip.value)}
+                    disabled={taskDone || statusBusy}
+                    aria-pressed={departureStatus === chip.value}
                   >
-                    <span className="departures-card__check-ring" aria-hidden />
-                    <span className="departures-card__check-txt">{item.displayTitle}</span>
+                    <span
+                      className={
+                        departureStatus === chip.value
+                          ? "departures-card__status-dot departures-card__status-dot--on"
+                          : "departures-card__status-dot"
+                      }
+                      aria-hidden
+                    />
+                    {chip.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* NOTES */}
-            <div className="departures-card__tile departures-card__tile--notes">
-              <div className="departures-card__tile-head mono">NOTES</div>
-              <div className="departures-card__tile-body">
-                {comments.length > 0 ? (
-                  <p className="departures-card__tile-note-count mono">
-                    {comments.length} note{comments.length !== 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {!taskDone ? (
-                  <form
-                    className="departures-card__note-form"
-                    onSubmit={onPostNote}
+            {inlineError ? (
+              <p className="error departures-card__error">{inlineError}</p>
+            ) : null}
+
+            {/* 2×2 tile grid — aspect-ratio:1 (count = 4) */}
+            <div className="departures-card__tile-grid">
+
+              {/* CHECKLIST */}
+              <div className="departures-card__tile">
+                <div className="departures-card__tile-head">
+                  <span>CHECKLIST</span>
+                  <button
+                    type="button"
+                    className="departures-card__tile-head-link"
+                    onClick={() => setShowChecklist(true)}
                   >
-                    <textarea
-                      id="staff-task-note-dep"
-                      className="departures-card__note-input"
-                      rows={2}
-                      placeholder="Add a note…"
-                      value={noteBody}
-                      onChange={(e) => setNoteBody(e.target.value)}
-                      autoComplete="off"
-                    />
+                    View ›
+                  </button>
+                </div>
+                <div className="departures-card__check-list">
+                  {displayChecklist.map((item, idx) => (
                     <button
-                      type="submit"
-                      className="departures-card__note-send"
-                      disabled={noteBusy || !noteBody.trim()}
+                      key={item.dbItem?.id ?? `canonical-${idx}`}
+                      type="button"
+                      className={
+                        item.dbItem?.done
+                          ? "departures-card__check-item departures-card__check-item--done"
+                          : "departures-card__check-item"
+                      }
+                      onClick={() => {
+                        if (item.dbItem) onToggleItem(item.dbItem);
+                      }}
+                      disabled={taskDone || stepsLocked || !item.dbItem}
+                      aria-pressed={item.dbItem?.done ?? false}
                     >
-                      {noteBusy ? "…" : "Post"}
+                      <span className="departures-card__check-box" aria-hidden />
+                      <span className="departures-card__check-txt">{item.displayTitle}</span>
                     </button>
-                  </form>
-                ) : (
-                  <div className="departures-card__plus-glyph" aria-hidden>+</div>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* DEEP CLEAN — placeholder (BR post-beta) */}
-            <div className="departures-card__tile departures-card__tile--placeholder">
-              <div className="departures-card__tile-head mono">DEEP CLEAN</div>
-              <div className="departures-card__tile-body">
-                <div className="departures-card__plus-glyph" aria-hidden>+</div>
+              {/* NOTES */}
+              <div className="departures-card__tile">
+                <div className="departures-card__tile-head">
+                  <span>NOTES</span>
+                </div>
+                <div className="departures-card__tile-body">
+                  {comments.length > 0 ? (
+                    <p className="departures-card__tile-note-count mono">
+                      {comments.length} note{comments.length !== 1 ? "s" : ""}
+                    </p>
+                  ) : null}
+                  {!taskDone ? (
+                    <form className="departures-card__note-form" onSubmit={onPostNote}>
+                      <textarea
+                        id="staff-task-note-dep"
+                        className="departures-card__note-input"
+                        rows={2}
+                        placeholder="Add a note…"
+                        value={noteBody}
+                        onChange={(e) => setNoteBody(e.target.value)}
+                        autoComplete="off"
+                      />
+                      <button
+                        type="submit"
+                        className="departures-card__note-send"
+                        disabled={noteBusy || !noteBody.trim()}
+                      >
+                        {noteBusy ? "…" : "Post"}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="departures-card__tile-plus" aria-hidden>+</div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* MAINT. — placeholder (BR post-beta) */}
-            <div className="departures-card__tile departures-card__tile--placeholder">
-              <div className="departures-card__tile-head mono">MAINT.</div>
-              <div className="departures-card__tile-body">
-                <div className="departures-card__plus-glyph" aria-hidden>+</div>
+              {/* DEEP CLEAN — placeholder */}
+              <div className="departures-card__tile">
+                <div className="departures-card__tile-head">
+                  <span>DEEP CLEAN</span>
+                </div>
+                <div className="departures-card__tile-body departures-card__tile-body--center">
+                  <div className="departures-card__tile-plus" aria-hidden>+</div>
+                </div>
               </div>
-            </div>
 
+              {/* MAINTENANCE — placeholder (renamed from Maint.) */}
+              <div className="departures-card__tile">
+                <div className="departures-card__tile-head">
+                  <span>MAINTENANCE</span>
+                </div>
+                <div className="departures-card__tile-body departures-card__tile-body--center">
+                  <div className="departures-card__tile-plus" aria-hidden>+</div>
+                </div>
+              </div>
+
+            </div>
           </div>
-        </div>
+        </div>{/* end departures-card__shell */}
 
-        </div>{/* end departures-card__card */}
-
-        {/* Action pair — inline below card, not pinned to viewport */}
-        <div className="departures-card__actions" aria-label="Task actions">
+        {/* CTAs — on cream surface, outside shell */}
+        <div className="departures-card__cta-row" aria-label="Task actions">
           <button
             type="button"
-            className="departures-card__action-btn departures-card__action-btn--secondary"
+            className="departures-card__btn"
             onClick={onNeedHelp}
             disabled={helpBusy || taskDone}
           >
@@ -412,7 +475,7 @@ export default function DeparturesCard({
           </button>
           <button
             type="button"
-            className="departures-card__action-btn departures-card__action-btn--primary"
+            className="departures-card__btn departures-card__btn--primary"
             onClick={onImDone}
             disabled={doneBusy || taskDone || paused}
           >
