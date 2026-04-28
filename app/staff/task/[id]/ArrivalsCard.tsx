@@ -1,42 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   type CommentRow,
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
-import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
-import { supabase } from "@/lib/supabase";
 import {
   type ExecutionChecklistItem,
   ARRIVALS_CANONICAL_CHECKLIST,
 } from "@/lib/staff-task-execution-checklist";
+import { resolveChecklist } from "@/lib/checklists/resolve";
+import ChecklistDrillDown from "./ChecklistDrillDown";
 
 // ---------------------------------------------------------------------------
-// Arrival-specific types
+// Context parsers — safe, never throw
 // ---------------------------------------------------------------------------
-
-type ArrivalStatus = "open" | "prepped" | "ready" | "welcomed";
-
-const ARRIVAL_STATUS_CHIPS: ReadonlyArray<{
-  value: ArrivalStatus;
-  label: string;
-}> = [
-  { value: "open", label: "Open" },
-  { value: "prepped", label: "Prepped" },
-  { value: "ready", label: "Ready" },
-  { value: "welcomed", label: "Welcomed" },
-];
-
-// ---------------------------------------------------------------------------
-// Context parsers — all safe, never throw
-// ---------------------------------------------------------------------------
-
-function parseArrivalStatus(raw: unknown): ArrivalStatus {
-  if (raw === "prepped" || raw === "ready" || raw === "welcomed") return raw;
-  return "open";
-}
 
 type IncomingGuest = {
   name: string | null;
@@ -159,12 +138,11 @@ export type ArrivalsCardProps = {
 
 export default function ArrivalsCard({
   task,
-  userId,
+  userId: _userId,
   displayName: _displayName,
   checklist,
   comments,
   inlineError,
-  setInlineError,
   noteBody,
   setNoteBody,
   noteBusy,
@@ -179,42 +157,9 @@ export default function ArrivalsCard({
   onResume,
   onPostNote,
 }: ArrivalsCardProps) {
-  const [arrivalStatus, setArrivalStatus] = useState<ArrivalStatus>(
-    parseArrivalStatus(task.context.arrival_status),
-  );
-  const [statusBusy, setStatusBusy] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
-  const onSetArrivalStatus = useCallback(
-    async (next: ArrivalStatus) => {
-      if (!userId || statusBusy || next === arrivalStatus) return;
-      const prev = arrivalStatus;
-      setStatusBusy(true);
-      setInlineError(null);
-
-      const { error: upErr } = await supabase
-        .from("tasks")
-        .update({ context: { ...task.context, arrival_status: next } })
-        .eq("id", task.id);
-
-      if (upErr) {
-        setInlineError(upErr.message);
-        setStatusBusy(false);
-        return;
-      }
-
-      await logTaskEvent(
-        task.id,
-        "arrival_status_changed",
-        withTaskEventSchema({ from: prev, to: next }),
-        userId,
-      );
-
-      setArrivalStatus(next);
-      setStatusBusy(false);
-    },
-    [userId, statusBusy, arrivalStatus, task, setInlineError],
-  );
-
+  const checklistTree = resolveChecklist("arrival", task.room_number);
   const guest = parseIncomingGuest(task.context);
 
   const taskDone = task.status === "done";
@@ -229,12 +174,10 @@ export default function ArrivalsCard({
 
   const room = displayRoom(task);
   const dueTime = formatDueTime(task.due_time);
-  const heroMeta = dueTime ? `RM ${room} · ${dueTime}` : `RM ${room}`;
 
-  // Compose guest row values
   const guestDisplay = guest?.name
     ? guest.party_size !== null
-      ? `${guest.name} (${guest.party_size} ${guest.party_size === 1 ? "guest" : "guests"})`
+      ? `${guest.name} · ${guest.party_size} ${guest.party_size === 1 ? "guest" : "guests"}`
       : guest.name
     : "—";
 
@@ -248,7 +191,14 @@ export default function ArrivalsCard({
   const displayChecklist = buildDisplayChecklist(checklist);
 
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work arrivals-card">
+    <main className="staff-app arrivals-card">
+      {showChecklist ? (
+        <ChecklistDrillDown
+          root={checklistTree}
+          onClose={() => setShowChecklist(false)}
+        />
+      ) : null}
+
       <div className="staff-task-exec-scroll">
 
         {/* Toolbar — back + pause/resume */}
@@ -282,75 +232,50 @@ export default function ArrivalsCard({
           ) : null}
         </header>
 
-        {/* Unified mustard card: header strip + all content */}
-        <div className="arrivals-card__card">
+        {/* Cream shell */}
+        <div className="arrivals-card__shell">
 
-          {/* Card header strip */}
-          <div className="arrivals-card__header">
-            <div className="arrivals-card__hero">
-              <div className="arrivals-card__hero-type mono">ARRIVAL</div>
-              <div className="arrivals-card__hero-meta mono">{heroMeta}</div>
-            </div>
+          {/* Hero — three ink-stamp pills */}
+          <div className="arrivals-card__hero">
+            <span className="hero-stamp arrivals-card__stamp">ARRIVAL</span>
+            <span className="hero-stamp arrivals-card__stamp">RM {room}</span>
+            {dueTime ? (
+              <span className="hero-stamp arrivals-card__stamp">{dueTime}</span>
+            ) : null}
           </div>
 
-          {/* Card body */}
+          {/* Body */}
           <div className="arrivals-card__body">
 
-            {/* Single-column info panel */}
+            {/* Guest info ledger */}
             <div className="arrivals-card__panel">
-              <div className="arrivals-card__row">
-                <span className="arrivals-card__row-k mono">GUEST</span>
-                <span className="arrivals-card__row-v">{guestDisplay}</span>
-              </div>
-              <div className="arrivals-card__row">
-                <span className="arrivals-card__row-k mono">NIGHTS</span>
-                <span className="arrivals-card__row-v">{nightsDisplay}</span>
-              </div>
-              <div className="arrivals-card__row">
-                <span className="arrivals-card__row-k mono">EXTRAS</span>
-                <span className="arrivals-card__row-v">—</span>
-              </div>
-              <div className="arrivals-card__row">
-                <span className="arrivals-card__row-k mono">REQUESTS</span>
-                <span className="arrivals-card__row-v arrivals-card__row-v--note">
-                  {requestsDisplay}
-                </span>
-              </div>
-              {descNote ? (
-                <div className="arrivals-card__row">
-                  <span className="arrivals-card__row-k mono">SETUP</span>
-                  <span className="arrivals-card__row-v arrivals-card__row-v--note">
-                    {descNote}
-                  </span>
+              <div className="arrivals-card__info-list">
+                <div className="arrivals-card__info-row">
+                  <div className="arrivals-card__info-label">GUEST</div>
+                  <div className="arrivals-card__info-val">{guestDisplay}</div>
                 </div>
-              ) : null}
-            </div>
-
-            {/* Status row — radio-dot */}
-            <div
-              className="arrivals-card__status-row"
-              role="group"
-              aria-label="Room readiness status"
-            >
-              <span className="arrivals-card__status-label mono">STATUS</span>
-              <div className="arrivals-card__status-opts">
-                {ARRIVAL_STATUS_CHIPS.map((chip) => (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    className={
-                      arrivalStatus === chip.value
-                        ? "arrivals-card__status-opt arrivals-card__status-opt--active"
-                        : "arrivals-card__status-opt"
-                    }
-                    onClick={() => void onSetArrivalStatus(chip.value)}
-                    disabled={taskDone || statusBusy}
-                    aria-pressed={arrivalStatus === chip.value}
-                  >
-                    <span className="arrivals-card__status-dot" aria-hidden />
-                    {chip.label}
-                  </button>
-                ))}
+                <div className="arrivals-card__info-row">
+                  <div className="arrivals-card__info-label">NIGHTS</div>
+                  <div className="arrivals-card__info-val">{nightsDisplay}</div>
+                </div>
+                <div className="arrivals-card__info-row">
+                  <div className="arrivals-card__info-label">EXTRAS</div>
+                  <div className="arrivals-card__info-val">—</div>
+                </div>
+                <div className="arrivals-card__info-row">
+                  <div className="arrivals-card__info-label">REQUESTS</div>
+                  <div className="arrivals-card__info-val arrivals-card__info-val--note">
+                    {requestsDisplay}
+                  </div>
+                </div>
+                {descNote ? (
+                  <div className="arrivals-card__info-row">
+                    <div className="arrivals-card__info-label">SETUP</div>
+                    <div className="arrivals-card__info-val arrivals-card__info-val--note">
+                      {descNote}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -362,9 +287,18 @@ export default function ArrivalsCard({
             <div className="arrivals-card__tile-grid">
 
               {/* CHECKLIST */}
-              <div className="arrivals-card__tile arrivals-card__tile--checklist">
-                <div className="arrivals-card__tile-head mono">CHECKLIST</div>
-                <div className="arrivals-card__tile-body">
+              <div className="arrivals-card__tile">
+                <div className="arrivals-card__tile-head">
+                  <span>CHECKLIST</span>
+                  <button
+                    type="button"
+                    className="arrivals-card__tile-head-link"
+                    onClick={() => setShowChecklist(true)}
+                  >
+                    View ›
+                  </button>
+                </div>
+                <div className="arrivals-card__check-list">
                   {displayChecklist.map((item, idx) => (
                     <button
                       key={item.dbItem?.id ?? `canonical-${idx}`}
@@ -380,7 +314,7 @@ export default function ArrivalsCard({
                       disabled={taskDone || stepsLocked || !item.dbItem}
                       aria-pressed={item.dbItem?.done ?? false}
                     >
-                      <span className="arrivals-card__check-ring" aria-hidden />
+                      <span className="arrivals-card__check-box" aria-hidden />
                       <span className="arrivals-card__check-txt">{item.displayTitle}</span>
                     </button>
                   ))}
@@ -388,8 +322,10 @@ export default function ArrivalsCard({
               </div>
 
               {/* NOTES */}
-              <div className="arrivals-card__tile arrivals-card__tile--notes">
-                <div className="arrivals-card__tile-head mono">NOTES</div>
+              <div className="arrivals-card__tile">
+                <div className="arrivals-card__tile-head">
+                  <span>NOTES</span>
+                </div>
                 <div className="arrivals-card__tile-body">
                   {comments.length > 0 ? (
                     <p className="arrivals-card__tile-note-count mono">
@@ -419,21 +355,20 @@ export default function ArrivalsCard({
                       </button>
                     </form>
                   ) : (
-                    <div className="arrivals-card__plus-glyph" aria-hidden>+</div>
+                    <div className="arrivals-card__tile-plus" aria-hidden>+</div>
                   )}
                 </div>
               </div>
 
             </div>
           </div>
+        </div>{/* end arrivals-card__shell */}
 
-        </div>{/* end arrivals-card__card */}
-
-        {/* Action pair — inline below card, not pinned to viewport */}
-        <div className="arrivals-card__actions" aria-label="Task actions">
+        {/* CTAs — on cream surface, outside shell */}
+        <div className="arrivals-card__cta-row" aria-label="Task actions">
           <button
             type="button"
-            className="arrivals-card__action-btn arrivals-card__action-btn--secondary"
+            className="arrivals-card__btn"
             onClick={onNeedHelp}
             disabled={helpBusy || taskDone}
           >
@@ -441,7 +376,7 @@ export default function ArrivalsCard({
           </button>
           <button
             type="button"
-            className="arrivals-card__action-btn arrivals-card__action-btn--primary"
+            className="arrivals-card__btn arrivals-card__btn--primary"
             onClick={onImDone}
             disabled={doneBusy || taskDone || paused}
           >

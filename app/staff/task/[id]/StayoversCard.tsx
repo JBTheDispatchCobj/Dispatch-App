@@ -12,6 +12,8 @@ import {
   type ExecutionChecklistItem,
   STAYOVERS_CANONICAL_CHECKLIST,
 } from "@/lib/staff-task-execution-checklist";
+import { resolveChecklist } from "@/lib/checklists/resolve";
+import ChecklistDrillDown from "./ChecklistDrillDown";
 
 // ---------------------------------------------------------------------------
 // Stayover-specific types — multi-select status
@@ -23,11 +25,11 @@ const STAYOVER_STATUS_OPTIONS: ReadonlyArray<{
   value: StayoverStatusKey;
   label: string;
 }> = [
-  { value: "dnd", label: "DO NOT DISTURB" },
-  { value: "guest_ok", label: "GUEST OK" },
-  { value: "desk_ok", label: "DESK OK" },
-  { value: "sheet_change", label: "SHEET CHANGE" },
-  { value: "done", label: "DONE" },
+  { value: "dnd",          label: "Do Not Disturb" },
+  { value: "guest_ok",     label: "Guest OK" },
+  { value: "desk_ok",      label: "Desk OK" },
+  { value: "sheet_change", label: "Sheet Change" },
+  { value: "done",         label: "Done" },
 ];
 
 const VALID_STATUS_KEYS = new Set<string>(["dnd", "guest_ok", "desk_ok", "sheet_change", "done"]);
@@ -124,6 +126,17 @@ function displayRoom(task: TaskCard): string {
   return roomFromTitle(task.title) ?? "—";
 }
 
+function formatDueTime(iso: string | null): string {
+  if (!iso) return "";
+  const m = String(iso).match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return iso;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const d = new Date();
+  d.setHours(h, min, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
 function checklistInteractionDisabled(status: string): boolean {
   return status === "done" || status === "blocked" || status === "paused";
 }
@@ -185,6 +198,7 @@ export default function StayoversCard({
     parseStayoverStatuses(task.context.stayover_status),
   );
   const [statusBusy, setStatusBusy] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const onToggleStayoverStatus = useCallback(
     async (key: StayoverStatusKey) => {
@@ -223,33 +237,35 @@ export default function StayoversCard({
 
   const guest = parseCurrentGuest(task.context);
 
-  const taskDone = task.status === "done";
+  const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";
-  const paused = task.status === "paused";
+  const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
 
-  const room = displayRoom(task);
-  const heroMeta = [
-    `RM ${room}`,
-    guest?.nights_remaining?.toUpperCase(),
-    task.location_label?.toUpperCase(),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const room    = displayRoom(task);
+  const dueTime = formatDueTime(task.due_time);
 
   const guestDisplay = guest?.name
     ? guest.party_size !== null
-      ? `${guest.name} (${guest.party_size} ${guest.party_size === 1 ? "guest" : "guests"})`
+      ? `${guest.name} · ${guest.party_size} ${guest.party_size === 1 ? "guest" : "guests"}`
       : guest.name
     : "—";
 
   const nightsDisplay = guest?.nights_remaining ?? "—";
-  const notesDisplay = guest?.special_requests ?? "—";
+  const notesDisplay  = guest?.special_requests ?? "—";
 
   const displayChecklist = buildDisplayChecklist(checklist);
+  const checklistTree    = resolveChecklist("stayover", task.room_number);
 
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work stayover-card">
+    <main className="staff-app stayover-card">
+      {showChecklist ? (
+        <ChecklistDrillDown
+          root={checklistTree}
+          onClose={() => setShowChecklist(false)}
+        />
+      ) : null}
+
       <div className="staff-task-exec-scroll">
 
         {/* Toolbar — back + pause/resume */}
@@ -283,24 +299,31 @@ export default function StayoversCard({
           ) : null}
         </header>
 
-        {/* Unified coral card: header strip + all content */}
-        <div className="stayover-card__card">
+        {/* Cream shell */}
+        <div className="stayover-card__shell">
 
-          {/* Card header strip */}
-          <div className="stayover-card__header">
-            <div className="stayover-card__hero">
-              <div className="stayover-card__hero-type mono">STAYOVER</div>
-              <div className="stayover-card__hero-meta mono">{heroMeta}</div>
-            </div>
+          {/* Hero — ink-stamp pills */}
+          <div className="stayover-card__hero">
+            <span className="hero-stamp stayover-card__stamp">STAYOVER</span>
+            <span className="hero-stamp stayover-card__stamp">RM {room}</span>
+            {dueTime ? (
+              <span className="hero-stamp stayover-card__stamp">{dueTime}</span>
+            ) : null}
           </div>
 
-          {/* Card body */}
+          {/* Body */}
           <div className="stayover-card__body">
 
-            {/* Status multi-select panel */}
-            <div className="stayover-card__panel stayover-card__panel--status">
-              <div className="stayover-card__panel-label mono">STATUS</div>
-              <div className="stayover-card__status-grid">
+            {/* Status panel */}
+            <div className="stayover-card__panel">
+              <div className="stayover-card__panel-head">
+                <span>STATUS</span>
+              </div>
+              <div
+                className="stayover-card__status-body"
+                role="group"
+                aria-label="Stayover status"
+              >
                 {STAYOVER_STATUS_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -321,26 +344,27 @@ export default function StayoversCard({
               </div>
             </div>
 
-            {/* Guest info panel */}
+            {/* Guest info ledger */}
             <div className="stayover-card__panel">
-              <div className="stayover-card__row">
-                <span className="stayover-card__row-k mono">GUEST</span>
-                <span className="stayover-card__row-v">{guestDisplay}</span>
-              </div>
-              <div className="stayover-card__row">
-                <span className="stayover-card__row-k mono">NIGHTS</span>
-                <span className="stayover-card__row-v">{nightsDisplay}</span>
-              </div>
-              {/* post-beta: "Type" field (service type) not in current_guest schema — render "—" */}
-              <div className="stayover-card__row">
-                <span className="stayover-card__row-k mono">TYPE</span>
-                <span className="stayover-card__row-v">—</span>
-              </div>
-              <div className="stayover-card__row">
-                <span className="stayover-card__row-k mono">NOTES</span>
-                <span className="stayover-card__row-v stayover-card__row-v--note">
-                  {notesDisplay}
-                </span>
+              <div className="stayover-card__info-list">
+                <div className="stayover-card__info-row">
+                  <div className="stayover-card__info-label">GUEST</div>
+                  <div className="stayover-card__info-val">{guestDisplay}</div>
+                </div>
+                <div className="stayover-card__info-row">
+                  <div className="stayover-card__info-label">NIGHT</div>
+                  <div className="stayover-card__info-val">{nightsDisplay}</div>
+                </div>
+                <div className="stayover-card__info-row">
+                  <div className="stayover-card__info-label">TYPE</div>
+                  <div className="stayover-card__info-val">—</div>
+                </div>
+                <div className="stayover-card__info-row">
+                  <div className="stayover-card__info-label">NOTES</div>
+                  <div className="stayover-card__info-val stayover-card__info-val--note">
+                    {notesDisplay}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -348,13 +372,13 @@ export default function StayoversCard({
               <p className="error stayover-card__error">{inlineError}</p>
             ) : null}
 
-            {/* 3-tile grid (2-col, 3 tiles — bottom-right slot empty) */}
+            {/* 3-tile grid */}
             <div className="stayover-card__tile-grid">
 
               {/* CHECKLIST */}
-              <div className="stayover-card__tile stayover-card__tile--checklist">
-                <div className="stayover-card__tile-head mono">CHECKLIST</div>
-                <div className="stayover-card__tile-body">
+              <div className="stayover-card__tile">
+                <div className="stayover-card__tile-head">CHECKLIST</div>
+                <div className="stayover-card__check-list">
                   {displayChecklist.map((item, idx) => (
                     <button
                       key={item.dbItem?.id ?? `canonical-${idx}`}
@@ -370,7 +394,7 @@ export default function StayoversCard({
                       disabled={taskDone || stepsLocked || !item.dbItem}
                       aria-pressed={item.dbItem?.done ?? false}
                     >
-                      <span className="stayover-card__check-ring" aria-hidden />
+                      <span className="stayover-card__check-box" aria-hidden />
                       <span className="stayover-card__check-txt">{item.displayTitle}</span>
                     </button>
                   ))}
@@ -378,8 +402,8 @@ export default function StayoversCard({
               </div>
 
               {/* NOTES */}
-              <div className="stayover-card__tile stayover-card__tile--notes">
-                <div className="stayover-card__tile-head mono">NOTES</div>
+              <div className="stayover-card__tile">
+                <div className="stayover-card__tile-head">NOTES</div>
                 <div className="stayover-card__tile-body">
                   {comments.length > 0 ? (
                     <p className="stayover-card__tile-note-count mono">
@@ -414,9 +438,9 @@ export default function StayoversCard({
                 </div>
               </div>
 
-              {/* MAINT. — static placeholder (post-beta) */}
-              <div className="stayover-card__tile stayover-card__tile--placeholder">
-                <div className="stayover-card__tile-head mono">MAINT.</div>
+              {/* MAINTENANCE — placeholder */}
+              <div className="stayover-card__tile">
+                <div className="stayover-card__tile-head">MAINTENANCE</div>
                 <div className="stayover-card__tile-body stayover-card__tile-body--center">
                   <div className="stayover-card__plus-glyph" aria-hidden>+</div>
                 </div>
@@ -424,14 +448,13 @@ export default function StayoversCard({
 
             </div>
           </div>
+        </div>{/* end stayover-card__shell */}
 
-        </div>{/* end stayover-card__card */}
-
-        {/* Action pair — inline below card, not pinned to viewport */}
-        <div className="stayover-card__actions" aria-label="Task actions">
+        {/* CTAs — outside shell */}
+        <div className="stayover-card__cta-row" aria-label="Task actions">
           <button
             type="button"
-            className="stayover-card__action-btn stayover-card__action-btn--secondary"
+            className="stayover-card__btn"
             onClick={onNeedHelp}
             disabled={helpBusy || taskDone}
           >
@@ -439,7 +462,7 @@ export default function StayoversCard({
           </button>
           <button
             type="button"
-            className="stayover-card__action-btn stayover-card__action-btn--primary"
+            className="stayover-card__btn stayover-card__btn--primary"
             onClick={onImDone}
             disabled={doneBusy || taskDone || paused}
           >

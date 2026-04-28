@@ -8,6 +8,8 @@ import DeparturesCard from "./DeparturesCard";
 import EODCard from "./EODCard";
 import StartOfDayCard from "./StartOfDayCard";
 import StayoversCard from "./StayoversCard";
+import ChecklistDrillDown from "./ChecklistDrillDown";
+import { resolveChecklist } from "@/lib/checklists/resolve";
 import {
   useCallback,
   useEffect,
@@ -132,6 +134,7 @@ export default function StaffTaskExecutionPage() {
   const [doneBusy, setDoneBusy] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
   const [resumeBusy, setResumeBusy] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   const openCardRunForTaskId = useRef<string | null>(null);
   const prevRouteTaskIdRef = useRef<string | null>(null);
@@ -394,6 +397,7 @@ export default function StaffTaskExecutionPage() {
       ? task.description.trim()
       : null;
   const stepsLocked = checklistInteractionDisabled(task.status);
+  const checklistTree = resolveChecklist(task.card_type, task.room_number);
 
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
@@ -568,6 +572,12 @@ export default function StaffTaskExecutionPage() {
 
   return (
     <main className="staff-app staff-task-exec staff-task-exec--work">
+      {showChecklist ? (
+        <ChecklistDrillDown
+          root={checklistTree}
+          onClose={() => setShowChecklist(false)}
+        />
+      ) : null}
       <div className="staff-task-exec-scroll">
         <header className="staff-task-exec-top staff-task-exec-toolbar">
           <Link href="/staff" className="staff-task-exec-back">
@@ -649,6 +659,16 @@ export default function StaffTaskExecutionPage() {
         {inlineError ? (
           <p className="error staff-task-exec-error">{inlineError}</p>
         ) : null}
+
+        <section className="staff-task-exec-section" aria-label="Full checklist">
+          <button
+            type="button"
+            className="staff-task-exec-view-checklist"
+            onClick={() => setShowChecklist(true)}
+          >
+            View full checklist &rsaquo;
+          </button>
+        </section>
 
         <section
           className="staff-task-exec-section staff-task-exec-section--progress"
