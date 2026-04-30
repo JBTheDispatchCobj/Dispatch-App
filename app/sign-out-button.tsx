@@ -1,5 +1,6 @@
 "use client";
 
+import { redirectToLoginUnlessLocalDevBypass } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
 
 export default function SignOutButton() {
@@ -9,7 +10,7 @@ export default function SignOutButton() {
       className="outline"
       onClick={() => {
         void supabase.auth.signOut().then(() => {
-          window.location.replace("/login");
+          redirectToLoginUnlessLocalDevBypass();
         });
       }}
     >

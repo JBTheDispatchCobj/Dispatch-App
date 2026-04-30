@@ -2,7 +2,14 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, Suspense } from "react";
+import {
+  fetchProfile,
+  shouldUseManagerHome,
+  type ProfileFetchFailure,
+} from "@/lib/profile";
+import { resolveAuthUser } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
+import ProfileLoadError from "@/app/profile-load-error";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -11,6 +18,8 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [linkSent, setLinkSent] = useState(false);
+  const [profileGateFailure, setProfileGateFailure] =
+    useState<ProfileFetchFailure | null>(null);
 
   useEffect(() => {
     const paramError = searchParams.get("error");
@@ -21,14 +30,37 @@ function LoginForm() {
 
   useEffect(() => {
     let cancelled = false;
-    void supabase.auth.getSession().then(({ data: { session } }) => {
+    void (async () => {
       if (cancelled) return;
-      if (session) {
-        window.location.replace("/");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+      const user = resolveAuthUser(session);
+      if (user) {
+        const result = await fetchProfile(supabase, user);
+        if (cancelled) return;
+        if (!result.ok) {
+          setProfileGateFailure(result.failure);
+          setCheckingSession(false);
+          return;
+        }
+        const p = result.profile;
+        const managerLike = shouldUseManagerHome(p);
+        const target = managerLike ? "/" : "/staff";
+        console.log("[login-routing]", {
+          authUserId: user.id,
+          authEmail: user.email,
+          profileId: p.id,
+          role: p.role,
+          staffId: p.staff_id,
+          decision: `replace(${target})`,
+        });
+        window.location.replace(target);
         return;
       }
       setCheckingSession(false);
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -60,6 +92,10 @@ function LoginForm() {
         <p className="loading-line">Loading…</p>
       </main>
     );
+  }
+
+  if (profileGateFailure) {
+    return <ProfileLoadError failure={profileGateFailure} />;
   }
 
   return (
