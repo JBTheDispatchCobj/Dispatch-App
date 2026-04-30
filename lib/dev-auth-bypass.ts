@@ -12,8 +12,13 @@ export type DevRoleMode = "off" | "manager" | "staff";
 
 export type DevRoleOverride = "manager" | "staff";
 
-/** Local dev hostnames only — never true on deployed production domains. */
+/**
+ * Returns true only when NEXT_PUBLIC_DEV_BYPASS=true AND the current hostname
+ * is a local dev address. Production deploys leave the env var unset so this
+ * is always false there, regardless of hostname.
+ */
 export function isLocalDevHost(): boolean {
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS !== "true") return false;
   if (typeof window === "undefined") return false;
   const h = window.location.hostname.toLowerCase();
   return (
