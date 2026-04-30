@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Dispatch Add Task Modal",
+  "schemaVersion": 1,
+  "description": "Add Task modal — triggered by the + button on staff or admin home. Bucket chooser (5 bucket colors + sage for Maintenance), title, assignee picker, priority, time/due, notes. Form-paper feel. Creates a new task in the selected bucket."
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispatch &mdash; Add Task Form</title>
+<style>
+  :root {
+    color-scheme: light;
+    --shell-cream: #F5F0E6;
+    --paper-bg: #E6DFCD;
+    --arr-body: #FFDA64; --arr-h: #D9A82C; --arr-t: #2C1608;
+    --dep-body: #00624E; --dep-h: #003D30; --dep-t: #E1F5EE;
+    --sta-body: #C38556; --sta-h: #8F5A36; --sta-t: #2C1608;
+    --dai-body: #C8BFE7; --dai-h: #9F94CC; --dai-t: #2C1608;
+    --eod-body: #FF8888; --eod-h: #C75F5F; --eod-t: #4A1B0C;
+    --sage-body: #BACBA0; --sage-h: #8A9B75; --sage-t: #2C3A1D;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 16px 64px;
+    background: var(--paper-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    color: #2C1608; -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "SF Mono", Menlo, Monaco, Consolas, "Courier New", monospace; }
+
+  .stack { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  .state-label {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.2em; font-weight: 600;
+    color: rgba(44,22,8,0.6); text-transform: uppercase;
+    margin: 4px 4px -4px;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .state-num {
+    background: rgba(44,22,8,0.1); padding: 3px 7px; border-radius: 4px;
+    font-weight: 500; margin-right: 8px;
+  }
+
+  /* Modal shell */
+  .modal {
+    position: relative; background: var(--shell-cream);
+    border-radius: 18px; overflow: hidden;
+    box-shadow:
+      0 2px 4px rgba(30,20,10,0.1),
+      0 12px 28px rgba(30,20,10,0.14),
+      0 32px 64px rgba(30,20,10,0.08);
+  }
+  .modal::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.72  0 0 0 0 0.56  0 0 0 0 0.32  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: multiply; opacity: 0.5; pointer-events: none; border-radius: inherit;
+  }
+  .modal > * { position: relative; z-index: 1; }
+
+  .hero {
+    background: #2C1608; color: var(--shell-cream);
+    padding: 12px 18px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hero-left {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11px; letter-spacing: 0.16em; font-weight: 600;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-left .badge { background: rgba(255,255,255,0.12); padding: 3px 8px; border-radius: 4px; }
+  .hero-bucket-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .close-btn {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.1); border: none; border-radius: 50%;
+    color: var(--shell-cream); font-size: 16px; line-height: 1;
+    cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .body { padding: 18px 18px 22px; }
+  .title-line {
+    font-size: 22px; font-weight: 500; line-height: 1.22;
+    color: #2C1608; letter-spacing: -0.01em; margin-bottom: 4px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.55);
+  }
+  .title-sub {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.18em; font-weight: 500;
+    color: rgba(44,22,8,0.55); text-transform: uppercase; margin-bottom: 16px;
+  }
+
+  .banner {
+    background: #FFE9E5;
+    border: 1px solid rgba(168,66,62,0.32); border-radius: 10px;
+    padding: 10px 12px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 9px;
+    font-size: 12.5px; color: #6E2825; font-weight: 500; line-height: 1.35;
+  }
+  .banner-icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #A8423E; color: #FFE9E5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+
+  .panel {
+    background: #FFFFFF; border-radius: 12px; margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow:
+      0 1px 2px rgba(30,20,10,0.12),
+      0 4px 10px rgba(30,20,10,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.9),
+      inset 0 -1px 0 rgba(30,20,10,0.05);
+  }
+  .panel-head {
+    background: #DDD4C5; color: #2C1608;
+    padding: 7px 14px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.16em; font-weight: 600;
+    text-transform: uppercase;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel-body { padding: 12px 14px 14px; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.16em; font-size: 9px; text-transform: uppercase;
+    color: rgba(44,22,8,0.65); margin-bottom: 5px; font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field-label .req-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #A8423E; display: inline-block;
+  }
+  .input, .textarea {
+    width: 100%; background: #FFFBF0;
+    border: 1px solid rgba(44,22,8,0.14); border-radius: 8px;
+    padding: 9px 11px; font-size: 13.5px;
+    color: #2C1608; font-family: inherit; outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .input:focus, .textarea:focus { border-color: rgba(44,22,8,0.4); }
+  .textarea { min-height: 64px; resize: vertical; }
+  .input.error, .textarea.error { border-color: #A8423E; }
+  .input:disabled, .textarea:disabled { opacity: 0.7; }
+
+  .field-error {
+    font-size: 11.5px; color: #A8423E; margin-top: 4px; font-weight: 500;
+  }
+
+  .bucket-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .bucket-chip {
+    padding: 9px 8px; border-radius: 8px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.12em; font-weight: 600;
+    text-transform: uppercase; cursor: pointer;
+    border: 1.5px solid rgba(44,22,8,0.16);
+    background: #FFFFFF; color: rgba(44,22,8,0.65);
+    display: flex; flex-direction: column; align-items: center; gap: 5px; line-height: 1;
+  }
+  .bucket-chip .swatch {
+    width: 14px; height: 14px; border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .bucket-chip.active {
+    background: var(--bc-bg); color: var(--bc-text); border-color: var(--bc-border);
+    box-shadow: 0 1px 2px rgba(30,20,10,0.18);
+  }
+
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    padding: 6px 12px; border-radius: 999px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.14em; font-weight: 600;
+    text-transform: uppercase; cursor: pointer;
+    border: 1.5px solid rgba(44,22,8,0.18);
+    background: #FFFFFF; color: rgba(44,22,8,0.55);
+  }
+  .chip.active {
+    background: #2C1608; color: #F5F0E6; border-color: #2C1608;
+  }
+  .chip.active.alert { background: #A8423E; border-color: #A8423E; }
+
+  .assignee-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .assignee-chip {
+    background: #FFFFFF;
+    border: 1.5px solid rgba(44,22,8,0.16); border-radius: 10px;
+    padding: 7px 5px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .assignee-chip img {
+    width: 28px; height: 28px; border-radius: 50%;
+    object-fit: cover; display: block;
+  }
+  .assignee-chip-name {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 8.5px; letter-spacing: 0.08em; font-weight: 600;
+    color: rgba(44,22,8,0.7); text-transform: uppercase; line-height: 1;
+  }
+  .assignee-chip.active {
+    background: #1B3340; color: #FFF; border-color: #1B3340;
+    box-shadow: 0 1px 2px rgba(20,30,40,0.25);
+  }
+  .assignee-chip.active .assignee-chip-name { color: #FFF; }
+  .assignee-chip.locked {
+    background: #BFD7E3; border-color: #85A8B8;
+  }
+  .assignee-chip.locked .assignee-chip-name { color: #1B3340; }
+  .assignee-locked-hint {
+    margin-top: 6px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 9px; letter-spacing: 0.16em; font-weight: 500;
+    color: rgba(27,51,64,0.7); text-transform: uppercase;
+  }
+
+  .cta-pair {
+    display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 16px;
+  }
+  .btn {
+    padding: 13px 14px; border-radius: 999px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 11px; letter-spacing: 0.18em; font-weight: 600;
+    text-transform: uppercase; cursor: pointer;
+    border: 1.5px solid #2C1608;
+    background: transparent; color: #2C1608;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn.primary {
+    background: #2C1608; color: var(--shell-cream);
+    box-shadow:
+      0 1px 2px rgba(20,10,5,0.32),
+      0 4px 10px rgba(20,10,5,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+  }
+  .btn.primary[data-bucket=departures] {
+    background: var(--dep-h); border-color: var(--dep-h); color: #E1F5EE;
+  }
+  .btn.primary:disabled, .btn:disabled {
+    opacity: 0.55; cursor: not-allowed; box-shadow: none;
+  }
+  .btn .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid rgba(245,240,230,0.3);
+    border-top-color: var(--shell-cream);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .err-block {
+    margin-top: 14px; background: #FFE9E5;
+    border: 1px solid rgba(168,66,62,0.28); border-radius: 10px;
+    padding: 12px 13px;
+  }
+  .err-headline {
+    font-size: 13px; font-weight: 500; color: #6E2825; margin-bottom: 5px;
+  }
+  .err-detail {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10.5px; color: rgba(110,40,37,0.78);
+    line-height: 1.5; word-break: break-all;
+  }
+
+  .toast {
+    position: relative; margin: 18px 18px 0;
+    padding: 14px 14px;
+    background: #2C1608; color: var(--shell-cream);
+    border-radius: 12px;
+    display: flex; align-items: center; gap: 11px;
+    box-shadow:
+      0 4px 10px rgba(20,10,5,0.32),
+      0 12px 28px rgba(20,10,5,0.2);
+  }
+  .toast-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #2E7B54;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0;
+  }
+  .toast-body { min-width: 0; }
+  .toast-title { font-size: 13.5px; font-weight: 500; margin-bottom: 2px; }
+  .toast-sub {
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 10px; letter-spacing: 0.16em; font-weight: 500;
+    color: rgba(245,240,230,0.65); text-transform: uppercase;
+  }
+
+  .footnote {
+    color: rgba(44,22,8,0.32); font-size: 9px; letter-spacing: 0.3em;
+    text-align: center; margin-top: 10px; font-weight: 500; text-transform: uppercase;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+<div class="stack">
+
+  <!-- STATE 1: Empty (opened from staff profile) -->
+  <div>
+    <div class="state-label"><span><span class="state-num">01</span>Empty &middot; opened from staff profile</span><span>ANGIE PRE-FILLED</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">NEW TASK</span>
+          <span>FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="body">
+        <div class="title-line">Add a task</div>
+        <div class="mono title-sub">Dispatches to Angie&apos;s queue on save</div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHAT</span><span style="opacity:0.55;">REQUIRED</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Title</div>
+              <input class="input" placeholder="e.g., Turn over Room 14" />
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Bucket</div>
+              <div class="bucket-row">
+                <div class="bucket-chip"><span class="swatch" style="background:var(--arr-body);"></span>Arrival</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--dep-body);"></span>Depart</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sta-body);"></span>Stay</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--dai-body);"></span>Daily</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--eod-body);"></span>EOD</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sage-body);"></span>Maint</div>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Priority</div>
+              <div class="chip-row">
+                <button class="chip">Low</button>
+                <button class="chip active">Normal</button>
+                <button class="chip">High</button>
+                <button class="chip">Critical</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHO &amp; WHERE</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Assignee</div>
+              <div class="assignee-row">
+                <div class="assignee-chip"><img alt="Courtney" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5D8B8'/><stop offset='1' stop-color='%23D9A87C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%237A4A2E'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%237A4A2E'/></svg>"><div class="assignee-chip-name">CO</div></div>
+                <div class="assignee-chip"><img alt="Lizzie" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23CDE0E4'/><stop offset='1' stop-color='%237FA3A8'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%232C4F54'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%232C4F54'/></svg>"><div class="assignee-chip-name">LI</div></div>
+                <div class="assignee-chip locked"><img alt="Angie" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5C8A8'/><stop offset='1' stop-color='%23C68B64'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%235C3320'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%235C3320'/></svg>"><div class="assignee-chip-name">AN</div></div>
+                <div class="assignee-chip"><img alt="Mark" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23DAE0C2'/><stop offset='1' stop-color='%239BA67C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%233C4728'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%233C4728'/></svg>"><div class="assignee-chip-name">MK</div></div>
+              </div>
+              <div class="assignee-locked-hint">PRE-FILLED FROM PROFILE &middot; TAP ANOTHER TO REASSIGN</div>
+            </div>
+            <div class="field">
+              <div class="field-label">Room</div>
+              <input class="input" placeholder="optional &middot; e.g., 14" style="max-width: 130px;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>NOTES</span><span style="opacity:0.55;">OPTIONAL</span></div>
+          <div class="panel-body">
+            <textarea class="textarea" placeholder="Anything Angie should know..."></textarea>
+          </div>
+        </div>
+
+        <div class="cta-pair">
+          <button class="btn">Cancel</button>
+          <button class="btn primary" disabled>Dispatch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 2: Filled valid -->
+  <div>
+    <div class="state-label"><span><span class="state-num">02</span>Filled &middot; departures, ready to dispatch</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">NEW TASK</span>
+          <span style="display:inline-flex; align-items:center; gap:6px;"><span class="hero-bucket-dot" style="background: var(--dep-body);"></span>DEPARTURE &middot; FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="body">
+        <div class="title-line">Add a task</div>
+        <div class="mono title-sub">Dispatches to Angie&apos;s queue on save</div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHAT</span><span style="opacity:0.55;">3 OF 3</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Title</div>
+              <input class="input" value="Turn over Room 14 for late check-in" />
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Bucket</div>
+              <div class="bucket-row">
+                <div class="bucket-chip"><span class="swatch" style="background:var(--arr-body);"></span>Arrival</div>
+                <div class="bucket-chip active" style="--bc-bg: var(--dep-body); --bc-text: var(--dep-t); --bc-border: var(--dep-h);"><span class="swatch" style="background:var(--dep-body); border:1px solid rgba(255,255,255,0.4);"></span>Depart</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sta-body);"></span>Stay</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--dai-body);"></span>Daily</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--eod-body);"></span>EOD</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sage-body);"></span>Maint</div>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Priority</div>
+              <div class="chip-row">
+                <button class="chip">Low</button>
+                <button class="chip">Normal</button>
+                <button class="chip active alert">High</button>
+                <button class="chip">Critical</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHO &amp; WHERE</span><span style="opacity:0.55;">2 OF 2</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Assignee</div>
+              <div class="assignee-row">
+                <div class="assignee-chip"><img alt="Courtney" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5D8B8'/><stop offset='1' stop-color='%23D9A87C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%237A4A2E'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%237A4A2E'/></svg>"><div class="assignee-chip-name">CO</div></div>
+                <div class="assignee-chip"><img alt="Lizzie" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23CDE0E4'/><stop offset='1' stop-color='%237FA3A8'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%232C4F54'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%232C4F54'/></svg>"><div class="assignee-chip-name">LI</div></div>
+                <div class="assignee-chip active"><img alt="Angie" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23F5C8A8'/><stop offset='1' stop-color='%23C68B64'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%235C3320'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%235C3320'/></svg>"><div class="assignee-chip-name">AN</div></div>
+                <div class="assignee-chip"><img alt="Mark" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0.15' y1='0' x2='0.85' y2='1'><stop offset='0' stop-color='%23DAE0C2'/><stop offset='1' stop-color='%239BA67C'/></linearGradient></defs><rect width='80' height='80' fill='url(%23g)'/><circle cx='40' cy='30' r='13' fill='%233C4728'/><ellipse cx='40' cy='74' rx='26' ry='20' fill='%233C4728'/></svg>"><div class="assignee-chip-name">MK</div></div>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">Room</div>
+              <input class="input" value="14" style="max-width: 130px;" />
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>NOTES</span><span style="opacity:0.55;">FILLED</span></div>
+          <div class="panel-body">
+            <textarea class="textarea">Guest checks in at 8 PM. AC was just fixed in this room &mdash; verify it&apos;s cooling properly before flip.</textarea>
+          </div>
+        </div>
+
+        <div class="cta-pair">
+          <button class="btn">Cancel</button>
+          <button class="btn primary" data-bucket="departures">Dispatch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 3: Validation error -->
+  <div>
+    <div class="state-label"><span><span class="state-num">03</span>Validation &middot; missing title + no bucket</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">NEW TASK</span>
+          <span>FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="body">
+        <div class="title-line">Add a task</div>
+        <div class="mono title-sub">Dispatches to Angie&apos;s queue on save</div>
+
+        <div class="banner">
+          <div class="banner-icon">!</div>
+          <div>2 fields need attention before dispatch.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHAT</span><span style="opacity:0.55;">1 OF 3</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Title</div>
+              <input class="input error" placeholder="e.g., Turn over Room 14" />
+              <div class="field-error">Title is required.</div>
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Bucket</div>
+              <div class="bucket-row">
+                <div class="bucket-chip"><span class="swatch" style="background:var(--arr-body);"></span>Arrival</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--dep-body);"></span>Depart</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sta-body);"></span>Stay</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--dai-body);"></span>Daily</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--eod-body);"></span>EOD</div>
+                <div class="bucket-chip"><span class="swatch" style="background:var(--sage-body);"></span>Maint</div>
+              </div>
+              <div class="field-error">Pick a bucket so it routes correctly.</div>
+            </div>
+            <div class="field">
+              <div class="field-label"><span class="req-dot"></span>Priority</div>
+              <div class="chip-row">
+                <button class="chip">Low</button>
+                <button class="chip active">Normal</button>
+                <button class="chip">High</button>
+                <button class="chip">Critical</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta-pair">
+          <button class="btn">Cancel</button>
+          <button class="btn primary" disabled>Dispatch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 4: Submitting -->
+  <div>
+    <div class="state-label"><span><span class="state-num">04</span>Submitting &middot; insert in flight</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">NEW TASK</span>
+          <span style="display:inline-flex; align-items:center; gap:6px;"><span class="hero-bucket-dot" style="background: var(--dep-body);"></span>DEPARTURE &middot; FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close" disabled style="opacity:0.4; cursor:not-allowed;">&times;</button>
+      </div>
+      <div class="body" style="opacity: 0.7; pointer-events:none;">
+        <div class="title-line">Add a task</div>
+        <div class="mono title-sub">Dispatching&hellip;</div>
+
+        <div class="panel">
+          <div class="panel-head"><span>WHAT</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label">Title</div>
+              <input class="input" value="Turn over Room 14 for late check-in" disabled />
+            </div>
+            <div class="field">
+              <div class="field-label">Bucket</div>
+              <div class="bucket-row" style="grid-template-columns: 1fr;">
+                <div class="bucket-chip active" style="--bc-bg: var(--dep-body); --bc-text: var(--dep-t); --bc-border: var(--dep-h); flex-direction: row; gap: 8px;"><span class="swatch" style="background:var(--dep-body);"></span>Departure selected</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta-pair">
+          <button class="btn" disabled>Cancel</button>
+          <button class="btn primary" data-bucket="departures" disabled>
+            <span class="spinner"></span>
+            Dispatching
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 5: Server error -->
+  <div>
+    <div class="state-label"><span><span class="state-num">05</span>Server error &middot; raw response visible for beta</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">NEW TASK</span>
+          <span style="display:inline-flex; align-items:center; gap:6px;"><span class="hero-bucket-dot" style="background: var(--dep-body);"></span>DEPARTURE &middot; FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="body">
+        <div class="title-line">Add a task</div>
+        <div class="mono title-sub">Dispatches to Angie&apos;s queue on save</div>
+
+        <div class="err-block">
+          <div class="err-headline">Couldn&apos;t dispatch the task. Try again, or copy this and ping Bryan.</div>
+          <div class="err-detail">PostgrestError 23514: new row for relation &quot;tasks&quot; violates check constraint &quot;tasks_priority_check&quot; &middot; req-id 7d3a&hellip;</div>
+        </div>
+
+        <div class="panel" style="margin-top:14px;">
+          <div class="panel-head"><span>WHAT</span></div>
+          <div class="panel-body">
+            <div class="field">
+              <div class="field-label">Title</div>
+              <input class="input" value="Turn over Room 14 for late check-in" />
+            </div>
+            <div class="field">
+              <div class="field-label">Bucket</div>
+              <div class="bucket-row" style="grid-template-columns: 1fr;">
+                <div class="bucket-chip active" style="--bc-bg: var(--dep-body); --bc-text: var(--dep-t); --bc-border: var(--dep-h); flex-direction: row; gap: 8px;"><span class="swatch" style="background:var(--dep-body);"></span>Departure selected</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta-pair">
+          <button class="btn">Cancel</button>
+          <button class="btn primary" data-bucket="departures">Try again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE 6: Success -->
+  <div>
+    <div class="state-label"><span><span class="state-num">06</span>Success &middot; toast + auto-close</span></div>
+    <div class="modal">
+      <div class="hero">
+        <div class="hero-left">
+          <span class="badge">DISPATCHED</span>
+          <span>FOR ANGIE</span>
+        </div>
+        <button class="close-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="toast">
+        <div class="toast-icon">&check;</div>
+        <div class="toast-body">
+          <div class="toast-title">Task dispatched to Angie.</div>
+          <div class="toast-sub">DEPARTURE &middot; ROOM 14 &middot; HIGH PRIORITY</div>
+        </div>
+      </div>
+      <div class="body" style="padding-top:14px;">
+        <div class="mono" style="font-size:10px; letter-spacing:0.18em; color:rgba(44,22,8,0.5); text-align:center; padding: 8px 0; text-transform:uppercase;">CLOSING IN 2&hellip;</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mono footnote">THE DISPATCH CO &middot; ADD TASK &middot; STATES 1-6</div>
+</div>
+</body>
+</html>
