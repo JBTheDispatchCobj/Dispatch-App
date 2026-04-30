@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { activityType, logActivity } from "@/lib/activity-log";
+import {
+  redirectToLoginUnlessLocalDevBypass,
+  resolveAuthUser,
+} from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
 
 type StaffRow = {
@@ -44,8 +48,8 @@ export default function StaffDetailPage() {
     let cancelled = false;
     void supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
-      if (!session) {
-        window.location.replace("/login");
+      if (!resolveAuthUser(session)) {
+        redirectToLoginUnlessLocalDevBypass();
         return;
       }
       setAuthReady(true);
@@ -53,7 +57,7 @@ export default function StaffDetailPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) window.location.replace("/login");
+      if (!session) redirectToLoginUnlessLocalDevBypass();
     });
     return () => {
       cancelled = true;
@@ -136,8 +140,12 @@ export default function StaffDetailPage() {
       void logActivity(
         activityType.staffStatusChanged,
         `${n}: ${prev} → ${status}`,
-      );
+      ).then(() => {
+        window.dispatchEvent(new Event("activity:refresh"));
+      });
       statusLoadedRef.current = status;
+    } else {
+      window.dispatchEvent(new Event("activity:refresh"));
     }
     void loadStaff();
   }
@@ -163,7 +171,9 @@ export default function StaffDetailPage() {
     void logActivity(
       activityType.staffOutcomeAdded,
       `Outcome (${name}): ${snippet}`,
-    );
+    ).then(() => {
+      window.dispatchEvent(new Event("activity:refresh"));
+    });
     void loadOutcomes();
   }
 

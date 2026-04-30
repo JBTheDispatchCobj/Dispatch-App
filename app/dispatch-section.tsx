@@ -31,7 +31,7 @@ export default function DispatchSection() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const { data, error: qError } = await supabase
+    let { data, error: qError } = await supabase
       .from("dispatch_day")
       .select("brief, watchlist")
       .eq("day", day)
@@ -41,6 +41,24 @@ export default function DispatchSection() {
       setError(qError.message);
       setLoading(false);
       return;
+    }
+    if (!data) {
+      const { error: insError } = await supabase.from("dispatch_day").insert({
+        day,
+        brief: "",
+        watchlist: [],
+      });
+      if (insError && !/duplicate|unique/i.test(insError.message)) {
+        setError(insError.message);
+        setLoading(false);
+        return;
+      }
+      const again = await supabase
+        .from("dispatch_day")
+        .select("brief, watchlist")
+        .eq("day", day)
+        .maybeSingle();
+      data = again.data;
     }
     if (data) {
       setBrief(data.brief ?? "");
@@ -83,7 +101,9 @@ export default function DispatchSection() {
     void logActivity(
       activityType.dispatchSaved,
       `Dispatch saved for ${day}`,
-    );
+    ).then(() => {
+      window.dispatchEvent(new Event("activity:refresh"));
+    });
     setSaveLine("Saved");
     savedTimerRef.current = setTimeout(() => {
       setSaveLine(null);

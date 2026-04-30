@@ -10,21 +10,35 @@ export const activityType = {
   staffOutcomeAdded: "staff_outcome_added",
 } as const;
 
-const REFRESH_EVENT = "dispatch-activity-logged";
+export const ACTIVITY_REFRESH_EVENT = "dispatch-activity-logged";
+export const ACTIVITY_INSERT_FAILED_EVENT = "dispatch-activity-log-failed";
 
 export function subscribeActivityRefresh(cb: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   const handler = () => cb();
-  window.addEventListener(REFRESH_EVENT, handler);
-  return () => window.removeEventListener(REFRESH_EVENT, handler);
+  window.addEventListener(ACTIVITY_REFRESH_EVENT, handler);
+  return () => window.removeEventListener(ACTIVITY_REFRESH_EVENT, handler);
 }
 
 export async function logActivity(type: string, message: string): Promise<void> {
+  console.log("[activity] insert attempt", { type, message });
   const { error } = await supabase.from("activity_events").insert({
     type,
     message,
   });
-  if (!error && typeof window !== "undefined") {
-    window.dispatchEvent(new Event(REFRESH_EVENT));
+  if (error) {
+    console.error("[activity] insert failed", error.message, error);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(ACTIVITY_INSERT_FAILED_EVENT, {
+          detail: { message: error.message },
+        }),
+      );
+    }
+    return;
+  }
+  console.log("[activity] insert ok", { type });
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ACTIVITY_REFRESH_EVENT));
   }
 }

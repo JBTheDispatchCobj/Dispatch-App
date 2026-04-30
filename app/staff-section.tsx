@@ -61,7 +61,11 @@ export default function StaffSection() {
     }
     setNewName("");
     setNewRole("");
-    void logActivity(activityType.staffAdded, `Staff added: ${name}`);
+    void logActivity(activityType.staffAdded, `Staff added: ${name}`).then(
+      () => {
+        window.dispatchEvent(new Event("activity:refresh"));
+      },
+    );
     void load();
   }
 
@@ -81,7 +85,9 @@ export default function StaffSection() {
     void logActivity(
       activityType.staffStatusChanged,
       `${s.name} set to ${next}`,
-    );
+    ).then(() => {
+      window.dispatchEvent(new Event("activity:refresh"));
+    });
     void load();
   }
 
