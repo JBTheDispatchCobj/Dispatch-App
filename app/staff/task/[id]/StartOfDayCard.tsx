@@ -68,6 +68,43 @@ function checklistInteractionDisabled(status: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Display helpers
+// ---------------------------------------------------------------------------
+
+function formatTodayDate(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatSodDateShort(iso: string | null): string {
+  if (!iso) return formatTodayDate();
+  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return formatTodayDate();
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatCommentTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+  if (date >= todayStart) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  if (date >= yesterdayStart) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -121,33 +158,26 @@ export default function StartOfDayCard({
 }: StartOfDayCardProps) {
   const brief = parseSodBrief(task.context);
 
-  const taskDone = task.status === "done";
+  const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";
-  const paused = task.status === "paused";
+  const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
-
-  const dateStr = formatSodDate(task.due_date);
-  const heroMeta = [dateStr, displayName ? displayName.toUpperCase() : null]
-    .filter(Boolean)
-    .join(" · ");
 
   const updatesText =
     task.description?.trim() && task.description.trim().length > 0
       ? task.description.trim()
       : null;
 
-  const showBrief = hasBriefContent(brief);
+  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
+  const doneCount = checklist.filter((i) => i.done).length;
 
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work sod-card">
-      <div className="staff-task-exec-scroll">
+    <div className="preview-sod-430">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -170,183 +200,199 @@ export default function StartOfDayCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Unified cream card: mustard header strip + cream body */}
-        <div className="sod-card__card">
+        <div className="shell">
 
-          {/* Card header strip — mustard */}
-          <div className="sod-card__header">
-            <div className="sod-card__hero">
-              <div className="sod-card__hero-type mono">START OF DAY</div>
-              {heroMeta ? (
-                <div className="sod-card__hero-meta mono">{heroMeta}</div>
-              ) : null}
-            </div>
+          {/* Topstrip — back nav only; ＋ dropped (Gap 6) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Card body — cream */}
-          <div className="sod-card__body">
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">Start of Day</span>
+              <span className="greet__loc">{formatSodDateShort(task.due_date)}</span>
+            </div>
+            <h1 className="greet__hello">{firstName ? `Hi, ${firstName}.` : "Hi."}</h1>
+            {/* TODO: replace with system-set rotating SOD date-context phrase
+                when schema adds it. Currently locked to artifact example. */}
+            <div className="greet__date">1st day of spring</div>
+          </header>
 
-            {/* Brief info panel — white inset, shows context.sod_brief fields */}
-            {showBrief ? (
-              <div className="sod-card__brief-panel">
-                {(brief?.date_label || brief?.date_accent) ? (
-                  <div className="sod-card__date-line">
-                    {brief?.date_label ? (
-                      <span className="sod-card__date">{brief.date_label}</span>
-                    ) : null}
-                    {brief?.date_accent ? (
-                      <span className="sod-card__date-accent">{brief.date_accent}</span>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="sod-card__fields">
-                  {brief?.status ? (
-                    <div className="sod-card__field">
-                      <span className="sod-card__field-k mono">Status</span>
-                      <span className="sod-card__field-v">{brief.status}</span>
-                    </div>
-                  ) : null}
-                  {brief?.weather ? (
-                    <div className="sod-card__field">
-                      <span className="sod-card__field-k mono">Weather</span>
-                      <span className="sod-card__field-v">{brief.weather}</span>
-                    </div>
-                  ) : null}
-                  {brief?.events ? (
-                    <div className="sod-card__field">
-                      <span className="sod-card__field-k mono">Events</span>
-                      <span className="sod-card__field-v">{brief.events}</span>
-                    </div>
-                  ) : null}
-                  {brief?.notes ? (
-                    <div className="sod-card__field">
-                      <span className="sod-card__field-k mono">Notes</span>
-                      <span className="sod-card__field-v">{brief.notes}</span>
-                    </div>
-                  ) : null}
-                </div>
+          {/* Daily Brief — always render (Gap 9); placeholder cells handle empty state */}
+          <section className="brief">
+            <div className="brief__head">
+              <span className="brief__head-label">Daily Brief</span>
+            </div>
+            {/* Gap 3: brief.notes → prose headline; empty slot if null */}
+            <div className="brief__top">{brief?.notes}</div>
+            <div className="brief__grid">
+              {/* Weather — locked placeholder (Gap 4) */}
+              <div className="cell">
+                <div className="cell__label">Weather</div>
+                <div className="cell__value" aria-hidden style={{ opacity: 0.55 }}>—</div>
+                <div className="cell__sub">Coming soon</div>
               </div>
-            ) : null}
-
-            {/* UPDATES panel */}
-            <div className="sod-card__panel">
-              <div className="sod-card__panel-head">
-                <span className="sod-card__panel-label mono">UPDATES</span>
+              {/* Events — locked placeholder (Gap 4) */}
+              <div className="cell cell--tr">
+                <div className="cell__label">Events</div>
+                <div className="cell__value" aria-hidden style={{ opacity: 0.55 }}>—</div>
+                <div className="cell__sub">Coming soon</div>
               </div>
-              <div className="sod-card__panel-body">
-                {updatesText ? (
-                  <p className="sod-card__panel-text">{updatesText}</p>
-                ) : (
-                  <div className="sod-card__plus-glyph" aria-hidden>+</div>
-                )}
+              {/* Status — live (Gap 10: plain text, no structured em/sep HTML) */}
+              <div className="cell cell--bl">
+                <div className="cell__label">Status</div>
+                <div className="cell__value cell__value--big">{brief?.status}</div>
+              </div>
+              {/* Team — locked placeholder (Gap 4) */}
+              <div className="cell cell--br">
+                <div className="cell__label">Team</div>
+                <div className="cell__value" aria-hidden style={{ opacity: 0.55 }}>—</div>
+                <div className="cell__sub">Coming soon</div>
               </div>
             </div>
+          </section>
 
-            {/* NOTES panel */}
-            <div className="sod-card__panel">
-              <div className="sod-card__panel-head">
-                <span className="sod-card__panel-label mono">NOTES</span>
+          {/* Updates panel — always render; locked placeholder when no content */}
+          <section className="updates">
+            <header className="updates__head">
+              <span className="updates__label">Updates</span>
+            </header>
+            {updatesText ? (
+              <div className="updates__body">
+                <p className="updates__text">{updatesText}</p>
               </div>
-              <div className="sod-card__panel-body">
-                {comments.length > 0 ? (
-                  <p className="sod-card__note-count mono">
-                    {comments.length} note{comments.length !== 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {!taskDone ? (
-                  <form className="sod-card__note-form" onSubmit={onPostNote}>
-                    <textarea
-                      id="staff-task-note-sod"
-                      className="sod-card__note-input"
-                      rows={2}
-                      placeholder="Add a note…"
-                      value={noteBody}
-                      onChange={(e) => setNoteBody(e.target.value)}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      className="sod-card__note-send"
-                      disabled={noteBusy || !noteBody.trim()}
-                    >
-                      {noteBusy ? "…" : "Post"}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="sod-card__plus-glyph" aria-hidden>+</div>
-                )}
-              </div>
-            </div>
+            ) : (
+              <div className="updates__body" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
+            )}
+          </section>
 
-            {inlineError ? (
-              <p className="error sod-card__error">{inlineError}</p>
-            ) : null}
-
-            {/* 2-col daily task grid */}
-            {checklist.length > 0 ? (
-              <div className="sod-card__task-grid">
-                {checklist.map((item) => (
-                  <div
-                    key={item.id}
-                    className={
-                      item.done
-                        ? "sod-card__task-row sod-card__task-row--done"
-                        : "sod-card__task-row"
-                    }
-                  >
-                    <div className="sod-card__task-info">
-                      <div className="sod-card__task-title">{item.title}</div>
-                      {/* post-beta: per-item location + notes not in checklist schema */}
+          {/* Notes section — A-430 pattern: comment feed + inline compose (Gap 6) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Notes</span>
+              <span className="section__count">
+                {comments.length > 0
+                  ? `${comments.length} left for you`
+                  : "no notes yet"}
+              </span>
+            </header>
+            {comments.length > 0 ? (
+              <div className="notes">
+                {comments.map((comment) => (
+                  <button key={comment.id} className="note" type="button">
+                    <div className="note__head">
+                      <span className="note__dot" />
+                      <div className="note__body">
+                        <div className="note__line">
+                          <span className="note__name">{comment.author_display_name}</span>
+                          <span className="note__action"> left a note: </span>
+                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                        </div>
+                        {comment.image_url ? (
+                          <div className="note__chips">
+                            <span className="note__chip">📎 1</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      <span className="note__time">{formatCommentTime(comment.created_at)}</span>
                     </div>
-                    <div className="sod-card__task-actions">
-                      <button
-                        type="button"
-                        className={
-                          item.done
-                            ? "sod-card__complete-pill sod-card__complete-pill--done"
-                            : "sod-card__complete-pill"
-                        }
-                        onClick={() => onToggleItem(item)}
-                        disabled={taskDone || stepsLocked}
-                      >
-                        {item.done ? "DONE" : "COMPLETE"}
-                      </button>
-                      {/* post-beta: per-item Details link not wired */}
-                      <span className="sod-card__details-link" aria-hidden>Details</span>
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : null}
+            {!taskDone ? (
+              <form onSubmit={onPostNote}>
+                <div className="compose__row">
+                  <input
+                    className="compose__input"
+                    placeholder="Leave a note for the team…"
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    disabled={noteBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="compose__foot">
+                  <div />
+                  <button
+                    type="submit"
+                    className="compose__send"
+                    disabled={noteBusy || !noteBody.trim()}
+                  >
+                    {noteBusy ? "…" : "Send"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </section>
 
+          {inlineError ? <p className="error">{inlineError}</p> : null}
+
+          {/* Today's Tasks — 2-col grid; no per-item sub-labels (Gap 7) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Today's Tasks</span>
+              <span className="section__count">
+                {doneCount} of {checklist.length} done
+              </span>
+            </header>
+            {checklist.length > 0 ? (
+              <div className="tasks">
+                {checklist.map((item) => (
+                  <button
+                    key={item.id}
+                    className="task"
+                    type="button"
+                    data-done={item.done ? "true" : "false"}
+                    onClick={() => {
+                      if (!stepsLocked && !taskDone) onToggleItem(item);
+                    }}
+                  >
+                    <div className="task__title">{item.title}</div>
+                    <div className="task__row">
+                      <span
+                        className={
+                          item.done ? "task__pill" : "task__pill task__pill--pending"
+                        }
+                      >
+                        {item.done ? "Done" : "Complete"}
+                      </span>
+                      <span className="task__link" aria-hidden>Details ›</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="section__count" style={{ padding: "14px 0" }}>No tasks yet.</p>
+            )}
+          </section>
+
+          {/* CTAs — "Need Help" secondary, "Start Shift" primary (label change only, Gap CTA) */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "Start Shift"}
+            </button>
           </div>
 
-        </div>{/* end sod-card__card */}
-
-        {/* Action pair — inline below card, I'M DONE = start shift */}
-        <div className="sod-card__actions" aria-label="Task actions">
-          <button
-            type="button"
-            className="sod-card__action-btn sod-card__action-btn--secondary"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="sod-card__action-btn sod-card__action-btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "START SHIFT"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-sod-430 */
   );
 }
