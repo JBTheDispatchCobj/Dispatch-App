@@ -101,6 +101,20 @@ function formatDueTime(iso: string | null): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+function formatCommentTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+  if (date >= todayStart) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  if (date >= yesterdayStart) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+}
+
 function checklistInteractionDisabled(status: string): boolean {
   return status === "done" || status === "blocked" || status === "paused";
 }
@@ -189,9 +203,25 @@ export default function ArrivalsCard({
   const requestsDisplay = guest?.special_requests ?? "—";
 
   const displayChecklist = buildDisplayChecklist(checklist);
+  const doneCount = displayChecklist.filter((i) => i.dbItem?.done).length;
+
+  // Date line: check-in time + nights (room type omitted — no data source)
+  const checkinStr = guest?.checkin_time
+    ? formatDueTime(guest.checkin_time)
+    : dueTime;
+  const dateLine = [
+    checkinStr ? `Check-in ${checkinStr}` : null,
+    guest?.nights != null
+      ? `${guest.nights} night${guest.nights !== 1 ? "s" : ""}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <main className="staff-app arrivals-card">
+    <div className="preview-a-430">
+
+      {/* ChecklistDrillDown overlay — position:fixed, mounts outside shell */}
       {showChecklist ? (
         <ChecklistDrillDown
           root={checklistTree}
@@ -199,14 +229,11 @@ export default function ArrivalsCard({
         />
       ) : null}
 
-      <div className="staff-task-exec-scroll">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -229,162 +256,194 @@ export default function ArrivalsCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Cream shell */}
-        <div className="arrivals-card__shell">
+        <div className="shell">
 
-          {/* Hero — three ink-stamp pills */}
-          <div className="arrivals-card__hero">
-            <span className="hero-stamp arrivals-card__stamp">ARRIVAL</span>
-            <span className="hero-stamp arrivals-card__stamp">RM {room}</span>
-            {dueTime ? (
-              <span className="hero-stamp arrivals-card__stamp">{dueTime}</span>
-            ) : null}
+          {/* Topstrip — back nav only; ＋ dropped (no compose drawer) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Body */}
-          <div className="arrivals-card__body">
-
-            {/* Guest info ledger */}
-            <div className="arrivals-card__panel">
-              <div className="arrivals-card__info-list">
-                <div className="arrivals-card__info-row">
-                  <div className="arrivals-card__info-label">GUEST</div>
-                  <div className="arrivals-card__info-val">{guestDisplay}</div>
-                </div>
-                <div className="arrivals-card__info-row">
-                  <div className="arrivals-card__info-label">NIGHTS</div>
-                  <div className="arrivals-card__info-val">{nightsDisplay}</div>
-                </div>
-                <div className="arrivals-card__info-row">
-                  <div className="arrivals-card__info-label">EXTRAS</div>
-                  <div className="arrivals-card__info-val">—</div>
-                </div>
-                <div className="arrivals-card__info-row">
-                  <div className="arrivals-card__info-label">REQUESTS</div>
-                  <div className="arrivals-card__info-val arrivals-card__info-val--note">
-                    {requestsDisplay}
-                  </div>
-                </div>
-                {descNote ? (
-                  <div className="arrivals-card__info-row">
-                    <div className="arrivals-card__info-label">SETUP</div>
-                    <div className="arrivals-card__info-val arrivals-card__info-val--note">
-                      {descNote}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">Arrival</span>
+              <span className="greet__loc">Room {room}</span>
             </div>
+            <h1 className="greet__hello">{task.title}</h1>
+            <div className="greet__date">{dateLine || " "}</div>
+          </header>
 
-            {inlineError ? (
-              <p className="error arrivals-card__error">{inlineError}</p>
+          {/* Brief — guest / nights / requests / setup (extras omitted: no data source) */}
+          <section className="brief">
+            <div className="briefrow">
+              <span className="briefrow__label">Guest</span>
+              <span className="briefrow__value">{guestDisplay}</span>
+            </div>
+            <div className="briefrow">
+              <span className="briefrow__label">Nights</span>
+              <span className="briefrow__value">{nightsDisplay}</span>
+            </div>
+            <div className="briefrow">
+              <span className="briefrow__label">Requests</span>
+              <span className="briefrow__value">{requestsDisplay}</span>
+            </div>
+            {descNote ? (
+              <div className="briefrow">
+                <span className="briefrow__label">Setup</span>
+                <span className="briefrow__value">{descNote}</span>
+              </div>
             ) : null}
+          </section>
 
-            {/* 2-tile grid */}
-            <div className="arrivals-card__tile-grid">
+          {inlineError ? <p className="error">{inlineError}</p> : null}
 
-              {/* CHECKLIST */}
-              <div className="arrivals-card__tile">
-                <div className="arrivals-card__tile-head">
-                  <span>CHECKLIST</span>
+          {/* Notes section — comment feed + inline compose below */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Notes</span>
+              <span className="section__count">
+                {comments.length > 0
+                  ? `${comments.length} left for you`
+                  : "no notes yet"}
+              </span>
+            </header>
+            {comments.length > 0 ? (
+              <div className="notes">
+                {comments.map((comment) => (
+                  <button key={comment.id} className="note" type="button">
+                    <div className="note__head">
+                      <span className="note__dot" />
+                      <div className="note__body">
+                        <div className="note__line">
+                          <span className="note__name">{comment.author_display_name}</span>
+                          <span className="note__action"> left a note: </span>
+                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                        </div>
+                        {comment.image_url ? (
+                          <div className="note__chips">
+                            <span className="note__chip">📎 1</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      <span className="note__time">{formatCommentTime(comment.created_at)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {/* Inline compose — below feed; ＋ topstrip dropped, form is the compose UI */}
+            {!taskDone ? (
+              <form onSubmit={onPostNote}>
+                <div className="compose__row">
+                  <input
+                    className="compose__input"
+                    placeholder="Leave a note for the team…"
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    disabled={noteBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="compose__foot">
+                  <div />
                   <button
-                    type="button"
-                    className="arrivals-card__tile-head-link"
-                    onClick={() => setShowChecklist(true)}
+                    type="submit"
+                    className="compose__send"
+                    disabled={noteBusy || !noteBody.trim()}
                   >
-                    View ›
+                    {noteBusy ? "…" : "Send"}
                   </button>
                 </div>
-                <div className="arrivals-card__check-list">
-                  {displayChecklist.map((item, idx) => (
-                    <button
-                      key={item.dbItem?.id ?? `canonical-${idx}`}
-                      type="button"
-                      className={
-                        item.dbItem?.done
-                          ? "arrivals-card__check-item arrivals-card__check-item--done"
-                          : "arrivals-card__check-item"
-                      }
-                      onClick={() => {
-                        if (item.dbItem) onToggleItem(item.dbItem);
-                      }}
-                      disabled={taskDone || stepsLocked || !item.dbItem}
-                      aria-pressed={item.dbItem?.done ?? false}
-                    >
-                      <span className="arrivals-card__check-box" aria-hidden />
-                      <span className="arrivals-card__check-txt">{item.displayTitle}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              </form>
+            ) : null}
+          </section>
 
-              {/* NOTES */}
-              <div className="arrivals-card__tile">
-                <div className="arrivals-card__tile-head">
-                  <span>NOTES</span>
-                </div>
-                <div className="arrivals-card__tile-body">
-                  {comments.length > 0 ? (
-                    <p className="arrivals-card__tile-note-count mono">
-                      {comments.length} note{comments.length !== 1 ? "s" : ""}
-                    </p>
-                  ) : null}
-                  {!taskDone ? (
-                    <form
-                      className="arrivals-card__note-form"
-                      onSubmit={onPostNote}
-                    >
-                      <textarea
-                        id="staff-task-note-arr"
-                        className="arrivals-card__note-input"
-                        rows={2}
-                        placeholder="Add a note…"
-                        value={noteBody}
-                        onChange={(e) => setNoteBody(e.target.value)}
-                        autoComplete="off"
-                      />
+          {/* Checklist section — bar fill driven by data-checked CSS selector */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Checklist</span>
+              <span className="section__count">{doneCount} of {displayChecklist.length} done</span>
+            </header>
+            <div className="bucketcard">
+              {displayChecklist.map((item, idx) => (
+                <div
+                  key={item.dbItem?.id ?? `canonical-${idx}`}
+                  role="button"
+                  tabIndex={stepsLocked || taskDone || !item.dbItem ? -1 : 0}
+                  className="brow"
+                  data-checked={item.dbItem?.done ? "true" : "false"}
+                  onClick={() => {
+                    if (item.dbItem && !stepsLocked && !taskDone) onToggleItem(item.dbItem);
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      (e.key === " " || e.key === "Enter") &&
+                      item.dbItem &&
+                      !stepsLocked &&
+                      !taskDone
+                    ) {
+                      e.preventDefault();
+                      onToggleItem(item.dbItem);
+                    }
+                  }}
+                  aria-pressed={item.dbItem?.done ?? false}
+                  aria-disabled={!item.dbItem || stepsLocked || taskDone}
+                >
+                  <div className="brow__head">
+                    <span className="brow__label">
+                      <span className="brow__num">{idx + 1}</span>
+                      {item.displayTitle}
+                    </span>
+                    <span className="brow__right">
+                      <span className="brow__meta">
+                        {item.dbItem?.done ? "Done" : "Pending"}
+                      </span>
+                      <span className="brow__sep">·</span>
                       <button
-                        type="submit"
-                        className="arrivals-card__note-send"
-                        disabled={noteBusy || !noteBody.trim()}
+                        type="button"
+                        className="brow__details"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowChecklist(true);
+                        }}
                       >
-                        {noteBusy ? "…" : "Post"}
+                        Details ›
                       </button>
-                    </form>
-                  ) : (
-                    <div className="arrivals-card__tile-plus" aria-hidden>+</div>
-                  )}
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <div className="bar__fill" />
+                  </div>
                 </div>
-              </div>
-
+              ))}
             </div>
+          </section>
+
+          {/* CTAs */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+            </button>
           </div>
-        </div>{/* end arrivals-card__shell */}
 
-        {/* CTAs — on cream surface, outside shell */}
-        <div className="arrivals-card__cta-row" aria-label="Task actions">
-          <button
-            type="button"
-            className="arrivals-card__btn"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="arrivals-card__btn arrivals-card__btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "I'M DONE"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-a-430 */
   );
 }
