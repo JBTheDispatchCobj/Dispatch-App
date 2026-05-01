@@ -9,7 +9,7 @@ import {
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 
 // ---------------------------------------------------------------------------
-// Context parsers — all safe, never throw
+// Context parsers — safe, never throw
 // ---------------------------------------------------------------------------
 
 type EodSummary = {
@@ -42,6 +42,42 @@ function parseEodSummary(ctx: Record<string, unknown>): EodSummary | null {
     tasks_open_count: num("tasks_open_count"),
     handoff_notes: str("handoff_notes"),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Display helpers
+// ---------------------------------------------------------------------------
+
+function formatTodayDate(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatCommentTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+  if (date >= todayStart) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  if (date >= yesterdayStart) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+}
+
+function isToday(iso: string): boolean {
+  const date = new Date(iso);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -102,20 +138,35 @@ export default function EODCard({
   const inProgress = task.status === "in_progress";
   const paused = task.status === "paused";
 
-  const heroMeta = displayName
-    ? `LOOK AT ALL YOU DID · ${displayName.toUpperCase()}`
-    : "LOOK AT ALL YOU DID";
+  // Greet loc — tasks done today; fallback to location_label then static
+  const greetLoc =
+    summary?.tasks_done_count != null
+      ? `${summary.tasks_done_count} task${summary.tasks_done_count !== 1 ? "s" : ""} done`
+      : task.location_label?.trim() || "End of Day";
+
+  // Greet date line — today's date with optional short handoff note suffix
+  const dateLine = (() => {
+    const date = formatTodayDate();
+    const notes = summary?.handoff_notes?.trim();
+    return notes && notes.length <= 40 ? `${date} · ${notes}` : date;
+  })();
+
+  // Review entries — current user's comments posted today only (Gap 5)
+  // Filters to first-person "You noted:" voice: only self-authored, only today.
+  const reviewEntries = comments.filter(
+    (c) => c.user_id === _userId && isToday(c.created_at),
+  );
+
+  // First name for personalised greeting
+  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
 
   return (
-    <main className="staff-app staff-task-exec staff-task-exec--work eod-card">
-      <div className="staff-task-exec-scroll">
+    <div className="preview-e-430">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -138,147 +189,144 @@ export default function EODCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Unified salmon card: header strip + all content */}
-        <div className="eod-card__card">
+        <div className="shell">
 
-          {/* Card header strip */}
-          <div className="eod-card__header">
-            <div className="eod-card__hero">
-              {/* cream text: --eod-text (#4A1B0C) fails contrast on --eod-header (#C75F5F) */}
-              <div className="eod-card__hero-type mono">EOD</div>
-              <div className="eod-card__hero-meta mono">{heroMeta}</div>
-            </div>
+          {/* Topstrip — back nav only; ＋ dropped (no compose drawer) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Card body */}
-          <div className="eod-card__body">
-
-            {/* Team Status panel */}
-            <div className="eod-card__panel">
-              <div className="eod-card__tile-head mono">TEAM STATUS</div>
-              <div className="eod-card__panel-body">
-                {summary?.tasks_done_count !== null && summary?.tasks_done_count !== undefined ? (
-                  <p className="eod-card__status-line">
-                    {summary.tasks_done_count} task{summary.tasks_done_count !== 1 ? "s" : ""} completed today.
-                  </p>
-                ) : null}
-                {summary?.tasks_open_count !== null && summary?.tasks_open_count !== undefined ? (
-                  <p className="eod-card__status-line">{summary.tasks_open_count} still open.</p>
-                ) : null}
-                {summary?.handoff_notes ? (
-                  <p className="eod-card__status-line">{summary.handoff_notes}</p>
-                ) : null}
-                {/* post-beta: celebratory recap template (dynamic "You cleaned X rooms") not wired */}
-                <p className="eod-card__status-celebrate">
-                  {displayName ? `Great job today, ${displayName}!` : "Great shift today!"}
-                </p>
-              </div>
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">End of Day</span>
+              <span className="greet__loc">{greetLoc}</span>
             </div>
+            {/* TODO: replace with system-set rotating EOD phrase field when
+                schema adds it. Currently locked to artifact example. */}
+            <h1 className="greet__hello">
+              {firstName ? `You crushed it, ${firstName}.` : "You crushed it."}
+            </h1>
+            <div className="greet__date">{dateLine}</div>
+          </header>
 
-            {inlineError ? (
-              <p className="error eod-card__error">{inlineError}</p>
-            ) : null}
+          {/* Team Updates — locked placeholder (Gap 4; no roster data available) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Team Updates</span>
+              <span className="section__count">Coming soon</span>
+            </header>
+            <div className="team" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
+          </section>
 
-            {/* 2×2 tile grid — all static placeholders (post-beta derived views) */}
-            <div className="eod-card__tile-grid">
+          {inlineError ? <p className="error">{inlineError}</p> : null}
 
-              {/* OPEN STILL — post-beta: query for unfinished tasks */}
-              <div className="eod-card__tile">
-                <div className="eod-card__tile-head mono">OPEN STILL</div>
-                <div className="eod-card__tile-body">
-                  <div className="eod-card__plus-glyph" aria-hidden>+</div>
-                  <p className="eod-card__tile-caption">Tasks still open will appear here.</p>
-                </div>
-              </div>
-
-              {/* REVIEW — post-beta: notes left by staff */}
-              <div className="eod-card__tile">
-                <div className="eod-card__tile-head mono">REVIEW</div>
-                <div className="eod-card__tile-body">
-                  <div className="eod-card__plus-glyph" aria-hidden>+</div>
-                  <p className="eod-card__tile-caption">Your notes from today.</p>
-                </div>
-              </div>
-
-              {/* WHAT'S NEXT — post-beta: forward-looking notes */}
-              <div className="eod-card__tile">
-                <div className="eod-card__tile-head mono">WHAT'S NEXT</div>
-                <div className="eod-card__tile-body">
-                  <div className="eod-card__plus-glyph" aria-hidden>+</div>
-                  <p className="eod-card__tile-caption">Notes for tomorrow and admin.</p>
-                </div>
-              </div>
-
-              {/* SUPPLY NEEDS — post-beta: supply request feed */}
-              <div className="eod-card__tile">
-                <div className="eod-card__tile-head mono">SUPPLY NEEDS</div>
-                <div className="eod-card__tile-body">
-                  <div className="eod-card__plus-glyph" aria-hidden>+</div>
-                  <p className="eod-card__tile-caption">Supply requests sent to admin.</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Notes form below tile grid */}
-            {comments.length > 0 || !taskDone ? (
-              <div className="eod-card__notes-panel">
-                {comments.length > 0 ? (
-                  <p className="eod-card__notes-count mono">
-                    {comments.length} note{comments.length !== 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {!taskDone ? (
-                  <form className="eod-card__note-form" onSubmit={onPostNote}>
-                    <textarea
-                      id="staff-task-note-eod"
-                      className="eod-card__note-input"
-                      rows={2}
-                      placeholder="Add a handoff note…"
-                      value={noteBody}
-                      onChange={(e) => setNoteBody(e.target.value)}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      className="eod-card__note-send"
-                      disabled={noteBusy || !noteBody.trim()}
-                    >
-                      {noteBusy ? "…" : "Post"}
-                    </button>
-                  </form>
-                ) : null}
+          {/* Review section — current-user comments from today, "You noted:" voice */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Review</span>
+              <span className="section__count">
+                {reviewEntries.length > 0
+                  ? `${reviewEntries.length} from today`
+                  : "no entries yet"}
+              </span>
+            </header>
+            {reviewEntries.length > 0 ? (
+              <div className="notes">
+                {reviewEntries.map((comment) => (
+                  <button key={comment.id} className="note" type="button">
+                    <div className="note__head">
+                      <span className="note__dot" />
+                      <div className="note__body">
+                        <div className="note__line">
+                          <span className="note__name">You</span>
+                          <span className="note__action"> noted: </span>
+                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                        </div>
+                        {comment.image_url ? (
+                          <div className="note__chips">
+                            <span className="note__chip">📎 1</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      <span className="note__time">
+                        {formatCommentTime(comment.created_at)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
             ) : null}
+            {/* Inline compose — drop ＋ topstrip, form is the compose UI */}
+            {!taskDone ? (
+              <form onSubmit={onPostNote}>
+                <div className="compose__row">
+                  <input
+                    className="compose__input"
+                    placeholder="Note for the wrap…"
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    disabled={noteBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="compose__foot">
+                  <div />
+                  <button
+                    type="submit"
+                    className="compose__send"
+                    disabled={noteBusy || !noteBody.trim()}
+                  >
+                    {noteBusy ? "…" : "Send"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </section>
 
+          {/* What's Next — locked placeholder (Gap 6; ResNexus data, out of Phase 3 scope) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">{"What's Next"}</span>
+              <span className="section__count">Coming soon</span>
+            </header>
+            <div className="brief" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
+          </section>
+
+          {/* Supply Needs — locked placeholder (Gap 7; supply CRUD out of Phase 3 scope) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Supply Needs</span>
+              <span className="section__count">Coming soon</span>
+            </header>
+            <div className="supply" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
+          </section>
+
+          {/* CTAs — "Wrap Shift" label on primary; wired to onImDone (label-only change) */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "Wrap Shift"}
+            </button>
           </div>
 
-        </div>{/* end eod-card__card */}
-
-        {/* Action pair — inline below card, I'M DONE = wrap shift */}
-        <div className="eod-card__actions" aria-label="Task actions">
-          <button
-            type="button"
-            className="eod-card__action-btn eod-card__action-btn--secondary"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="eod-card__action-btn eod-card__action-btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "I'M DONE"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-e-430 */
   );
 }
