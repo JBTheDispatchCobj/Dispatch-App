@@ -5006,6 +5006,84 @@ main.wrap--wide {
   --radius-shell: 28px;
   --radius-pill:  100px;
 
+  /* =========================================================================
+     Day 19 — Vivid accent palette, cross-cutting tokens, avatar gradients
+     Pure additive. No existing tokens modified.
+  ========================================================================= */
+
+  /* ─── A. Vivid bucket accents ──────────────────────────────────────────── */
+  --sod-accent:        #FFD000;
+  --departures-accent: #00D4B4;
+  --arrivals-accent:   #FF5722;
+  --stayovers-accent:  #FF477E;
+  --dailys-accent:     #9333FF;
+  --eod-accent:        #FF0044;
+
+  /* ─── B. Accent-ink (deep ink on vivid accent bg) ──────────────────────── */
+  --sod-accent-ink:        #3B1F00;
+  --departures-accent-ink: #02312D;
+  --arrivals-accent-ink:   #3A1502;
+  --stayovers-accent-ink:  #3D0E14;
+  --dailys-accent-ink:     #1F0840;
+  --eod-accent-ink:        #3C0410;
+
+  /* ─── C. Accent-pale (very light tint for backgrounds) ─────────────────── */
+  --sod-accent-pale:        #FFFAE0;
+  --departures-accent-pale: #D0F7F0;
+  --arrivals-accent-pale:   #FFEAE0;
+  --stayovers-accent-pale:  #FFE0EA;
+  --dailys-accent-pale:     #F0E0FF;
+  --eod-accent-pale:        #FFD6DE;
+
+  /* ─── D. Derived alpha variants (tint 0.18 · soft 0.10 · wash 0.10 · aura 0.20) */
+  --sod-accent-tint: rgba(255, 208,   0, 0.18);
+  --sod-accent-soft: rgba(255, 208,   0, 0.10);
+  --sod-accent-wash: rgba(255, 208,   0, 0.10);
+  --sod-accent-aura: rgba(255, 208,   0, 0.20);
+
+  --departures-accent-tint: rgba(  0, 212, 180, 0.18);
+  --departures-accent-soft: rgba(  0, 212, 180, 0.10);
+  --departures-accent-wash: rgba(  0, 212, 180, 0.10);
+  --departures-accent-aura: rgba(  0, 212, 180, 0.20);
+
+  --arrivals-accent-tint: rgba(255,  87,  34, 0.18);
+  --arrivals-accent-soft: rgba(255,  87,  34, 0.10);
+  --arrivals-accent-wash: rgba(255,  87,  34, 0.10);
+  --arrivals-accent-aura: rgba(255,  87,  34, 0.20);
+
+  --stayovers-accent-tint: rgba(255,  71, 126, 0.18);
+  --stayovers-accent-soft: rgba(255,  71, 126, 0.10);
+  --stayovers-accent-wash: rgba(255,  71, 126, 0.10);
+  --stayovers-accent-aura: rgba(255,  71, 126, 0.20);
+
+  --dailys-accent-tint: rgba(147,  51, 255, 0.18);
+  --dailys-accent-soft: rgba(147,  51, 255, 0.10);
+  --dailys-accent-wash: rgba(147,  51, 255, 0.10);
+  --dailys-accent-aura: rgba(147,  51, 255, 0.20);
+
+  --eod-accent-tint: rgba(255,   0,  68, 0.18);
+  --eod-accent-soft: rgba(255,   0,  68, 0.10);
+  --eod-accent-wash: rgba(255,   0,  68, 0.10);
+  --eod-accent-aura: rgba(255,   0,  68, 0.20);
+
+  /* ─── E. Cross-cutting tokens ───────────────────────────────────────────── */
+  --status-on:      #00C8FF;
+  --status-on-tint: rgba(  0, 200, 255, 0.22);
+  --alert:          #FF0044;
+  --alert-tint:     rgba(255,   0,  68, 0.20);
+  --warn:           #FFD000;
+  --warn-tint:      rgba(255, 208,   0, 0.20);
+
+  /* ─── F. Avatar gradients (peach · sky · rust · sage) ──────────────────── */
+  --avatar-cm:     linear-gradient(135deg, #F5D8B8, #D9A87C);
+  --avatar-cm-ink: #7A4A2E;
+  --avatar-ll:     linear-gradient(135deg, #CDE0E4, #7FA3A8);
+  --avatar-ll-ink: #2C4F54;
+  --avatar-al:     linear-gradient(135deg, #F5C8A8, #C68B64);
+  --avatar-al-ink: #5C3320;
+  --avatar-mp:     linear-gradient(135deg, #DAE0C2, #9BA67C);
+  --avatar-mp-ink: #3C4728;
+
 }
 
 /* ===========================================================================
