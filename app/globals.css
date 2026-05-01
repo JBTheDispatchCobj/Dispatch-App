@@ -2716,7 +2716,7 @@ main.wrap.card-page {
   font-weight: 600;
   text-transform: uppercase;
   padding: 11px 13px 9px;
-  border-bottom: 1px solid var(--departures-accent);
+  border-bottom: 1px solid var(--departures-rule);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2735,7 +2735,7 @@ main.wrap.card-page {
 }
 
 .departures-card__dual-col + .departures-card__dual-col {
-  border-left: 1px solid var(--departures-accent);
+  border-left: 1px solid var(--departures-rule);
 }
 
 .departures-card__dual-head {
@@ -2779,7 +2779,7 @@ main.wrap.card-page {
   align-items: baseline;
   gap: 10px;
   padding: 10px 0;
-  border-top: 1px solid var(--departures-accent);
+  border-top: 1px solid var(--departures-rule);
 }
 
 .departures-card__info-row:first-child {
@@ -2821,7 +2821,7 @@ main.wrap.card-page {
   align-items: center;
   gap: 7px;
   background: none;
-  border: 1.5px solid var(--departures-accent);
+  border: 1.5px solid var(--departures-rule);
   border-radius: 999px;
   padding: 6px 13px 6px 10px;
   font-size: 13px;
@@ -2846,7 +2846,7 @@ main.wrap.card-page {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1.5px solid var(--departures-accent);
+  border: 1.5px solid var(--departures-rule);
   background: transparent;
   flex-shrink: 0;
 }
@@ -2890,7 +2890,7 @@ main.wrap.card-page {
   font-weight: 600;
   text-transform: uppercase;
   padding: 11px 13px 9px;
-  border-bottom: 1px solid var(--departures-accent);
+  border-bottom: 1px solid var(--departures-rule);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3010,7 +3010,7 @@ main.wrap.card-page {
 
 .departures-card__note-input {
   flex: 1;
-  border: 1px solid var(--departures-accent);
+  border: 1px solid var(--departures-rule);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -3186,7 +3186,7 @@ main.wrap.card-page {
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-top: 1px solid var(--arrivals-accent);
+  border-top: 1px solid var(--arrivals-rule);
 }
 
 .arrivals-card__info-row:first-child {
@@ -3254,7 +3254,7 @@ main.wrap.card-page {
   font-weight: 600;
   text-transform: uppercase;
   padding: 11px 13px 9px;
-  border-bottom: 1px solid var(--arrivals-accent);
+  border-bottom: 1px solid var(--arrivals-rule);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3381,7 +3381,7 @@ main.wrap.card-page {
 
 .arrivals-card__note-input {
   flex: 1;
-  border: 1px solid var(--arrivals-accent);
+  border: 1px solid var(--arrivals-rule);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -3545,7 +3545,7 @@ main.wrap.card-page {
   letter-spacing: 0.2em;
   font-weight: 600;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--stayovers-accent);
+  border-bottom: 1px solid var(--stayovers-rule);
 }
 
 /* Status multi-select */
@@ -3618,7 +3618,7 @@ main.wrap.card-page {
   align-items: center;
   gap: 10px;
   padding: 10px 0;
-  border-top: 1px solid var(--stayovers-accent);
+  border-top: 1px solid var(--stayovers-rule);
 }
 
 .stayover-card__info-row:first-child {
@@ -3687,7 +3687,7 @@ main.wrap.card-page {
   font-weight: 600;
   text-transform: uppercase;
   padding: 11px 13px 9px;
-  border-bottom: 1px solid var(--stayovers-accent);
+  border-bottom: 1px solid var(--stayovers-rule);
   flex-shrink: 0;
 }
 
@@ -3785,7 +3785,7 @@ main.wrap.card-page {
 
 .stayover-card__note-input {
   flex: 1;
-  border: 1px solid var(--stayovers-accent);
+  border: 1px solid var(--stayovers-rule);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -3953,7 +3953,7 @@ main.wrap.card-page {
   letter-spacing: 0.2em;
   font-weight: 600;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--eod-accent);
+  border-bottom: 1px solid var(--eod-rule);
 }
 
 /* Recap body — narrative shift summary */
@@ -4019,7 +4019,7 @@ main.wrap.card-page {
   font-weight: 600;
   text-transform: uppercase;
   padding: 11px 13px 9px;
-  border-bottom: 1px solid var(--eod-accent);
+  border-bottom: 1px solid var(--eod-rule);
   flex-shrink: 0;
 }
 
@@ -4173,7 +4173,7 @@ main.wrap.card-page {
   letter-spacing: 0.2em;
   font-weight: 600;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--dailys-accent);
+  border-bottom: 1px solid var(--dailys-rule);
 }
 
 /* Panel body */
@@ -4212,7 +4212,7 @@ main.wrap.card-page {
 }
 
 .dailys-card__note-input {
-  border: 1px solid var(--dailys-accent);
+  border: 1px solid var(--dailys-rule);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -4603,7 +4603,7 @@ main.wrap--wide {
   letter-spacing: 0.2em;
   font-weight: 600;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--arrivals-accent);
+  border-bottom: 1px solid var(--arrivals-rule);
 }
 
 /* Brief panel — title + ledger rows */
@@ -4626,7 +4626,7 @@ main.wrap--wide {
   gap: 10px;
   padding: 7px 0;
   font-size: 13px;
-  border-top: 1px solid var(--arrivals-accent);
+  border-top: 1px solid var(--arrivals-rule);
 }
 
 .sod-card__brief-row:first-of-type {
@@ -4687,7 +4687,7 @@ main.wrap--wide {
 }
 
 .sod-card__note-input {
-  border: 1px solid var(--arrivals-accent);
+  border: 1px solid var(--arrivals-rule);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -4938,19 +4938,19 @@ main.wrap--wide {
      (used by soften retrofit: stamps, panel heads, CTAs, rules on cream)
   ------------------------------------------------------------------------- */
   --arrivals-ink:    #2C1608;
-  --arrivals-accent: rgba(44,22,8,0.14);
+  --arrivals-rule: rgba(44,22,8,0.14);
 
   --departures-ink:    #003D30;
-  --departures-accent: rgba(0,60,48,0.14);
+  --departures-rule: rgba(0,60,48,0.14);
 
   --stayovers-ink:    #5C3320;
-  --stayovers-accent: rgba(92,51,32,0.16);
+  --stayovers-rule: rgba(92,51,32,0.16);
 
   --dailys-ink:    #1B2233;
-  --dailys-accent: rgba(27,34,51,0.14);
+  --dailys-rule: rgba(27,34,51,0.14);
 
   --eod-ink:    #4A1B0C;
-  --eod-accent: rgba(74,27,12,0.16);
+  --eod-rule: rgba(74,27,12,0.16);
 
   /* -------------------------------------------------------------------------
      Admin palette — sky (profiles) + sage (maintenance)
