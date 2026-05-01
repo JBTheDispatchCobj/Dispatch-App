@@ -25,6 +25,32 @@ function checklistInteractionDisabled(status: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Display helpers
+// ---------------------------------------------------------------------------
+
+function formatTodayDate(): string {
+  return new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatCommentTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
+  if (date >= todayStart) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  if (date >= yesterdayStart) {
+    return "Yesterday";
+  }
+  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -83,23 +109,20 @@ export default function DailysCard({
   const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
 
-  const descNote =
-    task.description?.trim() && task.description.trim().length > 0
-      ? task.description.trim()
-      : null;
+  const doneCount = checklist.filter((i) => i.done).length;
 
-  const allDone = checklist.length > 0 && checklist.every((i) => i.done);
+  const dateLine =
+    checklist.length > 0
+      ? `${formatTodayDate()} · ${checklist.length} stop${checklist.length !== 1 ? "s" : ""}`
+      : formatTodayDate();
 
   return (
-    <main className="staff-app dailys-card">
-      <div className="staff-task-exec-scroll">
+    <div className="preview-da-430">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -122,160 +145,165 @@ export default function DailysCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Cream shell */}
-        <div className="dailys-card__shell">
+        <div className="shell">
 
-          {/* Hero — ink-stamp pills */}
-          <div className="dailys-card__hero">
-            <span className="hero-stamp dailys-card__stamp">DAILYS</span>
-            <span className="hero-stamp dailys-card__stamp">PROPERTY ROUND</span>
+          {/* Topstrip — back nav only; ＋ dropped (Gap 6) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Body */}
-          <div className="dailys-card__body">
-
-            {/* Team Updates panel */}
-            <div className="dailys-card__panel">
-              <div className="dailys-card__panel-head">
-                <span>TEAM UPDATES</span>
-              </div>
-              {descNote ? (
-                <div className="dailys-card__panel-body">{descNote}</div>
-              ) : (
-                <div className="dailys-card__plus-glyph" aria-hidden>+</div>
-              )}
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">Dailys</span>
+              <span className="greet__loc">{location ?? "Property Round"}</span>
             </div>
+            <h1 className="greet__hello">{task.title}</h1>
+            <div className="greet__date">{dateLine}</div>
+          </header>
 
-            {/* Notes panel */}
-            <div className="dailys-card__panel">
-              <div className="dailys-card__panel-head">
-                <span>NOTES</span>
-              </div>
-              <div className="dailys-card__panel-body">
-                {comments.length > 0 ? (
-                  <p className="dailys-card__note-count mono">
-                    {comments.length} note{comments.length !== 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {!taskDone ? (
-                  <form className="dailys-card__note-form" onSubmit={onPostNote}>
-                    <textarea
-                      id="staff-task-note-dailys"
-                      className="dailys-card__note-input"
-                      rows={2}
-                      placeholder="Add a note…"
-                      value={noteBody}
-                      onChange={(e) => setNoteBody(e.target.value)}
-                      autoComplete="off"
-                    />
-                    <button
-                      type="submit"
-                      className="dailys-card__note-send"
-                      disabled={noteBusy || !noteBody.trim()}
-                    >
-                      {noteBusy ? "…" : "Post"}
-                    </button>
-                  </form>
-                ) : (
-                  <div className="dailys-card__plus-glyph" aria-hidden>+</div>
-                )}
-              </div>
-            </div>
+          {/* Team Updates — locked placeholder (Gap 2 Option B; no roster data available) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Team Updates</span>
+              <span className="section__count">Coming soon</span>
+            </header>
+            <div className="team" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
+          </section>
 
-            {inlineError ? (
-              <p className="error dailys-card__error">{inlineError}</p>
-            ) : null}
-
-            {/* 2-column task grid */}
-            {checklist.length > 0 ? (
-              <>
-                <div className="dailys-card__task-grid">
-                  {checklist.map((item) => (
-                    <div
-                      key={item.id}
-                      className={
-                        item.done
-                          ? "dailys-card__task-row dailys-card__task-row--done"
-                          : "dailys-card__task-row"
-                      }
-                    >
-                      <div>
-                        <div className="dailys-card__task-title">{item.title}</div>
-                        {location ? (
-                          <div className="dailys-card__task-meta">{location.toUpperCase()}</div>
+          {/* Notes section — A-430 pattern (Gap 3): comment feed + inline compose */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Notes</span>
+              <span className="section__count">
+                {comments.length > 0
+                  ? `${comments.length} left for you`
+                  : "no notes yet"}
+              </span>
+            </header>
+            {comments.length > 0 ? (
+              <div className="notes">
+                {comments.map((comment) => (
+                  <button key={comment.id} className="note" type="button">
+                    <div className="note__head">
+                      <span className="note__dot" />
+                      <div className="note__body">
+                        <div className="note__line">
+                          <span className="note__name">{comment.author_display_name}</span>
+                          <span className="note__action"> left a note: </span>
+                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                        </div>
+                        {comment.image_url ? (
+                          <div className="note__chips">
+                            <span className="note__chip">📎 1</span>
+                          </div>
                         ) : null}
                       </div>
-                      <div className="dailys-card__task-foot">
-                        <button
-                          type="button"
-                          className={
-                            item.done
-                              ? "dailys-card__complete-pill dailys-card__complete-pill--done"
-                              : "dailys-card__complete-pill"
-                          }
-                          onClick={() => onToggleItem(item)}
-                          disabled={taskDone || stepsLocked}
-                        >
-                          {item.done ? "Done" : "Complete"}
-                        </button>
-                        <span className="dailys-card__details-link" aria-hidden>
-                          Details &rsaquo;
-                        </span>
-                      </div>
+                      <span className="note__time">{formatCommentTime(comment.created_at)}</span>
                     </div>
-                  ))}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {/* Inline compose — ＋ topstrip dropped, form is the compose UI */}
+            {!taskDone ? (
+              <form onSubmit={onPostNote}>
+                <div className="compose__row">
+                  <input
+                    className="compose__input"
+                    placeholder="Leave a note for the team…"
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    disabled={noteBusy}
+                    autoComplete="off"
+                  />
                 </div>
+                <div className="compose__foot">
+                  <div />
+                  <button
+                    type="submit"
+                    className="compose__send"
+                    disabled={noteBusy || !noteBody.trim()}
+                  >
+                    {noteBusy ? "…" : "Send"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
+          </section>
 
-                {/* Complete All — circle mark-all button */}
-                {!taskDone && !stepsLocked ? (
-                  <div className="dailys-card__complete-all">
-                    <button
-                      type="button"
-                      className="dailys-card__complete-circle"
-                      aria-label="Mark all tasks done"
-                      disabled={allDone}
-                      onClick={() => {
-                        checklist
-                          .filter((i) => !i.done)
-                          .forEach((i) => onToggleItem(i));
-                      }}
-                    >
-                      &#10003;
-                    </button>
-                  </div>
-                ) : null}
-              </>
+          {inlineError ? <p className="error">{inlineError}</p> : null}
+
+          {/* Property Round — .tasks 2-col grid; data-done drives CSS strikethrough/opacity */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Property Round</span>
+              <span className="section__count">
+                {doneCount} of {checklist.length} done
+              </span>
+            </header>
+            {checklist.length > 0 ? (
+              <div className="tasks">
+                {checklist.map((item) => (
+                  <button
+                    key={item.id}
+                    className="task"
+                    type="button"
+                    data-done={item.done ? "true" : "false"}
+                    onClick={() => {
+                      if (!stepsLocked && !taskDone) onToggleItem(item);
+                    }}
+                  >
+                    <div className="task__title">{item.title}</div>
+                    {location ? (
+                      <div className="task__sub">{location}</div>
+                    ) : null}
+                    <div className="task__row">
+                      <span
+                        className={
+                          item.done
+                            ? "task__pill"
+                            : "task__pill task__pill--pending"
+                        }
+                      >
+                        {item.done ? "Done" : "Complete"}
+                      </span>
+                      {/* Details link — inert per Gap 5; no drill-down in DailysCard */}
+                      <span className="task__link" aria-hidden>Details ›</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             ) : (
-              <p className="dailys-card__empty mono">No tasks yet.</p>
+              <p className="section__count" style={{ padding: "14px 0" }}>No tasks yet.</p>
             )}
+          </section>
 
+          {/* CTAs — "Complete All" circle button removed (Gap 7; not in artifact) */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+            </button>
           </div>
-        </div>{/* end dailys-card__shell */}
 
-        {/* CTAs — outside shell */}
-        <div className="dailys-card__cta-row" aria-label="Task actions">
-          <button
-            type="button"
-            className="dailys-card__btn"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="dailys-card__btn dailys-card__btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "I'M DONE"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-da-430 */
   );
 }
