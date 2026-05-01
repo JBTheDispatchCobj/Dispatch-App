@@ -177,12 +177,12 @@ export default function StayoversCard({
   userId,
   displayName: _displayName,
   checklist,
-  comments,
+  comments: _comments,
   inlineError,
   setInlineError,
-  noteBody,
-  setNoteBody,
-  noteBusy,
+  noteBody: _noteBody,
+  setNoteBody: _setNoteBody,
+  noteBusy: _noteBusy,
   helpBusy,
   doneBusy,
   pauseBusy,
@@ -192,7 +192,7 @@ export default function StayoversCard({
   onImDone,
   onPause,
   onResume,
-  onPostNote,
+  onPostNote: _onPostNote,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -200,6 +200,8 @@ export default function StayoversCard({
   const [statusBusy, setStatusBusy] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
 
+  // onToggleStayoverStatus: handler is preserved but not wired to any UI in
+  // S-430 — status is system/admin-set; staff don't change it from this card.
   const onToggleStayoverStatus = useCallback(
     async (key: StayoverStatusKey) => {
       if (!userId || statusBusy) return;
@@ -235,6 +237,10 @@ export default function StayoversCard({
     [userId, statusBusy, selectedStatuses, task, setInlineError],
   );
 
+  // Suppress "defined but never used" for the above handler — it is
+  // intentionally preserved but not called from S-430 UI.
+  void onToggleStayoverStatus;
+
   const guest = parseCurrentGuest(task.context);
 
   const taskDone   = task.status === "done";
@@ -244,6 +250,11 @@ export default function StayoversCard({
 
   const room    = displayRoom(task);
   const dueTime = formatDueTime(task.due_time);
+
+  const descNote =
+    task.description?.trim() && task.description.trim().length > 0
+      ? task.description.trim()
+      : null;
 
   const guestDisplay = guest?.name
     ? guest.party_size !== null
@@ -256,9 +267,26 @@ export default function StayoversCard({
 
   const displayChecklist = buildDisplayChecklist(checklist);
   const checklistTree    = resolveChecklist("stayover", task.room_number);
+  const doneCount        = displayChecklist.filter((i) => i.dbItem?.done).length;
+
+  // Active count from DB state (selectedStatuses initialised from context, never toggled in UI)
+  const activeCount = selectedStatuses.length;
+
+  // Date line: nights remaining + short service description if available
+  const dateLine = [
+    guest?.nights_remaining ? `Night ${guest.nights_remaining}` : null,
+    descNote && descNote.length <= 30 ? descNote : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  // Suppress dueTime "unused" warning — retained for hero stamp rendering
+  void dueTime;
 
   return (
-    <main className="staff-app stayover-card">
+    <div className="preview-s-430">
+
+      {/* ChecklistDrillDown overlay — position:fixed, mounts outside shell */}
       {showChecklist ? (
         <ChecklistDrillDown
           root={checklistTree}
@@ -266,14 +294,11 @@ export default function StayoversCard({
         />
       ) : null}
 
-      <div className="staff-task-exec-scroll">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -296,181 +321,173 @@ export default function StayoversCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Cream shell */}
-        <div className="stayover-card__shell">
+        <div className="shell">
 
-          {/* Hero — ink-stamp pills */}
-          <div className="stayover-card__hero">
-            <span className="hero-stamp stayover-card__stamp">STAYOVER</span>
-            <span className="hero-stamp stayover-card__stamp">RM {room}</span>
-            {dueTime ? (
-              <span className="hero-stamp stayover-card__stamp">{dueTime}</span>
-            ) : null}
+          {/* Topstrip — back nav only; ＋ dropped (Gap 5) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Body */}
-          <div className="stayover-card__body">
-
-            {/* Status panel */}
-            <div className="stayover-card__panel">
-              <div className="stayover-card__panel-head">
-                <span>STATUS</span>
-              </div>
-              <div
-                className="stayover-card__status-body"
-                role="group"
-                aria-label="Stayover status"
-              >
-                {STAYOVER_STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={
-                      selectedStatuses.includes(opt.value)
-                        ? "stayover-card__status-check stayover-card__status-check--checked"
-                        : "stayover-card__status-check"
-                    }
-                    onClick={() => void onToggleStayoverStatus(opt.value)}
-                    disabled={taskDone || statusBusy}
-                    aria-pressed={selectedStatuses.includes(opt.value)}
-                  >
-                    <span className="stayover-card__status-box" aria-hidden />
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">Stayover</span>
+              <span className="greet__loc">Room {room}</span>
             </div>
+            <h1 className="greet__hello">{task.title}</h1>
+            <div className="greet__date">{dateLine || " "}</div>
+          </header>
 
-            {/* Guest info ledger */}
-            <div className="stayover-card__panel">
-              <div className="stayover-card__info-list">
-                <div className="stayover-card__info-row">
-                  <div className="stayover-card__info-label">GUEST</div>
-                  <div className="stayover-card__info-val">{guestDisplay}</div>
-                </div>
-                <div className="stayover-card__info-row">
-                  <div className="stayover-card__info-label">NIGHT</div>
-                  <div className="stayover-card__info-val">{nightsDisplay}</div>
-                </div>
-                <div className="stayover-card__info-row">
-                  <div className="stayover-card__info-label">TYPE</div>
-                  <div className="stayover-card__info-val">—</div>
-                </div>
-                <div className="stayover-card__info-row">
-                  <div className="stayover-card__info-label">NOTES</div>
-                  <div className="stayover-card__info-val stayover-card__info-val--note">
-                    {notesDisplay}
+          {/* Statcard — display-only status pills (Gap 2: spans, no onClick, pointer-events preserved) */}
+          <section className="statcard">
+            <div className="statcard__head">
+              <span>Status</span>
+              <span className="statcard__sub">
+                {activeCount > 0 ? `${activeCount} active` : "None active"}
+              </span>
+            </div>
+            <div className="statcard__pills">
+              {STAYOVER_STATUS_OPTIONS.map((opt) => (
+                <span
+                  key={opt.value}
+                  className={
+                    selectedStatuses.includes(opt.value)
+                      ? "status-pill status-pill--active"
+                      : "status-pill"
+                  }
+                >
+                  {opt.label}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          {/* Brief — guest / nights / type (—) / admin-set notes */}
+          <section className="brief">
+            <div className="briefrow">
+              <span className="briefrow__label">Guest</span>
+              <span className="briefrow__value">{guestDisplay}</span>
+            </div>
+            <div className="briefrow">
+              <span className="briefrow__label">Night</span>
+              <span className="briefrow__value">{nightsDisplay}</span>
+            </div>
+            <div className="briefrow">
+              <span className="briefrow__label">Type</span>
+              <span className="briefrow__value">—</span>
+            </div>
+            <div className="briefrow">
+              <span className="briefrow__label">Notes</span>
+              <span className="briefrow__value">{notesDisplay}</span>
+            </div>
+          </section>
+
+          {inlineError ? <p className="error">{inlineError}</p> : null}
+
+          {/* Checklist section — bar fill driven by data-checked CSS selector */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Checklist</span>
+              <span className="section__count">{doneCount} of {displayChecklist.length} done</span>
+            </header>
+            <div className="bucketcard">
+              {displayChecklist.map((item, idx) => (
+                <div
+                  key={item.dbItem?.id ?? `canonical-${idx}`}
+                  role="button"
+                  tabIndex={stepsLocked || taskDone || !item.dbItem ? -1 : 0}
+                  className="brow"
+                  data-checked={item.dbItem?.done ? "true" : "false"}
+                  onClick={() => {
+                    if (item.dbItem && !stepsLocked && !taskDone) onToggleItem(item.dbItem);
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      (e.key === " " || e.key === "Enter") &&
+                      item.dbItem &&
+                      !stepsLocked &&
+                      !taskDone
+                    ) {
+                      e.preventDefault();
+                      onToggleItem(item.dbItem);
+                    }
+                  }}
+                  aria-pressed={item.dbItem?.done ?? false}
+                  aria-disabled={!item.dbItem || stepsLocked || taskDone}
+                >
+                  <div className="brow__head">
+                    <span className="brow__label">
+                      <span className="brow__num">{idx + 1}</span>
+                      {item.displayTitle}
+                    </span>
+                    <span className="brow__right">
+                      <span className="brow__meta">
+                        {item.dbItem?.done ? "Done" : "Pending"}
+                      </span>
+                      <span className="brow__sep">·</span>
+                      <button
+                        type="button"
+                        className="brow__details"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowChecklist(true);
+                        }}
+                      >
+                        Details ›
+                      </button>
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <div className="bar__fill" />
                   </div>
                 </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Maintenance — locked placeholder (Gap 4; no live data, out of beta scope) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Maintenance</span>
+              <span className="section__count">Coming soon</span>
+            </header>
+            <div className="exrow" data-open="false">
+              <div className="exrow__head" style={{ cursor: "default", opacity: 0.55 }}>
+                <span className="exrow__icon">MX</span>
+                <div className="exrow__text">
+                  <div className="exrow__title">Maintenance</div>
+                  <div className="exrow__sub">Coming soon</div>
+                </div>
+                <span className="exrow__chev">›</span>
               </div>
             </div>
+          </section>
 
-            {inlineError ? (
-              <p className="error stayover-card__error">{inlineError}</p>
-            ) : null}
-
-            {/* 3-tile grid */}
-            <div className="stayover-card__tile-grid">
-
-              {/* CHECKLIST */}
-              <div className="stayover-card__tile">
-                <div className="stayover-card__tile-head">CHECKLIST</div>
-                <div className="stayover-card__check-list">
-                  {displayChecklist.map((item, idx) => (
-                    <button
-                      key={item.dbItem?.id ?? `canonical-${idx}`}
-                      type="button"
-                      className={
-                        item.dbItem?.done
-                          ? "stayover-card__check-item stayover-card__check-item--done"
-                          : "stayover-card__check-item"
-                      }
-                      onClick={() => {
-                        if (item.dbItem) onToggleItem(item.dbItem);
-                      }}
-                      disabled={taskDone || stepsLocked || !item.dbItem}
-                      aria-pressed={item.dbItem?.done ?? false}
-                    >
-                      <span className="stayover-card__check-box" aria-hidden />
-                      <span className="stayover-card__check-txt">{item.displayTitle}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* NOTES */}
-              <div className="stayover-card__tile">
-                <div className="stayover-card__tile-head">NOTES</div>
-                <div className="stayover-card__tile-body">
-                  {comments.length > 0 ? (
-                    <p className="stayover-card__tile-note-count mono">
-                      {comments.length} note{comments.length !== 1 ? "s" : ""}
-                    </p>
-                  ) : null}
-                  {!taskDone ? (
-                    <form
-                      className="stayover-card__note-form"
-                      onSubmit={onPostNote}
-                    >
-                      <textarea
-                        id="staff-task-note-stay"
-                        className="stayover-card__note-input"
-                        rows={2}
-                        placeholder="Add a note…"
-                        value={noteBody}
-                        onChange={(e) => setNoteBody(e.target.value)}
-                        autoComplete="off"
-                      />
-                      <button
-                        type="submit"
-                        className="stayover-card__note-send"
-                        disabled={noteBusy || !noteBody.trim()}
-                      >
-                        {noteBusy ? "…" : "Post"}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="stayover-card__plus-glyph" aria-hidden>+</div>
-                  )}
-                </div>
-              </div>
-
-              {/* MAINTENANCE — placeholder */}
-              <div className="stayover-card__tile">
-                <div className="stayover-card__tile-head">MAINTENANCE</div>
-                <div className="stayover-card__tile-body stayover-card__tile-body--center">
-                  <div className="stayover-card__plus-glyph" aria-hidden>+</div>
-                </div>
-              </div>
-
-            </div>
+          {/* CTAs */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+            </button>
           </div>
-        </div>{/* end stayover-card__shell */}
 
-        {/* CTAs — outside shell */}
-        <div className="stayover-card__cta-row" aria-label="Task actions">
-          <button
-            type="button"
-            className="stayover-card__btn"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="stayover-card__btn stayover-card__btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "I'M DONE"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-s-430 */
   );
 }
