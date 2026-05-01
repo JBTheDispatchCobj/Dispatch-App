@@ -224,9 +224,12 @@ export default function DeparturesCard({
   const dueTime = formatDueTime(task.due_time);
 
   const displayChecklist = buildDisplayChecklist(checklist);
+  const doneCount = displayChecklist.filter((i) => i.dbItem?.done).length;
 
   return (
-    <main className="staff-app departures-card">
+    <div className="preview-d-430">
+
+      {/* ChecklistDrillDown — position:fixed overlay, mounts outside shell */}
       {showChecklist ? (
         <ChecklistDrillDown
           root={checklistTree}
@@ -234,14 +237,12 @@ export default function DeparturesCard({
         />
       ) : null}
 
-      <div className="staff-task-exec-scroll">
+      <div className="page">
 
-        {/* Toolbar — back + pause/resume */}
-        <header className="staff-task-exec-top staff-task-exec-toolbar">
-          <Link href="/staff" className="staff-task-exec-back">
-            ← Tasks
-          </Link>
-          {!taskDone ? (
+        {/* Pause/Resume toolbar — above shell, only when task is active or paused.
+            Back nav lives in the topstrip below; toolbar is action-only here. */}
+        {!taskDone && (inProgress || paused) ? (
+          <header className="staff-task-exec-top staff-task-exec-toolbar">
             <div className="staff-task-exec-toolbar-actions">
               {inProgress ? (
                 <button
@@ -264,226 +265,233 @@ export default function DeparturesCard({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </header>
+          </header>
+        ) : null}
 
-        {/* Cream shell */}
-        <div className="departures-card__shell">
+        <div className="shell">
 
-          {/* Hero — three ink-stamp pills */}
-          <div className="departures-card__hero">
-            <span className="hero-stamp departures-card__stamp">DEPARTURE</span>
-            <span className="hero-stamp departures-card__stamp">RM {room}</span>
-            {dueTime ? (
-              <span className="hero-stamp departures-card__stamp">{dueTime}</span>
-            ) : null}
+          {/* Topstrip — back nav only; ＋ button dropped (no compose drawer, gap 5) */}
+          <div className="topstrip">
+            <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
           </div>
 
-          {/* Body */}
-          <div className="departures-card__body">
+          {/* Greeting block */}
+          <header className="greet">
+            <div className="greet__label">
+              <span className="greet__chip">Departure</span>
+              <span className="greet__loc">Room {room}</span>
+            </div>
+            <h1 className="greet__hello">{task.title}</h1>
+            <div className="greet__date">{dueTime ? `Due ${dueTime}` : " "}</div>
+          </header>
 
-            {/* Dual panel — Outgoing / Incoming */}
-            <div className="departures-card__panel">
-              <div className="departures-card__dual">
-                <div className="departures-card__dual-col">
-                  <div className="departures-card__dual-head">OUTGOING</div>
-                  <p className="departures-card__dual-p">{outgoing.name ?? "—"}</p>
-                  <div className="departures-card__dual-k">Guests</div>
-                  <p className="departures-card__dual-p">{outgoing.guests ?? "—"}</p>
-                  <div className="departures-card__dual-k">Nights</div>
-                  <p className="departures-card__dual-p">{outgoing.nights ?? "—"}</p>
-                  <div className="departures-card__dual-k">Clean</div>
-                  <p className="departures-card__dual-p">{outgoing.clean_type ?? "—"}</p>
+          {/* Brief — outgoing / incoming dual column */}
+          <section className="brief">
+            <div className="cols">
+              <div className="col">
+                <h3 className="col__heading">Outgoing</h3>
+                <div className="col__row">
+                  <span className="col__label">Guests</span>
+                  <span className="col__value">{outgoing.guests ?? "—"}</span>
                 </div>
-                <div className="departures-card__dual-col">
-                  <div className="departures-card__dual-head">INCOMING</div>
-                  <p className="departures-card__dual-p">{incoming.name ?? "—"}</p>
-                  <div className="departures-card__dual-k">Party</div>
-                  <p className="departures-card__dual-p">{incoming.party ?? "—"}</p>
-                  <div className="departures-card__dual-k">Notes</div>
-                  <p className="departures-card__dual-p">{incoming.notes ?? "—"}</p>
+                <div className="col__row">
+                  <span className="col__label">Nights</span>
+                  <span className="col__value">{outgoing.nights ?? "—"}</span>
+                </div>
+                <div className="col__row">
+                  <span className="col__label">Clean</span>
+                  <span className="col__value">{outgoing.clean_type ?? "—"}</span>
+                </div>
+              </div>
+              <div className="col col--right">
+                <h3 className="col__heading">Incoming</h3>
+                <div className="col__row">
+                  <span className="col__label">Party</span>
+                  <span className="col__value">{incoming.party ?? "—"}</span>
+                </div>
+                <div className="col__row">
+                  <span className="col__label">Nights</span>
+                  <span className="col__value">{incoming.nights ?? "—"}</span>
+                </div>
+                <div className="col__row">
+                  <span className="col__label">Notes</span>
+                  <span className="col__value col__value--small">{incoming.notes ?? "—"}</span>
                 </div>
               </div>
             </div>
+          </section>
 
-            {/* Info ledger — setup + context */}
-            <div className="departures-card__panel">
-              <div className="departures-card__info-list">
-                <div className="departures-card__info-row">
-                  <div className="departures-card__info-label">SETUP</div>
-                  <div className="departures-card__info-val">
-                    {descNote ?? "—"}
-                  </div>
-                </div>
-                <div className="departures-card__info-row">
-                  <div className="departures-card__info-label">STATUS</div>
-                  <div className="departures-card__info-val">
-                    {task.location_label ?? "—"}
-                  </div>
-                </div>
-              </div>
+          {/* Setstat — setup (read-only display) + notes compose + status pills */}
+          <section className="setstat">
+            <div className="setstat__row">
+              <div className="setstat__label">Setup</div>
+              <div className="setstat__input">{descNote ?? "—"}</div>
             </div>
-
-            {/* Status panel */}
-            <div className="departures-card__panel">
-              <div className="departures-card__panel-head">
-                <span>STATUS</span>
-              </div>
-              <div
-                className="departures-card__status-body"
-                role="group"
-                aria-label="Room turnover status"
-              >
+            <div className="setstat__row">
+              <div className="setstat__label">Notes</div>
+              <form onSubmit={onPostNote}>
+                {comments.length > 0 ? (
+                  <p className="setstat__note-count">
+                    {comments.length} note{comments.length !== 1 ? "s" : ""}
+                  </p>
+                ) : null}
+                <textarea
+                  className="setstat__input"
+                  placeholder="Add notes for this turnover…"
+                  value={noteBody}
+                  onChange={(e) => setNoteBody(e.target.value)}
+                  disabled={noteBusy || taskDone}
+                  rows={3}
+                />
+                {!taskDone ? (
+                  <button
+                    type="submit"
+                    className="compose__submit"
+                    disabled={noteBusy || !noteBody.trim()}
+                  >
+                    {noteBusy ? "…" : "Post"}
+                  </button>
+                ) : null}
+              </form>
+            </div>
+            <div className="setstat__row setstat__row--status">
+              <div className="setstat__label">Status</div>
+              <div className="setstat__pills" role="group" aria-label="Room turnover status">
                 {DEPARTURE_STATUS_CHIPS.map((chip) => (
                   <button
                     key={chip.value}
                     type="button"
                     className={
                       departureStatus === chip.value
-                        ? "departures-card__status-opt departures-card__status-opt--active"
-                        : "departures-card__status-opt"
+                        ? "status-pill status-pill--active"
+                        : "status-pill"
                     }
                     onClick={() => void onSetDepartureStatus(chip.value)}
                     disabled={taskDone || statusBusy}
                     aria-pressed={departureStatus === chip.value}
                   >
-                    <span
-                      className={
-                        departureStatus === chip.value
-                          ? "departures-card__status-dot departures-card__status-dot--on"
-                          : "departures-card__status-dot"
-                      }
-                      aria-hidden
-                    />
                     {chip.label}
                   </button>
                 ))}
               </div>
             </div>
+          </section>
 
-            {inlineError ? (
-              <p className="error departures-card__error">{inlineError}</p>
-            ) : null}
+          {inlineError ? <p className="error">{inlineError}</p> : null}
 
-            {/* 2×2 tile grid — aspect-ratio:1 (count = 4) */}
-            <div className="departures-card__tile-grid">
-
-              {/* CHECKLIST */}
-              <div className="departures-card__tile">
-                <div className="departures-card__tile-head">
-                  <span>CHECKLIST</span>
-                  <button
-                    type="button"
-                    className="departures-card__tile-head-link"
-                    onClick={() => setShowChecklist(true)}
-                  >
-                    View ›
-                  </button>
-                </div>
-                <div className="departures-card__check-list">
-                  {displayChecklist.map((item, idx) => (
-                    <button
-                      key={item.dbItem?.id ?? `canonical-${idx}`}
-                      type="button"
-                      className={
-                        item.dbItem?.done
-                          ? "departures-card__check-item departures-card__check-item--done"
-                          : "departures-card__check-item"
-                      }
-                      onClick={() => {
-                        if (item.dbItem) onToggleItem(item.dbItem);
-                      }}
-                      disabled={taskDone || stepsLocked || !item.dbItem}
-                      aria-pressed={item.dbItem?.done ?? false}
-                    >
-                      <span className="departures-card__check-box" aria-hidden />
-                      <span className="departures-card__check-txt">{item.displayTitle}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* NOTES */}
-              <div className="departures-card__tile">
-                <div className="departures-card__tile-head">
-                  <span>NOTES</span>
-                </div>
-                <div className="departures-card__tile-body">
-                  {comments.length > 0 ? (
-                    <p className="departures-card__tile-note-count mono">
-                      {comments.length} note{comments.length !== 1 ? "s" : ""}
-                    </p>
-                  ) : null}
-                  {!taskDone ? (
-                    <form className="departures-card__note-form" onSubmit={onPostNote}>
-                      <textarea
-                        id="staff-task-note-dep"
-                        className="departures-card__note-input"
-                        rows={2}
-                        placeholder="Add a note…"
-                        value={noteBody}
-                        onChange={(e) => setNoteBody(e.target.value)}
-                        autoComplete="off"
-                      />
+          {/* Checklist — bar fill driven by data-checked CSS selector, no inline style needed */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Checklist</span>
+              <span className="section__count">{doneCount} of {displayChecklist.length} done</span>
+            </header>
+            <div className="bucketcard">
+              {displayChecklist.map((item, idx) => (
+                <div
+                  key={item.dbItem?.id ?? `canonical-${idx}`}
+                  role="button"
+                  tabIndex={stepsLocked || taskDone || !item.dbItem ? -1 : 0}
+                  className="brow"
+                  data-checked={item.dbItem?.done ? "true" : "false"}
+                  onClick={() => {
+                    if (item.dbItem && !stepsLocked && !taskDone) onToggleItem(item.dbItem);
+                  }}
+                  onKeyDown={(e) => {
+                    if (
+                      (e.key === " " || e.key === "Enter") &&
+                      item.dbItem &&
+                      !stepsLocked &&
+                      !taskDone
+                    ) {
+                      e.preventDefault();
+                      onToggleItem(item.dbItem);
+                    }
+                  }}
+                  aria-pressed={item.dbItem?.done ?? false}
+                  aria-disabled={!item.dbItem || stepsLocked || taskDone}
+                >
+                  <div className="brow__head">
+                    <span className="brow__label">
+                      <span className="brow__num">{idx + 1}</span>
+                      {item.displayTitle}
+                    </span>
+                    <span className="brow__right">
+                      <span className="brow__meta">
+                        {item.dbItem?.done ? "Done" : "Pending"}
+                      </span>
+                      <span className="brow__sep">·</span>
                       <button
-                        type="submit"
-                        className="departures-card__note-send"
-                        disabled={noteBusy || !noteBody.trim()}
+                        type="button"
+                        className="brow__details"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowChecklist(true);
+                        }}
                       >
-                        {noteBusy ? "…" : "Post"}
+                        Details ›
                       </button>
-                    </form>
-                  ) : (
-                    <div className="departures-card__tile-plus" aria-hidden>+</div>
-                  )}
+                    </span>
+                  </div>
+                  <div className="bar">
+                    <div className="bar__fill" />
+                  </div>
                 </div>
-              </div>
-
-              {/* DEEP CLEAN — placeholder */}
-              <div className="departures-card__tile">
-                <div className="departures-card__tile-head">
-                  <span>DEEP CLEAN</span>
-                </div>
-                <div className="departures-card__tile-body departures-card__tile-body--center">
-                  <div className="departures-card__tile-plus" aria-hidden>+</div>
-                </div>
-              </div>
-
-              {/* MAINTENANCE — placeholder (renamed from Maint.) */}
-              <div className="departures-card__tile">
-                <div className="departures-card__tile-head">
-                  <span>MAINTENANCE</span>
-                </div>
-                <div className="departures-card__tile-body departures-card__tile-body--center">
-                  <div className="departures-card__tile-plus" aria-hidden>+</div>
-                </div>
-              </div>
-
+              ))}
             </div>
+          </section>
+
+          {/* Per-room work — DC and MX as locked placeholders (beta scope gaps 3 & 4) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Per-room work</span>
+              <span className="section__count">Deep Clean · Maintenance</span>
+            </header>
+
+            <div className="exrow" data-open="false">
+              <div className="exrow__head" style={{ cursor: "default", opacity: 0.55 }}>
+                <span className="exrow__icon">DC</span>
+                <div className="exrow__text">
+                  <div className="exrow__title">Deep Clean</div>
+                  <div className="exrow__sub">Coming soon</div>
+                </div>
+                <span className="exrow__chev">›</span>
+              </div>
+            </div>
+
+            <div className="exrow" data-open="false" style={{ marginTop: "8px" }}>
+              <div className="exrow__head" style={{ cursor: "default", opacity: 0.55 }}>
+                <span className="exrow__icon">MX</span>
+                <div className="exrow__text">
+                  <div className="exrow__title">Maintenance</div>
+                  <div className="exrow__sub">Coming soon</div>
+                </div>
+                <span className="exrow__chev">›</span>
+              </div>
+            </div>
+          </section>
+
+          {/* CTAs */}
+          <div className="cta">
+            <button
+              type="button"
+              className="cta__secondary"
+              onClick={onNeedHelp}
+              disabled={helpBusy || taskDone}
+            >
+              {helpBusy ? "…" : "Need Help"}
+            </button>
+            <button
+              type="button"
+              className="cta__primary"
+              onClick={onImDone}
+              disabled={doneBusy || taskDone || paused}
+            >
+              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+            </button>
           </div>
-        </div>{/* end departures-card__shell */}
 
-        {/* CTAs — on cream surface, outside shell */}
-        <div className="departures-card__cta-row" aria-label="Task actions">
-          <button
-            type="button"
-            className="departures-card__btn"
-            onClick={onNeedHelp}
-            disabled={helpBusy || taskDone}
-          >
-            {helpBusy ? "…" : "NEED HELP"}
-          </button>
-          <button
-            type="button"
-            className="departures-card__btn departures-card__btn--primary"
-            onClick={onImDone}
-            disabled={doneBusy || taskDone || paused}
-          >
-            {taskDone ? "DONE" : doneBusy ? "…" : "I'M DONE"}
-          </button>
-        </div>
-
-      </div>
-    </main>
+        </div>{/* end .shell */}
+      </div>{/* end .page */}
+    </div>/* end .preview-d-430 */
   );
 }
