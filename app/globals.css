@@ -5535,3 +5535,308 @@ main.wrap--wide {
 .preview-sod-430 .task[data-done="true"] { opacity: 0.62; }
 .preview-sod-430 .task[data-done="true"] .task__title { text-decoration: line-through; text-decoration-thickness: 1.5px; text-decoration-color: var(--accent); color: var(--ink-muted); }
 .preview-sod-430 .task__pill--pending { background: transparent; border: 1.5px solid var(--accent-ink); color: var(--accent-ink); text-shadow: none; box-shadow: none; }
+/* === Day 20 staff home — cream surface tokens === */
+:root {
+  --cream-bg: #ECE4D0;
+  --cream-ink: #1F1A12;
+  --cream-muted: #6E5F3F;
+  --cream-label: #8A7A55;
+  --cream-hairline: rgba(31, 26, 18, 0.08);
+  --cream-border: rgba(31, 26, 18, 0.10);
+  --cream-button-border: rgba(31, 26, 18, 0.32);
+}
+
+/* === Day 20 staff home — shell === */
+.staff-home {
+  background: var(--cream-bg);
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  color: var(--cream-ink);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  justify-content: center;
+}
+
+.staff-home__shell {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px 18px 32px;
+}
+
+/* === Day 20 staff home — header === */
+.staff-home__hdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 4px 0;
+}
+
+.staff-home__hello {
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  color: var(--cream-ink);
+  margin: 0;
+  line-height: 1.05;
+}
+
+.staff-home__date {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--cream-muted);
+  margin: 8px 0 0;
+}
+
+.staff-home__plus {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cream-button-border);
+  background: transparent;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.staff-home__plus svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* === Day 20 staff home — daily brief === */
+.staff-home__brief {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin-top: 18px;
+  border: 1px solid rgba(31, 26, 18, 0.06);
+}
+
+.staff-home__brief-head {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--cream-label);
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.staff-home__brief-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cream-hairline);
+}
+
+.staff-home__brief-lbl {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--cream-label);
+}
+
+.staff-home__brief-val {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--cream-ink);
+  margin-top: 2px;
+  line-height: 1;
+}
+
+/* === Day 20 staff home — tasks today meta row === */
+.staff-home__tasksbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  margin: 18px 0 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: rgba(31, 26, 18, 0.55);
+}
+
+/* === Day 20 staff home — footer === */
+.staff-home__foot {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+  text-align: center;
+  color: rgba(31, 26, 18, 0.38);
+  margin: 22px 0 0;
+}
+
+/* === Day 20 staff home — bcard deck === */
+.deck {
+  position: relative;
+}
+
+.bcard {
+  position: relative;
+  border-radius: 26px;
+  padding: 22px 22px 18px;
+  color: var(--ink);
+  background: var(--accent);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  filter: blur(3.5px);
+  opacity: 0.92;
+  transition: filter 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
+  cursor: pointer;
+}
+
+.bcard + .bcard {
+  margin-top: -90px;
+}
+
+.bcard.is-active {
+  filter: none;
+  opacity: 1;
+  z-index: 50;
+  cursor: default;
+}
+
+.bcard.is-active + .bcard {
+  margin-top: 0;
+}
+
+.bcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bcard__title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0;
+  color: var(--ink);
+}
+
+.bcard__action {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  color: var(--ink);
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.bcard__action .num {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1;
+  color: currentColor;
+  letter-spacing: -0.01em;
+}
+
+.bcard__action .icon-check {
+  display: none;
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+.bcard.is-done .bcard__action .num {
+  display: none;
+}
+
+.bcard.is-done .bcard__action .icon-check {
+  display: block;
+}
+
+.bcard__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.bcard__meta svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.bcard__inset {
+  background: #FFFFFF;
+  border-radius: 14px;
+  margin-top: 18px;
+  padding: 12px 14px 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bcard__insetlabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  flex: 1;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bcard__insetpre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--ink);
+  opacity: 0.55;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.bcard__insetcta {
+  background: var(--ink);
+  color: #FFFFFF;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
