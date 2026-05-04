@@ -12,6 +12,7 @@ import {
 } from "@/lib/staff-task-execution-checklist";
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
+import { lookupSeasonalScent } from "@/lib/dispatch-config";
 
 // ---------------------------------------------------------------------------
 // Departure-specific types
@@ -187,6 +188,7 @@ export default function DeparturesCard({
 
   const room    = displayRoom(task);
   const dueTime = formatDueTime(task.due_time);
+  const seasonalScent = lookupSeasonalScent();
 
   const displayChecklist = buildDisplayChecklist(checklist);
   const doneCount = displayChecklist.filter((i) => i.dbItem?.done).length;
@@ -291,6 +293,10 @@ export default function DeparturesCard({
             <div className="setstat__row">
               <div className="setstat__label">Setup</div>
               <div className="setstat__input">{descNote ?? "—"}</div>
+            </div>
+            <div className="setstat__row">
+              <div className="setstat__label">Room Spray</div>
+              <div className="setstat__input">{seasonalScent}</div>
             </div>
             <div className="setstat__row">
               <div className="setstat__label">Notes</div>
