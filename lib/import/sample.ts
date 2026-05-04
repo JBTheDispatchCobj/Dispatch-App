@@ -1,6 +1,8 @@
+import { PROPERTY_TIMEZONE } from "../dispatch-config";
+
 function todayChicago(): string {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Chicago",
+    timeZone: PROPERTY_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -12,7 +14,7 @@ function shiftDate(isoDate: string, days: number): string {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
-// Row layout (relative to today in America/Chicago):
+// Row layout (relative to today in PROPERTY_TIMEZONE):
 // CONF-2026-001 — arrival  (checkin=today,   checkout=today+2)
 // CONF-2026-002 — departure (checkin=today-2, checkout=today)
 // CONF-2026-003 — stayover  (checkin=today-1, checkout=today+1)

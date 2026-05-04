@@ -10,14 +10,11 @@
 
 import type { InboundEvent, TaskDraft } from "./types.ts";
 import type { GenerationRule } from "./rules/types.ts";
+import { WEEKEND_DAY_NUMBERS } from "../dispatch-config.ts";
 
 // =============================================================================
 // Constants
 // =============================================================================
-
-// Days of week considered "weekend" for the weekday_start / weekend_start
-// distinction. JS Date.getUTCDay(): 0=Sun, 6=Sat.
-const WEEKEND_DAYS: ReadonlySet<number> = new Set([0, 6]);
 
 const DEFAULT_STATUS = "open";
 const DEFAULT_SOURCE = "agent"; // distinguishes rule-generated tasks from manual ones
@@ -63,7 +60,7 @@ function isWeekend(eventDate: string): boolean {
   // event_date is YYYY-MM-DD; parse as UTC noon to dodge DST edges.
   const d = new Date(`${eventDate}T12:00:00Z`);
   if (Number.isNaN(d.getTime())) return false;
-  return WEEKEND_DAYS.has(d.getUTCDay());
+  return WEEKEND_DAY_NUMBERS.has(d.getUTCDay());
 }
 
 // =============================================================================

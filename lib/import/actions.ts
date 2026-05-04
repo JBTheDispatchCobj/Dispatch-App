@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { fetchProfile } from "@/lib/profile";
 import { parsePaste, type SkippedRow } from "./parser";
 import { ingestReservations } from "./ingest";
+import { PROPERTY_TIMEZONE } from "../dispatch-config";
 
 export type ImportActionResult =
   | {
@@ -57,9 +58,9 @@ export async function runImport(
     return { ok: false, message: "Admin access required." };
   }
 
-  // "today" resolved server-side in hotel local time (America/Chicago)
+  // "today" resolved server-side in hotel local time (PROPERTY_TIMEZONE).
   const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Chicago",
+    timeZone: PROPERTY_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

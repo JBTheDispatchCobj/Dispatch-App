@@ -10,6 +10,7 @@
 // in their own .error UI per the project convention.
 
 import { supabase } from "./supabase";
+import { PROPERTY_TIMEZONE } from "./dispatch-config";
 
 // =============================================================================
 // Types
@@ -60,7 +61,7 @@ const LIVE_STATUSES: ReservationStatus[] = ["confirmed", "arrived"];
 // Property timezone helpers
 // =============================================================================
 
-const PROPERTY_TIMEZONE = "America/Chicago";
+// PROPERTY_TIMEZONE imported from ./dispatch-config (single source of truth).
 
 /**
  * Today's date in the property's timezone as a YYYY-MM-DD string.
