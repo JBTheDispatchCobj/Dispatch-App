@@ -431,3 +431,40 @@ export const DEEP_CLEAN_AUTO_TRIGGER = {
  * from here in a follow-up cleanup.
  */
 export const PROPERTY_TIMEZONE = "America/Chicago";
+
+// =============================================================================
+// 14. Staff roster — primaries + hall preferences
+//
+// Per-staff flags consumed by lib/orchestration/assignment-policies.ts. Static
+// for beta; promotes to Supabase admin-editable post-beta. Keys are lowercased
+// staff names (matched case-insensitively at load time so casing/whitespace
+// drift doesn't silently dis-flag a primary). If a staff member's display
+// name changes, this map needs a corresponding edit — that's intentional;
+// drift surfaces loudly rather than hiding.
+//
+// [ASK JENNIFER] — which two of Courtney/Lizzie/Angie/Mark are primaries
+// today, and which primary takes 30s vs. 20s. Defaults below are
+// alphabetical-first placeholders. Reversible one-line edits.
+// =============================================================================
+
+/**
+ * Lowercased staff names that are designated primaries. Up to 2 entries per
+ * Hallway + Assignment R06. Primaries handle stayovers + arrivals.
+ */
+export const STAFF_PRIMARY_NAMES: ReadonlySet<string> = new Set([
+  "courtney", // [ASK JENNIFER]
+  "lizzie",   // [ASK JENNIFER]
+]);
+
+/**
+ * Preferred starting hall per staff member. Lowercased name keys. Used by
+ * the primary-housekeeper lane (Hallway + Assignment R07) to seat each
+ * primary in their default hall before fan-out. Non-primaries can be left
+ * absent — they pick up overflow regardless of preferred hall.
+ */
+export const STAFF_PREFERRED_HALL: Readonly<Record<string, HallId>> = {
+  courtney: "30s", // [ASK JENNIFER]
+  lizzie:   "20s", // [ASK JENNIFER]
+  angie:    "20s", // non-primary; overflow
+  mark:     "30s", // non-primary; overflow
+};
