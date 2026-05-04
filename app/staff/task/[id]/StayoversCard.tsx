@@ -15,6 +15,11 @@ import {
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
 import { formatCommentTime } from "@/lib/staff-card-formatters";
+import {
+  STAYOVER_STATUS_TIME_TARGETS,
+  type StayoverStatus,
+  type TimeTargetSpec,
+} from "@/lib/dispatch-config";
 
 // ---------------------------------------------------------------------------
 // Stayover-specific types — multi-select status
@@ -32,6 +37,26 @@ const STAYOVER_STATUS_OPTIONS: ReadonlyArray<{
   { value: "sheet_change", label: "Sheet Change" },
   { value: "done",         label: "Done" },
 ];
+
+// Maps local card keys to dispatch-config StayoverStatus keys. The card has
+// one "Done" pill; the config splits Done into "Done (Standard)" vs.
+// "Done (Long-term/*)". Use Standard here; long-term variant selection is
+// follow-on work (master plan I.G — Sheet Change weekly / * guest variant).
+const STATUS_KEY_TO_CONFIG: Record<StayoverStatusKey, StayoverStatus> = {
+  dnd: "DND",
+  guest_ok: "Guest OK",
+  desk_ok: "Desk OK",
+  sheet_change: "Sheet Change",
+  done: "Done (Standard)",
+};
+
+function formatTimeTarget(spec: TimeTargetSpec): string {
+  if (spec.target !== undefined) return `~${spec.target} ${spec.unit}`;
+  if (spec.min !== undefined && spec.max !== undefined) return `${spec.min}-${spec.max} ${spec.unit}`;
+  if (spec.max !== undefined) return `≤${spec.max} ${spec.unit}`;
+  if (spec.min !== undefined) return `≥${spec.min} ${spec.unit}`;
+  return "";
+}
 
 const VALID_STATUS_KEYS = new Set<string>(["dnd", "guest_ok", "desk_ok", "sheet_change", "done"]);
 
@@ -351,18 +376,23 @@ export default function StayoversCard({
               </span>
             </div>
             <div className="statcard__pills">
-              {STAYOVER_STATUS_OPTIONS.map((opt) => (
-                <span
-                  key={opt.value}
-                  className={
-                    selectedStatuses.includes(opt.value)
-                      ? "status-pill status-pill--active"
-                      : "status-pill"
-                  }
-                >
-                  {opt.label}
-                </span>
-              ))}
+              {STAYOVER_STATUS_OPTIONS.map((opt) => {
+                const target = STAYOVER_STATUS_TIME_TARGETS[STATUS_KEY_TO_CONFIG[opt.value]];
+                const targetLabel = formatTimeTarget(target);
+                return (
+                  <span
+                    key={opt.value}
+                    className={
+                      selectedStatuses.includes(opt.value)
+                        ? "status-pill status-pill--active"
+                        : "status-pill"
+                    }
+                  >
+                    {opt.label}
+                    {targetLabel ? ` · ${targetLabel}` : null}
+                  </span>
+                );
+              })}
             </div>
           </section>
 
