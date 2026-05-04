@@ -14,7 +14,6 @@ export const arrivalRules: GenerationRule[] = [
     output: { card_type: 'arrival' },
     assignment: {
       role: 'housekeeping',
-      // specific_member_id: [ASK JENNIFER] — single person, rotation, or whoever's on housekeeping that day?
     },
     timing: {
       weekday_start: '11:00',  // confirmed from KB

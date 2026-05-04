@@ -14,7 +14,6 @@ export const stayoverRules: GenerationRule[] = [
     output: { card_type: 'stayover' },
     assignment: {
       role: 'housekeeping',
-      // specific_member_id: [ASK JENNIFER]
     },
     timing: {
       weekday_start: '11:00',  // confirmed from KB

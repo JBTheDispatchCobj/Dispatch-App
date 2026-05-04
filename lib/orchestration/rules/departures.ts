@@ -14,7 +14,6 @@ export const departureRules: GenerationRule[] = [
     output: { card_type: 'housekeeping_turn' },
     assignment: {
       role: 'housekeeping',
-      // specific_member_id: [ASK JENNIFER]
     },
     timing: {
       // weekday_start: [ASK JENNIFER] — does departure cleaning have its own start time, or does it follow arrivals?
