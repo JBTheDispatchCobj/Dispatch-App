@@ -7,6 +7,7 @@ import {
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
+import { formatCommentTime, formatTodayDate, firstNameFromDisplayName } from "@/lib/staff-card-formatters";
 
 // ---------------------------------------------------------------------------
 // Context parsers — safe, never throw
@@ -47,28 +48,6 @@ function parseEodSummary(ctx: Record<string, unknown>): EodSummary | null {
 // ---------------------------------------------------------------------------
 // Display helpers
 // ---------------------------------------------------------------------------
-
-function formatTodayDate(): string {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatCommentTime(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
-  if (date >= todayStart) {
-    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  }
-  if (date >= yesterdayStart) {
-    return "Yesterday";
-  }
-  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
-}
 
 function isToday(iso: string): boolean {
   const date = new Date(iso);
@@ -157,8 +136,7 @@ export default function EODCard({
     (c) => c.user_id === _userId && isToday(c.created_at),
   );
 
-  // First name for personalised greeting
-  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
+  const firstName = firstNameFromDisplayName(displayName);
 
   return (
     <div className="preview-e-430">
@@ -208,7 +186,7 @@ export default function EODCard({
             {/* TODO: replace with system-set rotating EOD phrase field when
                 schema adds it. Currently locked to artifact example. */}
             <h1 className="greet__hello">
-              {firstName ? `You crushed it, ${firstName}.` : "You crushed it."}
+              {`You crushed it, ${firstName ?? "team"}.`}
             </h1>
             <div className="greet__date">{dateLine}</div>
           </header>

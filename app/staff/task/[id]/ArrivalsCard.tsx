@@ -12,6 +12,7 @@ import {
 } from "@/lib/staff-task-execution-checklist";
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
+import { formatCommentTime } from "@/lib/staff-card-formatters";
 
 // ---------------------------------------------------------------------------
 // Context parsers — safe, never throw
@@ -99,20 +100,6 @@ function formatDueTime(iso: string | null): string {
   const d = new Date();
   d.setHours(h, min, 0, 0);
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function formatCommentTime(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
-  if (date >= todayStart) {
-    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  }
-  if (date >= yesterdayStart) {
-    return "Yesterday";
-  }
-  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 }
 
 function checklistInteractionDisabled(status: string): boolean {

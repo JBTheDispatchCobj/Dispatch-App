@@ -1,6 +1,11 @@
 import type { CardType, ChecklistNode, RoomType } from "./types";
 import { getRoomType } from "./rooms";
-import { queenChecklists } from "./variants/queen";
+import { singleQueenChecklists } from "./variants/single_queen";
+import { doubleChecklists } from "./variants/double";
+import { adaDoubleChecklists } from "./variants/ada_double";
+import { jacuzziChecklists } from "./variants/jacuzzi";
+import { adaJacuzziChecklists } from "./variants/ada_jacuzzi";
+import { suiteChecklists } from "./variants/suite";
 
 const KNOWN_CARD_TYPES = new Set<string>([
   "housekeeping_turn",
@@ -19,15 +24,24 @@ const FALLBACK_NODE: ChecklistNode = {
   children: [],
 };
 
+const VARIANT_BY_ROOM_TYPE: Record<RoomType, Record<CardType, ChecklistNode>> = {
+  single_queen: singleQueenChecklists,
+  double: doubleChecklists,
+  ada_double: adaDoubleChecklists,
+  jacuzzi: jacuzziChecklists,
+  ada_jacuzzi: adaJacuzziChecklists,
+  suite: suiteChecklists,
+  // Unknown rooms (anything outside the property's room list) fall back to
+  // the single-queen base so the drill-down isn't empty.
+  unknown: singleQueenChecklists,
+};
+
 function getChecklistForRoomType(
   cardType: CardType,
   roomType: RoomType,
 ): ChecklistNode {
-  if (roomType === "queen" || roomType === "unknown") {
-    return queenChecklists[cardType] ?? FALLBACK_NODE;
-  }
-  // Post-beta: add king/suite/cabin variants. Fall back to queen for now.
-  return queenChecklists[cardType] ?? FALLBACK_NODE;
+  const variant = VARIANT_BY_ROOM_TYPE[roomType] ?? singleQueenChecklists;
+  return variant[cardType] ?? FALLBACK_NODE;
 }
 
 export function resolveChecklist(

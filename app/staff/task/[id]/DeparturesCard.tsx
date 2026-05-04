@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   type CommentRow,
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
-import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
-import { supabase } from "@/lib/supabase";
 import {
   type ExecutionChecklistItem,
   DEPARTURES_CANONICAL_CHECKLIST,
@@ -149,12 +147,12 @@ export type DeparturesCardProps = {
 
 export default function DeparturesCard({
   task,
-  userId,
+  userId: _userId,
   displayName: _displayName,
   checklist,
   comments,
   inlineError,
-  setInlineError,
+  setInlineError: _setInlineError,
   noteBody,
   setNoteBody,
   noteBusy,
@@ -169,42 +167,9 @@ export default function DeparturesCard({
   onResume,
   onPostNote,
 }: DeparturesCardProps) {
-  const [departureStatus, setDepartureStatus] = useState<DepartureStatus>(
-    parseDepartureStatus(task.context.departure_status),
-  );
-  const [statusBusy, setStatusBusy] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
 
-  const onSetDepartureStatus = useCallback(
-    async (next: DepartureStatus) => {
-      if (!userId || statusBusy || next === departureStatus) return;
-      const prev = departureStatus;
-      setStatusBusy(true);
-      setInlineError(null);
-
-      const { error: upErr } = await supabase
-        .from("tasks")
-        .update({ context: { ...task.context, departure_status: next } })
-        .eq("id", task.id);
-
-      if (upErr) {
-        setInlineError(upErr.message);
-        setStatusBusy(false);
-        return;
-      }
-
-      await logTaskEvent(
-        task.id,
-        "departure_status_changed",
-        withTaskEventSchema({ from: prev, to: next }),
-        userId,
-      );
-
-      setDepartureStatus(next);
-      setStatusBusy(false);
-    },
-    [userId, statusBusy, departureStatus, task, setInlineError],
-  );
+  const departureStatus = parseDepartureStatus(task.context.departure_status);
 
   const checklistTree = resolveChecklist("housekeeping_turn", task.room_number);
   const outgoing = parseGuestRecord(task.context.outgoing_guest);
@@ -358,20 +323,16 @@ export default function DeparturesCard({
               <div className="setstat__label">Status</div>
               <div className="setstat__pills" role="group" aria-label="Room turnover status">
                 {DEPARTURE_STATUS_CHIPS.map((chip) => (
-                  <button
+                  <span
                     key={chip.value}
-                    type="button"
                     className={
                       departureStatus === chip.value
                         ? "status-pill status-pill--active"
                         : "status-pill"
                     }
-                    onClick={() => void onSetDepartureStatus(chip.value)}
-                    disabled={taskDone || statusBusy}
-                    aria-pressed={departureStatus === chip.value}
                   >
                     {chip.label}
-                  </button>
+                  </span>
                 ))}
               </div>
             </div>

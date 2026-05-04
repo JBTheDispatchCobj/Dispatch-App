@@ -23,15 +23,22 @@ Future (post-beta): in-app agent that generates and deploys cards from a knowled
 
 Ship these. Nothing else.
 
-1. Manager/admin can create a task, assign it to a staff member, set its `context.staff_home_bucket` to one of: `start_of_day`, `departures`, `arrivals`, `stayovers`.
-2. Staff opens the app, sees their tasks partitioned into the four buckets above.
+1. Manager/admin can create a task, assign it to a staff member, set its `context.staff_home_bucket` to one of: `start_of_day`, `departures`, `stayovers`, `arrivals`, `dailys`, `eod`.
+2. Staff opens the app, sees their tasks partitioned into the six buckets above (time-arc order: SOD → Departures → Stayovers → Arrivals → Dailys → EOD).
 3. Staff can open a task card, pause it, complete a checklist, upload a note/image, mark it done.
 4. Every state change writes a `task_events` row with `schema_version: 1`.
 5. Deployment to Vercel, linked to Supabase, accessible at a URL the hotel can hit from phones.
 
-**Cut for beta, revisit week 3:** `dailys` and `eod` staff buckets, activity feed polish, staff profile pages, reports/metrics, team card, deep-clean table, dynamic daily reassignment, ResNexus, knowledge-base agent.
+**Cut for beta, revisit week 3:** activity feed polish, staff profile pages, reports/metrics, team card, deep-clean table, dynamic daily reassignment, ResNexus, knowledge-base agent.
 
 See `docs/dispatch-audit.md` section 8 for the day-by-day plan and section 9 for the full cut list.
+
+## What shipped in Phase 3
+
+- All six X-430 staff task detail cards (D-430, A-430, S-430, Da-430, E-430, SOD-430) under `app/staff/task/[id]/`
+- Day 20 staff home rebuild — bucket card stack on cream surface — at `app/staff/page.tsx`
+- Per-card audit docs at `docs/phase-3-{slug}-mapping.md` document every gap and decision
+- Locked design system tokens in `app/globals.css` (six neon bucket palettes + Day 20 cream tokens)
 
 ## Architecture rules (do not violate)
 
@@ -86,7 +93,7 @@ When you start work:
 app/                    # Next.js App Router
   page.tsx              # Manager/admin home (role-gated)
   staff/
-    page.tsx            # Staff home — four buckets (critical UX)
+    page.tsx            # Staff home — six buckets, time-arc order (critical UX)
     task/[id]/          # Staff card execution screens
   tasks/[id]/           # Manager card view/edit
   login/                # Magic-link form
@@ -114,17 +121,13 @@ AGENTS.md               # Older direction doc — superseded by this file
 dispatch-ui-rules.md    # UI conventions — merged into this file
 ```
 
-## Immediate priorities (Day 1)
+## Phase 4 in flight
 
-Before anything else: the manager task create/edit form has no way to set `context.staff_home_bucket`. Every task defaults into `start_of_day` on staff's phone. This is the #1 beta blocker.
-
-Fix in one sitting:
-1. Add a required `<select>` on the manager task create form with four options: Start of Day, Departures, Arrivals, Stayovers.
-2. Write the selection into `tasks.context.staff_home_bucket` on insert.
-3. Same field on the task edit form.
-4. Backfill any existing tasks to a sane default via a one-off SQL snippet that Bryan runs manually.
-
-See `docs/dispatch-audit.md` section 8, Day 1 for details.
+- Wave 4A: shared helpers + cleanup (drop topstrip ＋, drop debug footers, S-430 status pill fix)
+- Wave 4B: KB ingestion — Jennifer's checklist trees into `lib/checklists/variants/{class}.ts`
+- Reservations BR pack: hardcoded staff-home brief counts (3/2/4) stay until BR1-BR5 land
+- Rule engine: `lib/orchestration/rules/*` are scaffolded but `dispatch()` returns `[]` — interpreter not yet built
+- See `docs/phase-3-handoff.md` and `docs/phase-3-{slug}-mapping.md` for current Phase 4 ground truth
 
 ## What to never do
 

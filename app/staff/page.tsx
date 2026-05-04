@@ -18,6 +18,7 @@ import {
   partitionStaffHomeTasks,
   type StaffHomeBucket,
 } from "@/lib/staff-home-bucket";
+import { getTodaysReservationCounts } from "@/lib/reservations";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -127,6 +128,16 @@ export default function StaffHomePage() {
   const [done, setDone] = useState<Set<BucketKey>>(new Set());
   const [active, setActive] = useState<BucketKey>("sod");
   const [now] = useState(() => new Date());
+  // Brief counts — initial values match the pre-BR1 hardcoded fallback so the
+  // brief card renders sensibly even before the reservations table exists.
+  // Replaced live by getTodaysReservationCounts() once the reservations table
+  // is in place. If the fetch fails (table not yet migrated, RLS issue, etc.)
+  // these fallback values stay visible.
+  const [briefCounts, setBriefCounts] = useState({
+    arrivals: 3,
+    departures: 2,
+    stayovers: 4,
+  });
 
   const loadTasks = useCallback(async (sid: string | null) => {
     setLoadingTasks(true);
@@ -200,6 +211,18 @@ export default function StaffHomePage() {
       setDisplayName(p.display_name);
       await loadTasks(p.staff_id);
       setReady(true);
+
+      // BR3: live reservation counts. Non-blocking — if the table isn't
+      // migrated yet or the query errors, the hardcoded fallback above stays.
+      try {
+        const counts = await getTodaysReservationCounts();
+        if (!cancelled) setBriefCounts(counts);
+      } catch (err) {
+        console.warn(
+          "[staff-home] Reservation counts unavailable; using fallback. Apply docs/supabase/reservations_br1.sql to enable.",
+          err,
+        );
+      }
     })();
 
     const {
@@ -312,15 +335,15 @@ export default function StaffHomePage() {
           <div className="staff-home__brief-grid">
             <div>
               <div className="staff-home__brief-lbl">Arrivals</div>
-              <div className="staff-home__brief-val">3</div>
+              <div className="staff-home__brief-val">{briefCounts.arrivals}</div>
             </div>
             <div>
               <div className="staff-home__brief-lbl">Departures</div>
-              <div className="staff-home__brief-val">2</div>
+              <div className="staff-home__brief-val">{briefCounts.departures}</div>
             </div>
             <div>
               <div className="staff-home__brief-lbl">Stayovers</div>
-              <div className="staff-home__brief-val">4</div>
+              <div className="staff-home__brief-val">{briefCounts.stayovers}</div>
             </div>
           </div>
         </div>

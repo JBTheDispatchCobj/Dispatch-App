@@ -7,6 +7,7 @@ import {
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
+import { formatCommentTime, formatTodayDate } from "@/lib/staff-card-formatters";
 
 // ---------------------------------------------------------------------------
 // Context parsers — safe, never throw
@@ -27,28 +28,6 @@ function checklistInteractionDisabled(status: string): boolean {
 // ---------------------------------------------------------------------------
 // Display helpers
 // ---------------------------------------------------------------------------
-
-function formatTodayDate(): string {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatCommentTime(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
-  if (date >= todayStart) {
-    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  }
-  if (date >= yesterdayStart) {
-    return "Yesterday";
-  }
-  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
-}
 
 // ---------------------------------------------------------------------------
 // Props

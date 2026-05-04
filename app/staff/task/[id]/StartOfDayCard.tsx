@@ -7,6 +7,7 @@ import {
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
+import { formatSodDateShort, firstNameFromDisplayName, formatCommentTime } from "@/lib/staff-card-formatters";
 
 // ---------------------------------------------------------------------------
 // Context parsers — all safe, never throw
@@ -65,43 +66,6 @@ function formatSodDate(iso: string | null): string {
 
 function checklistInteractionDisabled(status: string): boolean {
   return status === "done" || status === "blocked" || status === "paused";
-}
-
-// ---------------------------------------------------------------------------
-// Display helpers
-// ---------------------------------------------------------------------------
-
-function formatTodayDate(): string {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatSodDateShort(iso: string | null): string {
-  if (!iso) return formatTodayDate();
-  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return formatTodayDate();
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatCommentTime(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart.getTime() - 86_400_000);
-  if (date >= todayStart) {
-    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  }
-  if (date >= yesterdayStart) {
-    return "Yesterday";
-  }
-  return date.toLocaleDateString(undefined, { month: "numeric", day: "numeric" });
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +132,7 @@ export default function StartOfDayCard({
       ? task.description.trim()
       : null;
 
-  const firstName = displayName?.trim().split(/\s+/)[0] ?? null;
+  const firstName = firstNameFromDisplayName(displayName);
   const doneCount = checklist.filter((i) => i.done).length;
 
   return (
@@ -216,7 +180,7 @@ export default function StartOfDayCard({
               <span className="greet__chip">Start of Day</span>
               <span className="greet__loc">{formatSodDateShort(task.due_date)}</span>
             </div>
-            <h1 className="greet__hello">{firstName ? `Hi, ${firstName}.` : "Hi."}</h1>
+            <h1 className="greet__hello">Hi, {firstName ?? "there"}.</h1>
             {/* TODO: replace with system-set rotating SOD date-context phrase
                 when schema adds it. Currently locked to artifact example. */}
             <div className="greet__date">1st day of spring</div>

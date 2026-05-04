@@ -14,6 +14,7 @@ import {
 } from "@/lib/staff-task-execution-checklist";
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
+import { formatCommentTime } from "@/lib/staff-card-formatters";
 
 // ---------------------------------------------------------------------------
 // Stayover-specific types — multi-select status
@@ -177,12 +178,12 @@ export default function StayoversCard({
   userId,
   displayName: _displayName,
   checklist,
-  comments: _comments,
+  comments,
   inlineError,
   setInlineError,
-  noteBody: _noteBody,
-  setNoteBody: _setNoteBody,
-  noteBusy: _noteBusy,
+  noteBody,
+  setNoteBody,
+  noteBusy,
   helpBusy,
   doneBusy,
   pauseBusy,
@@ -192,7 +193,7 @@ export default function StayoversCard({
   onImDone,
   onPause,
   onResume,
-  onPostNote: _onPostNote,
+  onPostNote,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -446,6 +447,66 @@ export default function StayoversCard({
                 </div>
               ))}
             </div>
+          </section>
+
+          {/* Notes section — A-430 pattern (Gap 6) */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Notes</span>
+              <span className="section__count">
+                {comments.length > 0
+                  ? `${comments.length} left for you`
+                  : "no notes yet"}
+              </span>
+            </header>
+            {comments.length > 0 ? (
+              <div className="notes">
+                {comments.map((comment) => (
+                  <button key={comment.id} className="note" type="button">
+                    <div className="note__head">
+                      <span className="note__dot" />
+                      <div className="note__body">
+                        <div className="note__line">
+                          <span className="note__name">{comment.author_display_name}</span>
+                          <span className="note__action"> left a note: </span>
+                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                        </div>
+                        {comment.image_url ? (
+                          <div className="note__chips">
+                            <span className="note__chip">📎 1</span>
+                          </div>
+                        ) : null}
+                      </div>
+                      <span className="note__time">{formatCommentTime(comment.created_at)}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {!taskDone ? (
+              <form onSubmit={onPostNote}>
+                <div className="compose__row">
+                  <input
+                    className="compose__input"
+                    placeholder="Leave a note for the team…"
+                    value={noteBody}
+                    onChange={(e) => setNoteBody(e.target.value)}
+                    disabled={noteBusy}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="compose__foot">
+                  <div />
+                  <button
+                    type="submit"
+                    className="compose__send"
+                    disabled={noteBusy || !noteBody.trim()}
+                  >
+                    {noteBusy ? "…" : "Send"}
+                  </button>
+                </div>
+              </form>
+            ) : null}
           </section>
 
           {/* Maintenance — locked placeholder (Gap 4; no live data, out of beta scope) */}

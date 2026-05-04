@@ -1,32 +1,5 @@
 import type { InboundEvent, TaskDraft } from "../types.ts";
-import { arrivalsRule } from "./arrivals.ts";
-import { departuresRule } from "./departures.ts";
-import { stayoversRule } from "./stayovers.ts";
-
-type RuleFn = (event: InboundEvent) => TaskDraft[];
-
-const REGISTRY: Record<string, RuleFn> = {
-  arrival: arrivalsRule,
-  departure: departuresRule,
-  stayover: stayoversRule,
-};
-
-export function dispatch(event: InboundEvent): TaskDraft[] {
-  const rule = REGISTRY[event.event_type];
-  if (!rule) {
-    console.warn(
-      `[orchestrator] No rule for event_type="${event.event_type}" — skipping event ${event.id}`,
-    );
-    return [];
-  }
-  return rule(event);
-}
-
-// ---------------------------------------------------------------------------
-// Declarative rules layer — parallel to the function-based dispatch path.
-// run.ts continues to use dispatch() above; this layer feeds the interpreter
-// (next prompt) that turns GenerationRule[] + InboundEvent → TaskInsert[].
-// ---------------------------------------------------------------------------
+import { interpret } from "../interpret.ts";
 
 import { arrivalRules } from "./arrivals.ts";
 import { departureRules } from "./departures.ts";
@@ -35,6 +8,12 @@ import { dailyRules } from "./dailys.ts";
 import { eodRules } from "./eod.ts";
 import { maintenanceRules } from "./maintenance.ts";
 import type { GenerationRule } from "./types.ts";
+
+// ---------------------------------------------------------------------------
+// Declarative rules registry — single source of truth.
+// Each rule file exports a typed GenerationRule[]. The interpreter at
+// ../interpret.ts turns (rule, event) pairs into TaskDrafts.
+// ---------------------------------------------------------------------------
 
 export const allRules: GenerationRule[] = [
   ...arrivalRules,
@@ -47,4 +26,28 @@ export const allRules: GenerationRule[] = [
 
 export function getRulesForEvent(eventType: string): GenerationRule[] {
   return allRules.filter((r) => r.trigger.event_type === eventType);
+}
+
+// ---------------------------------------------------------------------------
+// dispatch() — entry point used by run.ts.
+// Reads allRules, filters by event_type, runs each match through interpret(),
+// returns the resulting TaskDraft[]. A rule that fails its room_scope or other
+// guard inside interpret() returns null and is filtered out.
+// ---------------------------------------------------------------------------
+
+export function dispatch(event: InboundEvent): TaskDraft[] {
+  const matching = getRulesForEvent(event.event_type);
+  if (matching.length === 0) {
+    console.warn(
+      `[orchestrator] No rule for event_type="${event.event_type}" — skipping event ${event.id}`,
+    );
+    return [];
+  }
+
+  const drafts: TaskDraft[] = [];
+  for (const rule of matching) {
+    const draft = interpret(rule, event);
+    if (draft) drafts.push(draft);
+  }
+  return drafts;
 }

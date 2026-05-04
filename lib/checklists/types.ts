@@ -7,7 +7,14 @@ export type CardType =
   | "maintenance"
   | "general_report";
 
-export type RoomType = "queen" | "king" | "suite" | "cabin" | "unknown";
+export type RoomType =
+  | "single_queen"
+  | "double"
+  | "ada_double"
+  | "jacuzzi"
+  | "ada_jacuzzi"
+  | "suite"
+  | "unknown";
 
 export type ChecklistNode = {
   id: string;
