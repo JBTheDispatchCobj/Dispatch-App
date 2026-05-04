@@ -51,6 +51,12 @@ export async function loadRoster(
   const rows = (data ?? []) as { id: string; name: string; status: string }[];
 
   return rows.map((r) => {
+    // Lookup key is the lowercased FULL name — disambiguates between staff
+    // rows that share a first name. Bryan's dev portal account is named
+    // "Lizzie" (Ops role, alt-email login to dodge magic-link rate limits)
+    // and the real Front-of-House staff is "Lizzie Larson"; first-name-only
+    // lookup would conflate them. Section 14 of dispatch-config keys by full
+    // name to keep this disambiguation explicit.
     const key = r.name.trim().toLowerCase();
     return {
       staff_id: r.id,

@@ -436,35 +436,52 @@ export const PROPERTY_TIMEZONE = "America/Chicago";
 // 14. Staff roster — primaries + hall preferences
 //
 // Per-staff flags consumed by lib/orchestration/assignment-policies.ts. Static
-// for beta; promotes to Supabase admin-editable post-beta. Keys are lowercased
-// staff names (matched case-insensitively at load time so casing/whitespace
-// drift doesn't silently dis-flag a primary). If a staff member's display
-// name changes, this map needs a corresponding edit — that's intentional;
-// drift surfaces loudly rather than hiding.
+// for beta; promotes to Supabase admin-editable post-beta. Keys are the
+// lowercased FULL NAME exactly as stored in public.staff.name. Full-name
+// keying disambiguates staff who share a first name — for example, the staff
+// table has both "Lizzie" (Bryan's dev portal account, Ops role, alt-email
+// login to dodge magic-link rate limits) and "Lizzie Larson" (the real
+// Front-of-House staff). First-name-only keying would conflate them.
 //
-// [ASK JENNIFER] — which two of Courtney/Lizzie/Angie/Mark are primaries
-// today, and which primary takes 30s vs. 20s. Defaults below are
-// alphabetical-first placeholders. Reversible one-line edits.
+// Staff not listed in either map below appear in the roster as non-primary
+// with no preferred hall and pick up drafts via the round-robin fallback in
+// assignment-policies (so the dev "Lizzie" account does still receive some
+// drafts — useful for testing the staff portal — but is never flagged
+// primary or hall-pinned).
+//
+// [ASK JENNIFER] — which two staff are primaries today, and which primary
+// takes 30s vs. 20s. Defaults below are placeholders matching the four-
+// staff Courtney/Lizzie/Angie/Mark model from the governance spreadsheet,
+// keyed against the actual full names in public.staff. Reversible one-line
+// edits when Jennifer confirms.
+//
+// [ASK JENNIFER 2] — the staff table currently has 5 active rows
+// (Angie Lopez, Courtney Manager, Lizzie [dev], Lizzie Larson, Mark Parry).
+// Roles are Housekeeping (Angie), Manager (Courtney), Ops (dev Lizzie),
+// Front of House (Lizzie Larson), GC/Maintenance (Mark). The four-staff
+// housekeeping model from the governance spreadsheet may not match the
+// actual hotel roster — Courtney is a Manager, Mark is GC/Maintenance.
+// Confirm with Jennifer before treating this map as load-bearing.
 // =============================================================================
 
 /**
- * Lowercased staff names that are designated primaries. Up to 2 entries per
- * Hallway + Assignment R06. Primaries handle stayovers + arrivals.
+ * Lowercased FULL names of staff members designated as primaries. Up to 2
+ * entries per Hallway + Assignment R06. Primaries handle stayovers + arrivals.
  */
 export const STAFF_PRIMARY_NAMES: ReadonlySet<string> = new Set([
-  "courtney", // [ASK JENNIFER]
-  "lizzie",   // [ASK JENNIFER]
+  "courtney manager", // [ASK JENNIFER]
+  "lizzie larson",    // [ASK JENNIFER] — distinct from dev "Lizzie" Ops account
 ]);
 
 /**
- * Preferred starting hall per staff member. Lowercased name keys. Used by
- * the primary-housekeeper lane (Hallway + Assignment R07) to seat each
- * primary in their default hall before fan-out. Non-primaries can be left
- * absent — they pick up overflow regardless of preferred hall.
+ * Preferred starting hall per staff member, keyed by lowercased full name.
+ * Used by the primary-housekeeper lane (Hallway + Assignment R07) to seat
+ * each primary in their default hall before fan-out. Non-primaries can be
+ * left absent — they pick up overflow regardless of preferred hall.
  */
 export const STAFF_PREFERRED_HALL: Readonly<Record<string, HallId>> = {
-  courtney: "30s", // [ASK JENNIFER]
-  lizzie:   "20s", // [ASK JENNIFER]
-  angie:    "20s", // non-primary; overflow
-  mark:     "30s", // non-primary; overflow
+  "courtney manager": "30s", // [ASK JENNIFER]
+  "lizzie larson":    "20s", // [ASK JENNIFER]
+  "angie lopez":      "20s", // non-primary; overflow
+  "mark parry":       "30s", // non-primary; overflow
 };
