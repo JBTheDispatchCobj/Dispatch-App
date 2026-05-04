@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { dispatch } from "./rules/index.ts";
 import type { InboundEvent, TaskDraft } from "./types.ts";
+import { loadRoster } from "./roster.ts";
+import { assignDrafts } from "./assignment-policies.ts";
 
 function makeServiceRoleClient() {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -46,6 +48,17 @@ export async function run(): Promise<OrchestratorResult> {
 
   const client = makeServiceRoleClient();
 
+  // Load today's on-shift roster up-front so we can pass it to assignDrafts
+  // after the event-fan-out loop. Phase 1 treats every active staff row as
+  // on-shift (Clock-In flow per master plan I.C is unbuilt).
+  const roster = await loadRoster(client);
+  console.log(`[orchestrator] Roster loaded: ${roster.length} member(s).`);
+  if (roster.length === 0) {
+    console.warn(
+      "[orchestrator] Roster is empty — drafts will retain whatever staff_id interpret() seeded (likely null).",
+    );
+  }
+
   const { data: events, error: fetchErr } = await client
     .from("inbound_events")
     .select(
@@ -61,40 +74,69 @@ export async function run(): Promise<OrchestratorResult> {
   const rows = (events ?? []) as InboundEvent[];
   console.log(`[orchestrator] Found ${rows.length} unprocessed event(s).`);
 
-  let drafts_inserted = 0;
-  let tasks_inserted = 0;
-
+  // Collect drafts across all events into a single batch so the auto-assignment
+  // policies layer can balance load across the full roster (master plan IV.A).
+  // interpret() already stamps source_event_id on each draft from its source
+  // event, so attribution is preserved through the bulk path below.
+  const allDrafts: TaskDraft[] = [];
   for (const event of rows) {
     const drafts = dispatch(event);
+    allDrafts.push(...drafts);
+  }
+  console.log(
+    `[orchestrator] Generated ${allDrafts.length} draft(s) before assignment.`,
+  );
 
-    if (drafts.length > 0) {
-      if (dryRun) {
-        const draftRows = drafts.map((d) => ({
-          ...d,
-          source_event_id: event.id,
-        }));
-        const { error: insertErr } = await client
-          .from("task_drafts")
-          .insert(draftRows);
-        if (insertErr) {
-          throw new Error(
-            `Failed to insert task_drafts for event ${event.id}: ${insertErr.message}`,
-          );
-        }
-        drafts_inserted += draftRows.length;
-      } else {
-        const taskRows = drafts.map(toTaskRow);
-        const { error: insertErr } = await client.from("tasks").insert(taskRows);
-        if (insertErr) {
-          throw new Error(
-            `Failed to insert tasks for event ${event.id}: ${insertErr.message}`,
-          );
-        }
-        tasks_inserted += taskRows.length;
+  // Run the auto-assignment policies pass. Pure — returns a new array.
+  // eventDate is the first event's date as a representative; the policies
+  // layer doesn't yet branch on date but Step 5 (hallway adjacency) and
+  // Step 7 (pre-stayover reshuffle) will need it.
+  const assignedDrafts =
+    allDrafts.length > 0
+      ? assignDrafts(allDrafts, {
+          eventDate: rows[0]?.event_date ?? "",
+          roster,
+        })
+      : allDrafts;
+
+  if (assignedDrafts.length > 0) {
+    const assignedCount = assignedDrafts.filter(
+      (d) => d.staff_id !== null,
+    ).length;
+    console.log(
+      `[orchestrator] After assignment: ${assignedCount} of ${assignedDrafts.length} draft(s) have staff_id populated.`,
+    );
+  }
+
+  // Persist — single bulk insert into task_drafts (dry-run) or tasks. All-
+  // or-nothing: if the insert fails, no events are marked processed and the
+  // whole run rolls back from the caller's perspective. Earlier per-event
+  // semantics didn't have this property.
+  let drafts_inserted = 0;
+  let tasks_inserted = 0;
+  if (assignedDrafts.length > 0) {
+    if (dryRun) {
+      const { error: insertErr } = await client
+        .from("task_drafts")
+        .insert(assignedDrafts);
+      if (insertErr) {
+        throw new Error(`Failed to insert task_drafts: ${insertErr.message}`);
       }
+      drafts_inserted = assignedDrafts.length;
+    } else {
+      const taskRows = assignedDrafts.map(toTaskRow);
+      const { error: insertErr } = await client.from("tasks").insert(taskRows);
+      if (insertErr) {
+        throw new Error(`Failed to insert tasks: ${insertErr.message}`);
+      }
+      tasks_inserted = taskRows.length;
     }
+  }
 
-    // Mark processed regardless of draft count — stubs produce 0 drafts intentionally.
+  // Mark every event processed regardless of draft count — events with no
+  // matching rules produce 0 drafts but still need to be flipped processed
+  // so they don't appear in the next run.
+  for (const event of rows) {
     const { error: markErr } = await client
       .from("inbound_events")
       .update({ processed_at: new Date().toISOString() })
