@@ -334,43 +334,76 @@ export type DepartureTimeTargetCell =
 
 /**
  * Departure card time-target matrix: 3 clean types × 6 room classes = 18 cells.
- * Spec source: Jennifer's Rules for HouseKeeping.docx.md. Pending her
- * authoring pass — every cell currently null. Mirror of the project's
- * existing `[ASK JENNIFER]` convention used in lib/orchestration/rules/*.
  *
- * When Bryan/Jennifer fills these, replace each null with a TimeTargetSpec.
- * The lookup helper below tolerates nulls.
+ * Spec source: Jennifer's Rules for HouseKeeping.docx.md (D-430 "I'm Done"
+ * timing block). The doc enumerates four explicit room classes — Queen,
+ * Double, King Jacuzzi, Suite — and gives a min-max range per (clean ×
+ * room) pair. Tolerance is intentionally 0 across every cell because the
+ * doc reads "Anything over or under [the min-max] should be logged" — no
+ * percentage buffer (unlike Arrivals at 20% or EOD at 15%, where Jennifer
+ * specified a tolerance explicitly). Strict bounds.
+ *
+ * ADA variants (ada_double for Room 26, ada_jacuzzi for Room 42) are NOT
+ * in Jennifer's matrix. Treated as a [ASSUMED] mirror of their non-ADA
+ * equivalent here — Room 26 uses Double's targets, Room 42 uses King
+ * Jacuzzi's. Reasoning: cleaning duration tracks room geometry, and ADA
+ * accommodations don't change the work materially. Bryan to confirm with
+ * Jennifer; reversible one-line edits per cell when she does.
+ *
+ * `unknown` stays null — fallback for unmapped rooms means "no admin-note
+ * threshold fires," which is correct since we have no spec for it.
+ *
+ * Repeated-instance trigger logic lives separately in
+ * DEPARTURE_REPEATED_INSTANCE_TRIGGERS below — Jennifer specified three
+ * conditions (consecutive shifts, per-shift %, per-month %) that don't
+ * fit the per-cell `repeated_instance_threshold` shape.
  */
 export const DEPARTURE_TIME_TARGET_MATRIX: Readonly<
   Record<CleanType, Readonly<Record<RoomType, DepartureTimeTargetCell>>>
 > = {
   Standard: {
-    single_queen: null, // [ASK JENNIFER]
-    double:       null, // [ASK JENNIFER]
-    ada_double:   null, // [ASK JENNIFER]
-    jacuzzi:      null, // [ASK JENNIFER]
-    ada_jacuzzi:  null, // [ASK JENNIFER]
-    suite:        null, // [ASK JENNIFER]
+    single_queen: { min: 30, max: 45, tolerance: 0, unit: "min" },
+    double:       { min: 35, max: 50, tolerance: 0, unit: "min" },
+    ada_double:   { min: 35, max: 50, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    jacuzzi:      { min: 45, max: 60, tolerance: 0, unit: "min" },
+    ada_jacuzzi:  { min: 45, max: 60, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    suite:        { min: 45, max: 65, tolerance: 0, unit: "min" },
     unknown:      null, // never authored — fallback only
   },
   Deep: {
-    single_queen: null, // [ASK JENNIFER]
-    double:       null, // [ASK JENNIFER]
-    ada_double:   null, // [ASK JENNIFER]
-    jacuzzi:      null, // [ASK JENNIFER]
-    ada_jacuzzi:  null, // [ASK JENNIFER]
-    suite:        null, // [ASK JENNIFER]
+    single_queen: { min: 60,  max: 120, tolerance: 0, unit: "min" },
+    double:       { min: 70,  max: 130, tolerance: 0, unit: "min" },
+    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    jacuzzi:      { min: 75,  max: 150, tolerance: 0, unit: "min" },
+    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    suite:        { min: 75,  max: 150, tolerance: 0, unit: "min" },
     unknown:      null,
   },
   Pet: {
-    single_queen: null, // [ASK JENNIFER]
-    double:       null, // [ASK JENNIFER]
-    ada_double:   null, // [ASK JENNIFER]
-    jacuzzi:      null, // [ASK JENNIFER]
-    ada_jacuzzi:  null, // [ASK JENNIFER]
-    suite:        null, // [ASK JENNIFER]
+    single_queen: { min: 60,  max: 120, tolerance: 0, unit: "min" },
+    double:       { min: 70,  max: 130, tolerance: 0, unit: "min" },
+    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    jacuzzi:      { min: 75,  max: 150, tolerance: 0, unit: "min" },
+    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    suite:        { min: 75,  max: 150, tolerance: 0, unit: "min" },
     unknown:      null,
   },
+} as const;
+
+/**
+ * D-430 repeated-instance triggers per Rules.md: "Regular and repeated
+ * instances (three shifts in a row, 25% of cards in a shift, or 15% or
+ * more of cards in a calendar month) of over or under the time should
+ * trigger an additional note on the employee profile and an admin card."
+ *
+ * Three independent conditions — any one firing escalates beyond the
+ * per-instance log. Consumer logic deferred to III.D activity feed; the
+ * constants live here so the wiring is one import away.
+ */
+export const DEPARTURE_REPEATED_INSTANCE_TRIGGERS = {
+  consecutive_shifts: 3,    // three shifts in a row over/under the cell range
+  per_shift_pct: 0.25,      // 25% of cards in a single shift over/under
+  per_month_pct: 0.15,      // 15% of cards in a calendar month over/under
 } as const;
 
 /** Returns the cell for a given clean × room class. Null if not authored. */
