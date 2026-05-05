@@ -38,6 +38,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PROPERTY_TIMEZONE } from "../dispatch-config.ts";
+import { writeAuditEvent } from "./audit-events.ts";
+import { taskEventType } from "../task-events";
 
 // =============================================================================
 // Types
@@ -126,6 +128,24 @@ export async function reshuffle(
       );
     }
     tasks_updated++;
+
+    // Day 29 III.D Phase 1: emit a reshuffle_tier_changed audit event so
+    // the activity feed surfaces tier movements per task. Severity is
+    // info (per the contract) — these are chatty by design (one per
+    // tier-change per pass) and shouldn't crowd warns/criticals on the
+    // default-filter view. userId is null because this is service-role
+    // emitted from the orchestrator. Fire-and-forget — failures log a
+    // warning and the reshuffle pass continues.
+    await writeAuditEvent(client, {
+      taskId: task.id,
+      userId: null,
+      eventType: taskEventType.reshuffleTierChanged,
+      detail: {
+        from_tier: currentTier,
+        to_tier: targetTier,
+        room_number: task.room_number,
+      },
+    });
   }
 
   return {

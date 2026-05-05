@@ -14,6 +14,13 @@ export const taskEventType = {
   dueDateChanged: "due_date_changed",
   noteReportCreated: "note_report_created",
   needsHelp: "needs_help",
+  // Day 29 III.D Phase 1 — structured audit events emitted by the
+  // orchestrator. All three are task-scoped (per-task task_id) so they
+  // surface in the activity feed under the relevant task + staff member.
+  // See docs/TASK_EVENTS_CONTRACT.md for detail-key shapes.
+  assignmentCrossHallOverride: "assignment_cross_hall_override",
+  assignmentAboveStandardLoad: "assignment_above_standard_load",
+  reshuffleTierChanged: "reshuffle_tier_changed",
 } as const;
 
 /** Required on all `task_events.detail` payloads (see docs/TASK_EVENTS_CONTRACT.md). */

@@ -4,6 +4,7 @@ import type { InboundEvent, TaskDraft } from "./types.ts";
 import { loadRoster, type RosterMember } from "./roster.ts";
 import { assignDrafts } from "./assignment-policies.ts";
 import { reshuffle } from "./reshuffle.ts";
+import { writeAuditEvent } from "./audit-events.ts";
 import { PROPERTY_TIMEZONE } from "../dispatch-config.ts";
 
 function makeServiceRoleClient() {
@@ -184,24 +185,26 @@ export async function run(): Promise<OrchestratorResult> {
     `[orchestrator] Generated ${allDrafts.length} draft(s) before assignment.`,
   );
 
-  // Run the auto-assignment policies pass. Pure — returns a new array.
-  // eventDate is the first event's date as a representative; the policies
-  // layer doesn't yet branch on date but Step 5 (hallway adjacency) and
-  // Step 7 (pre-stayover reshuffle) will need it.
-  const assignedDrafts =
+  // Run the auto-assignment policies pass. Pure — returns a new array
+  // plus a per-draft pendingAudits side-channel (Day 29 III.D Phase 1).
+  // eventDate is the first event's date as a representative.
+  const assignmentResult =
     allDrafts.length > 0
       ? assignDrafts(allDrafts, {
           eventDate: rows[0]?.event_date ?? "",
           roster,
         })
-      : allDrafts;
+      : { drafts: allDrafts, pendingAudits: allDrafts.map(() => []) };
+  const assignedDrafts = assignmentResult.drafts;
+  const pendingAudits = assignmentResult.pendingAudits;
 
   if (assignedDrafts.length > 0) {
     const assignedCount = assignedDrafts.filter(
       (d) => d.staff_id !== null,
     ).length;
+    const auditTotal = pendingAudits.reduce((acc, list) => acc + list.length, 0);
     console.log(
-      `[orchestrator] After assignment: ${assignedCount} of ${assignedDrafts.length} draft(s) have staff_id populated.`,
+      `[orchestrator] After assignment: ${assignedCount} of ${assignedDrafts.length} draft(s) have staff_id populated; ${auditTotal} pending audit event(s) collected.`,
     );
   }
 
@@ -220,13 +223,60 @@ export async function run(): Promise<OrchestratorResult> {
         throw new Error(`Failed to insert task_drafts: ${insertErr.message}`);
       }
       drafts_inserted = assignedDrafts.length;
+      // Audit events skipped on dry-run — drafts go to task_drafts, not
+      // tasks, so there are no real task_ids to attach the audits to.
+      // Live runs only.
     } else {
       const taskRows = assignedDrafts.map(toTaskRow);
-      const { error: insertErr } = await client.from("tasks").insert(taskRows);
+      const { data: insertedRows, error: insertErr } = await client
+        .from("tasks")
+        .insert(taskRows)
+        .select("id, staff_id, room_number");
       if (insertErr) {
         throw new Error(`Failed to insert tasks: ${insertErr.message}`);
       }
       tasks_inserted = taskRows.length;
+
+      // Day 29 III.D Phase 1: emit deferred audit events for each inserted
+      // task. pendingAudits is aligned by index with assignedDrafts; the
+      // .insert preserves order so insertedRows is aligned too. Each audit's
+      // detail is enriched with the matching task's staff_id + room_number
+      // (run.ts knows the post-insert row; the picker only knew the draft).
+      // Audit emission is fire-and-forget per writeAuditEvent — failures
+      // log a warning and the orchestrator run continues.
+      const insertedRowList =
+        (insertedRows ?? []) as Array<{
+          id: string;
+          staff_id: string | null;
+          room_number: string | null;
+        }>;
+      if (insertedRowList.length === pendingAudits.length) {
+        let auditCount = 0;
+        for (let i = 0; i < insertedRowList.length; i++) {
+          const taskRow = insertedRowList[i];
+          const audits = pendingAudits[i];
+          for (const audit of audits) {
+            await writeAuditEvent(client, {
+              taskId: taskRow.id,
+              userId: null,
+              eventType: audit.kind,
+              detail: {
+                ...audit.detail,
+                staff_id: taskRow.staff_id,
+                room_number: taskRow.room_number,
+              },
+            });
+            auditCount++;
+          }
+        }
+        if (auditCount > 0) {
+          console.log(`[orchestrator] Audit events written: ${auditCount}.`);
+        }
+      } else if (insertedRowList.length > 0) {
+        console.warn(
+          `[orchestrator] Audit/insert length mismatch — ${insertedRowList.length} inserted vs. ${pendingAudits.length} audit slots. Audits skipped.`,
+        );
+      }
     }
   }
 
