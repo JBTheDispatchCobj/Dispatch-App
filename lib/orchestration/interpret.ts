@@ -81,10 +81,26 @@ function deriveGuestName(event: InboundEvent): string | null {
   return trimmed || null;
 }
 
+function deriveStaffName(event: InboundEvent): string | null {
+  const name = readPayload<string>(event.raw_payload, "staff_name");
+  if (typeof name !== "string") return null;
+  const trimmed = name.trim();
+  return trimmed || null;
+}
+
 function deriveTitle(rule: GenerationRule, event: InboundEvent): string {
   const verb = CARD_TITLE_VERB[rule.output.card_type] ?? "Task";
   const room = deriveRoom(event);
   const guest = deriveGuestName(event);
+
+  // Dailys and EOD cards belong to a specific housekeeper, not a room.
+  // Lead with the staff name when raw_payload supplies it (synthesized
+  // daily_shift events do; future shift_start events should too).
+  if (rule.output.card_type === "dailys" || rule.output.card_type === "eod") {
+    const staffName = deriveStaffName(event);
+    if (staffName) return `${verb} — ${staffName}`;
+    return rule.description || verb;
+  }
 
   // Arrivals lead with the guest name when available — that's how the artifact
   // greets ("Prepare for Katie Wilkins").
@@ -97,6 +113,34 @@ function deriveTitle(rule: GenerationRule, event: InboundEvent): string {
   }
   // Fallback: rule description, else verb alone.
   return rule.description || verb;
+}
+
+/**
+ * For dailys / eod card types from synthesized daily_shift events, the
+ * assignee is named in raw_payload.staff_id — the synthesizer in run.ts
+ * stamps one event per active staff row. interpret() carries that staff_id
+ * straight onto the draft, and the assignment-policies layer's pre-assigned
+ * guard preserves it (no lane logic for these card types — each card is
+ * tied to a specific housekeeper by construction).
+ *
+ * Other card types fall back to rule.assignment.specific_member_id, which
+ * is unset everywhere as of Day 26 Step 8 — assignment-policies fully owns
+ * arrivals / stayovers / departures assignment.
+ */
+function deriveStaffId(rule: GenerationRule, event: InboundEvent): string | null {
+  if (rule.output.card_type === "dailys" || rule.output.card_type === "eod") {
+    const sid = readPayload<string>(event.raw_payload, "staff_id");
+    if (typeof sid === "string" && sid.trim()) return sid.trim();
+  }
+  return rule.assignment.specific_member_id ?? null;
+}
+
+function deriveAssigneeName(rule: GenerationRule, event: InboundEvent): string {
+  if (rule.output.card_type === "dailys" || rule.output.card_type === "eod") {
+    const name = deriveStaffName(event);
+    if (name) return name;
+  }
+  return rule.assignment.specific_member_id ?? "";
 }
 
 function deriveDueTime(rule: GenerationRule, event: InboundEvent): string | null {
@@ -242,10 +286,13 @@ export function interpret(
     status: DEFAULT_STATUS,
     due_date: event.event_date,
     due_time: deriveDueTime(rule, event),
-    // Pre-beta we leave the assignee unset and let admin claim it. Once
-    // assignment_policies land, this becomes a lookup.
-    assignee_name: rule.assignment.specific_member_id ?? "",
-    staff_id: rule.assignment.specific_member_id ?? null,
+    // For dailys / eod from synthesized daily_shift events, derive the
+    // assignee from raw_payload.staff_id + staff_name. For other card
+    // types, fall back to rule.assignment.specific_member_id (unset in
+    // every shipped rule as of Day 26 Step 8 — the assignment-policies
+    // layer owns assignment for arrivals / stayovers / departures).
+    assignee_name: deriveAssigneeName(rule, event),
+    staff_id: deriveStaffId(rule, event),
     priority: rule.priority,
     created_by_user_id: null,
     is_staff_report: false,
