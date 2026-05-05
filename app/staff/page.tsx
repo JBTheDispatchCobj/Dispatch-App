@@ -147,10 +147,20 @@ export default function StaffHomePage() {
       setLoadingTasks(false);
       return;
     }
+    // Sort by reshuffle priority_tier first (NULLS LAST so untiered tasks
+    // — sod / dailys / eod / etc. — fall to the end of their bucket), then
+    // by due_date. priority_tier is written by lib/orchestration/reshuffle.ts:
+    //   1 = same-day-arrival departure (turnover required, top of Departures)
+    //   2 = stayover or arrival
+    //   3 = leftover departure (no booking after, bottom of Departures)
+    // priority_tier lives in tasks.context (jsonb). The "->" notation tells
+    // PostgREST to project the jsonb subkey for sorting; jsonb numeric
+    // values sort numerically.
     const { data, error: qErr } = await supabase
       .from("tasks")
       .select("id, title, status, card_type, context")
       .eq("staff_id", sid)
+      .order("context->priority_tier", { ascending: true, nullsFirst: false })
       .order("due_date", { ascending: true, nullsFirst: false });
     if (qErr) {
       setError(qErr.message);
@@ -279,6 +289,22 @@ export default function StaffHomePage() {
     if (key !== active) return;
     const newDone = new Set(done);
     newDone.add(key);
+
+    // Pre-stayover reshuffle re-activation (master plan IV.D / R15 + Bryan's
+    // Day 26 product clarification): when the housekeeper marks Arrivals
+    // done, if the Departures bucket still has incomplete tasks, re-activate
+    // Departures so Tier-3 leftover turnovers get cleaned up before Dailys /
+    // EOD. The within-bucket sort (priority_tier ASC, due_date ASC) places
+    // Tier-3 leftovers naturally at the bottom of Departures. Tier-1
+    // departures (same-day-arrival turnovers) should already be done by
+    // this point; if any aren't, they get done now too.
+    if (key === "a" && bucketData.d.count > 0) {
+      newDone.delete("d");
+      setDone(newDone);
+      setActive("d");
+      return;
+    }
+
     setDone(newDone);
     const idx = BUCKET_ORDER.indexOf(key);
     for (let i = idx + 1; i < BUCKET_ORDER.length; i++) {

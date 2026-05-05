@@ -3,6 +3,7 @@ import { dispatch } from "./rules/index.ts";
 import type { InboundEvent, TaskDraft } from "./types.ts";
 import { loadRoster } from "./roster.ts";
 import { assignDrafts } from "./assignment-policies.ts";
+import { reshuffle } from "./reshuffle.ts";
 
 function makeServiceRoleClient() {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -131,6 +132,25 @@ export async function run(): Promise<OrchestratorResult> {
       }
       tasks_inserted = taskRows.length;
     }
+  }
+
+  // Reshuffle phase (master plan IV.D / R15 + R09 cross-cutting bumps).
+  // Runs over EVERY active task, not just the freshly-inserted ones, so
+  // pre-existing tasks get re-tiered when bookings change. Skipped on
+  // dry-run since the freshly-inserted drafts live in task_drafts (not
+  // tasks) and the reshuffle reads from tasks. On dry-run, pre-existing
+  // active tasks would be re-tiered but the new draft batch wouldn't —
+  // mixing those signals would confuse the dry-run preview.
+  if (!dryRun) {
+    const reshuffleResult = await reshuffle(client);
+    console.log(
+      `[orchestrator] Reshuffle: examined ${reshuffleResult.tasks_examined} active task(s) — ` +
+        `tier1=${reshuffleResult.tier1_count}, tier2=${reshuffleResult.tier2_count}, ` +
+        `tier3=${reshuffleResult.tier3_count}, untiered=${reshuffleResult.untiered_count}; ` +
+        `${reshuffleResult.tasks_updated} updated.`,
+    );
+  } else {
+    console.log("[orchestrator] Reshuffle: skipped (dry-run mode).");
   }
 
   // Mark every event processed regardless of draft count — events with no
