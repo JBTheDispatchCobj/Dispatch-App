@@ -5591,24 +5591,8 @@ main.wrap--wide {
   margin: 8px 0 0;
 }
 
-.staff-home__plus {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1.5px solid var(--cream-button-border);
-  background: transparent;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.staff-home__plus svg {
-  width: 16px;
-  height: 16px;
-}
+/* .staff-home__plus + .staff-home__plus svg removed Day 30 per master plan I.A
+   gap #2 — staff side is execution-first; admin owns task creation. */
 
 /* === Day 20 staff home — daily brief === */
 .staff-home__brief {
@@ -5697,7 +5681,13 @@ main.wrap--wide {
   filter: blur(3.5px);
   opacity: 0.92;
   transition: filter 0.4s ease, opacity 0.4s ease, margin-top 0.4s ease;
-  cursor: pointer;
+  /* Master plan I.A: hard-lock sequential gating between buckets. Non-active
+     cards are blurred + non-interactive; only the active card accepts clicks.
+     Day 26 Arrivals-done re-activation still works because it sets `active`
+     programmatically inside handleActionClick, which makes the new active
+     card pointer-events: auto on the next render. */
+  cursor: default;
+  pointer-events: none;
 }
 
 .bcard + .bcard {
@@ -5709,6 +5699,7 @@ main.wrap--wide {
   opacity: 1;
   z-index: 50;
   cursor: default;
+  pointer-events: auto;
 }
 
 .bcard.is-active + .bcard {

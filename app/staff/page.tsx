@@ -108,12 +108,6 @@ const CheckIcon = () => (
   </svg>
 );
 
-const PlusIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="#1F1A12" strokeWidth="2.2" strokeLinecap="round">
-    <path d="M12 5v14M5 12h14" />
-  </svg>
-);
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -342,14 +336,15 @@ export default function StaffHomePage() {
     <main className="staff-home">
       <div className="staff-home__shell">
 
+        {/* Master plan I.A: staff side is execution-first per
+            dispatch-ui-rules; admin owns task creation via AddTaskModal on
+            /admin, /admin/tasks, /admin/staff/[id]. The Day 20 visual
+            placeholder + button was removed Day 30. */}
         <div className="staff-home__hdr">
           <div>
             <h1 className="staff-home__hello">Hi, {firstName(displayName)}.</h1>
             <p className="staff-home__date">{formatGreetDate(now)}</p>
           </div>
-          <button className="staff-home__plus" aria-label="Quick add">
-            <PlusIcon />
-          </button>
         </div>
 
         {/* Brief — counts remain hardcoded pending ResNexus integration (post-beta BR) */}
