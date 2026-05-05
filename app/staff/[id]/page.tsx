@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { activityType, logActivity } from "@/lib/activity-log";
 import {
   redirectToLoginUnlessLocalDevBypass,
   resolveAuthUser,
@@ -137,12 +136,8 @@ export default function StaffDetailPage() {
     }
     const prev = statusLoadedRef.current;
     if (status !== prev) {
-      void logActivity(
-        activityType.staffStatusChanged,
-        `${n}: ${prev} → ${status}`,
-      ).then(() => {
-        window.dispatchEvent(new Event("activity:refresh"));
-      });
+      // Day 29 III.D Phase 6: dropped logActivity wrapper.
+      window.dispatchEvent(new Event("activity:refresh"));
       statusLoadedRef.current = status;
     } else {
       window.dispatchEvent(new Event("activity:refresh"));
@@ -168,12 +163,8 @@ export default function StaffDetailPage() {
     setOutcomeDraft("");
     const snippet =
       body.length > 120 ? `${body.slice(0, 117)}…` : body;
-    void logActivity(
-      activityType.staffOutcomeAdded,
-      `Outcome (${name}): ${snippet}`,
-    ).then(() => {
-      window.dispatchEvent(new Event("activity:refresh"));
-    });
+    // Day 29 III.D Phase 6: dropped logActivity wrapper.
+    window.dispatchEvent(new Event("activity:refresh"));
     void loadOutcomes();
   }
 

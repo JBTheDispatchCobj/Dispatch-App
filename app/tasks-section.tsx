@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { activityType, logActivity } from "@/lib/activity-log";
 import {
   fetchAssignableStaffOptions,
   parseStaffRowId,
@@ -504,12 +503,10 @@ export default function TasksSection() {
     setNewStayNightsRemaining("");
     setNewStayPartySize("");
     setNewStaySpecialRequests("");
-    void logActivity(
-      activityType.taskCreated,
-      `Task created today: ${title}${taskActivityMeta(assigneeName, newPriority)}`,
-    ).then(() => {
-      window.dispatchEvent(new Event("activity:refresh"));
-    });
+    // Day 29 III.D Phase 6: dropped logActivity wrapper (activity_events
+    // table dead per master plan); kept activity:refresh event for any
+    // window-level consumer still listening.
+    window.dispatchEvent(new Event("activity:refresh"));
     void load();
     if (newId) {
       router.push(`/tasks/${newId}`);
@@ -532,12 +529,8 @@ export default function TasksSection() {
       setError(upError.message);
       return;
     }
-    void logActivity(
-      activityType.taskCompleted,
-      `Task completed today: ${label}${taskActivityMeta(who, pri)}`,
-    ).then(() => {
-      window.dispatchEvent(new Event("activity:refresh"));
-    });
+    // Day 29 III.D Phase 6: dropped logActivity wrapper.
+    window.dispatchEvent(new Event("activity:refresh"));
     void load();
   }
 

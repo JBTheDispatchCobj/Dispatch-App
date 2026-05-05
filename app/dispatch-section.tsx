@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { activityType, logActivity } from "@/lib/activity-log";
 import { supabase } from "@/lib/supabase";
 
 function localDateKey(d: Date): string {
@@ -98,12 +97,8 @@ export default function DispatchSection() {
       return;
     }
     setWatchlist(trimmed);
-    void logActivity(
-      activityType.dispatchSaved,
-      `Dispatch saved for ${day}`,
-    ).then(() => {
-      window.dispatchEvent(new Event("activity:refresh"));
-    });
+    // Day 29 III.D Phase 6: dropped logActivity wrapper.
+    window.dispatchEvent(new Event("activity:refresh"));
     setSaveLine("Saved");
     savedTimerRef.current = setTimeout(() => {
       setSaveLine(null);
