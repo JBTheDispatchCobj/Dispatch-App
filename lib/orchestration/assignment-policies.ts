@@ -57,7 +57,10 @@
 import type { TaskDraft } from "./types.ts";
 import type { RosterMember } from "./roster.ts";
 import type { PendingAudit } from "./audit-events.ts";
-import { taskEventType } from "../task-events";
+// String literals inlined to avoid pulling the browser Supabase client
+// (lib/task-events.ts line 1) into the Node orchestrator import chain.
+const CROSS_HALL_OVERRIDE_TYPE = "assignment_cross_hall_override" as const;
+const ABOVE_STANDARD_LOAD_TYPE = "assignment_above_standard_load" as const;
 import {
   DEPARTURE_STATUS_PRIORITY,
   type DepartureStatus,
@@ -389,7 +392,7 @@ function pickByLighterLoad(
       // this with the inserted task_id and enriches detail with staff_id
       // + room_number from the post-insert task row.
       state.pendingAudits[state.activeAuditIndex].push({
-        kind: taskEventType.assignmentCrossHallOverride,
+        kind: CROSS_HALL_OVERRIDE_TYPE,
         detail: {
           staff_name: best.name,
           from_hall: startHall,
@@ -575,7 +578,7 @@ function incrementLoadAndWarn(
         `${counts[key]} ${key} (standard load ${threshold}).`,
     );
     state.pendingAudits[state.activeAuditIndex].push({
-      kind: taskEventType.assignmentAboveStandardLoad,
+      kind: ABOVE_STANDARD_LOAD_TYPE,
       detail: {
         staff_name: member.name,
         load_key: key,

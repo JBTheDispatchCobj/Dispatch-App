@@ -39,7 +39,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PROPERTY_TIMEZONE } from "../dispatch-config.ts";
 import { writeAuditEvent } from "./audit-events.ts";
-import { taskEventType } from "../task-events";
+// Inlined to avoid pulling the browser Supabase client (lib/task-events.ts) into Node.
+const RESHUFFLE_TIER_CHANGED_TYPE = "reshuffle_tier_changed" as const;
 
 // =============================================================================
 // Types
@@ -139,7 +140,7 @@ export async function reshuffle(
     await writeAuditEvent(client, {
       taskId: task.id,
       userId: null,
-      eventType: taskEventType.reshuffleTierChanged,
+      eventType: RESHUFFLE_TIER_CHANGED_TYPE,
       detail: {
         from_tier: currentTier,
         to_tier: targetTier,

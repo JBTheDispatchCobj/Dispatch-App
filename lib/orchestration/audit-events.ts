@@ -23,7 +23,8 @@
 // orchestrator script (--experimental-strip-types).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { taskEventType, TASK_EVENT_SCHEMA_VERSION } from "../task-events";
+// Inlined to avoid pulling the browser Supabase client (lib/task-events.ts) into Node.
+const TASK_EVENT_SCHEMA_VERSION = 1 as const;
 
 // =============================================================================
 // Types
@@ -31,9 +32,9 @@ import { taskEventType, TASK_EVENT_SCHEMA_VERSION } from "../task-events";
 
 /** Discriminated union of audit event kinds emitted by the orchestrator. */
 export type AuditEventKind =
-  | typeof taskEventType.assignmentCrossHallOverride
-  | typeof taskEventType.assignmentAboveStandardLoad
-  | typeof taskEventType.reshuffleTierChanged;
+  | "assignment_cross_hall_override"
+  | "assignment_above_standard_load"
+  | "reshuffle_tier_changed";
 
 /**
  * Pending audit signal emitted by assignment-policies during a pick. Held
