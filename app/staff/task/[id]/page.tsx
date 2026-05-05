@@ -48,6 +48,7 @@ import {
   NOTE_DEFAULTS,
   type NoteRow,
 } from "@/lib/notes";
+import { clockOut } from "@/lib/clock-in";
 import NoteComposeForm from "./NoteComposeForm";
 import { supabase } from "@/lib/supabase";
 import {
@@ -124,6 +125,7 @@ export default function StaffTaskExecutionPage() {
   const [profileFailure, setProfileFailure] =
     useState<ProfileFetchFailure | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [staffId, setStaffId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
 
   const [task, setTask] = useState<TaskCard | null>(null);
@@ -182,6 +184,7 @@ export default function StaffTaskExecutionPage() {
     }
 
     setUserId(user.id);
+    setStaffId(profile.staff_id ?? null);
     setDisplayName(profile.display_name);
 
     if (!id) {
@@ -311,13 +314,30 @@ export default function StaffTaskExecutionPage() {
       userId,
       authorDisplayName: displayName,
     });
-    setDoneBusy(false);
     if (!r.ok) {
+      setDoneBusy(false);
       setInlineError(r.message);
       return;
     }
+
+    // Master plan I.C Phase 2a — Wrap Shift on E-430 also clocks the staff
+    // member out. Detected by card_type. Failure here is non-fatal for
+    // beta (4-staff property): surface a console warning but still
+    // navigate; the staff row stays clocked in until they refresh and
+    // wrap again or an admin clocks them out manually. Phase 2b will add
+    // the cross-staff EOD activation gate that prevents premature wraps.
+    const ct = task.card_type.toLowerCase();
+    const isEod = ct === "eod" || ct.includes("end_of_day");
+    if (isEod && staffId) {
+      const co = await clockOut(supabase, staffId);
+      if (!co.ok) {
+        console.warn("[wrap-shift] clockOut failed:", co.message);
+      }
+    }
+
+    setDoneBusy(false);
     router.push("/staff");
-  }, [task, userId, displayName, router]);
+  }, [task, userId, staffId, displayName, router]);
 
   const onPause = useCallback(async () => {
     if (!task || !userId) return;
