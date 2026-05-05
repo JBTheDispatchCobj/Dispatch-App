@@ -19,6 +19,7 @@ import {
   type StaffHomeBucket,
 } from "@/lib/staff-home-bucket";
 import { getTodaysReservationCounts } from "@/lib/reservations";
+import { clockIn, fetchClockedInAt } from "@/lib/clock-in";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,6 +116,10 @@ const CheckIcon = () => (
 export default function StaffHomePage() {
   const [ready, setReady] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [clockedInAt, setClockedInAt] = useState<string | null | undefined>(undefined);
+  const [clockingIn, setClockingIn] = useState(false);
+  const [clockInError, setClockInError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,7 +218,29 @@ export default function StaffHomePage() {
         return;
       }
       setDisplayName(p.display_name);
-      await loadTasks(p.staff_id);
+      setStaffId(p.staff_id ?? null);
+
+      // Master plan I.C — fetch the staff row's clocked_in_at to decide
+      // whether to render the Pre-Clock-In screen (I.B) or the bucket deck.
+      // Non-blocking: if the column / RLS isn't ready, we fall through to
+      // the bucket deck (legacy behavior) rather than trapping the user on
+      // an empty Pre-Clock-In screen.
+      if (p.staff_id) {
+        const clk = await fetchClockedInAt(supabase, p.staff_id);
+        if (!cancelled) setClockedInAt(clk);
+        // Only load tasks if already clocked in; the bucket deck is gated
+        // on clocked_in_at being a string. Pre-Clock-In view doesn't need
+        // task data.
+        if (clk) {
+          await loadTasks(p.staff_id);
+        } else {
+          setLoadingTasks(false);
+        }
+      } else {
+        // No staff_id (manager / admin) — fall through to legacy behavior.
+        setClockedInAt(null);
+        await loadTasks(null);
+      }
       setReady(true);
 
       // BR3: live reservation counts. Non-blocking — if the table isn't
@@ -267,6 +294,22 @@ export default function StaffHomePage() {
     () => tasks.filter((t) => INCOMPLETE_STATUSES.has(t.status)).length,
     [tasks],
   );
+
+  const handleClockIn = useCallback(async () => {
+    if (!staffId || clockingIn) return;
+    setClockingIn(true);
+    setClockInError(null);
+    const result = await clockIn(supabase, staffId);
+    if (!result.ok) {
+      setClockInError(result.message);
+      setClockingIn(false);
+      return;
+    }
+    setClockedInAt(result.clockedInAt);
+    // Now that we're clocked in, load the bucket deck data.
+    await loadTasks(staffId);
+    setClockingIn(false);
+  }, [staffId, clockingIn, loadTasks]);
 
   const handleCardClick = (key: BucketKey) => {
     if (key === active) return;
@@ -327,6 +370,43 @@ export default function StaffHomePage() {
           }}>
             {error ?? "Loading…"}
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  // Master plan I.B — Pre-Clock-In screen. Renders only when we know for
+  // sure the staff member is clocked out (clockedInAt === null). If the
+  // column isn't migrated yet or the fetch errored, clockedInAt is
+  // undefined and we fall through to the legacy bucket deck so existing
+  // staff aren't trapped on an empty screen.
+  if (clockedInAt === null && staffId) {
+    return (
+      <main className="staff-home">
+        <div className="staff-home__shell">
+          <div className="staff-home__pre-clock">
+            <div className="staff-home__pre-clock-greet">
+              <h1 className="staff-home__hello">Hi, {firstName(displayName)}.</h1>
+              <p className="staff-home__date">{formatGreetDate(now)}</p>
+            </div>
+            <p className="staff-home__pre-clock-msg">
+              Tap below when you&rsquo;re ready to start your shift.
+            </p>
+            {clockInError && (
+              <div className="staff-home__pre-clock-error" role="alert">
+                {clockInError}
+              </div>
+            )}
+            <button
+              type="button"
+              className="staff-home__clock-in-cta"
+              onClick={handleClockIn}
+              disabled={clockingIn}
+            >
+              {clockingIn ? "Starting…" : "Start your day"}
+            </button>
+          </div>
+          <p className="staff-home__foot">The Dispatch Co &middot; Staff</p>
         </div>
       </main>
     );

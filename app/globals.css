@@ -5594,6 +5594,61 @@ main.wrap--wide {
 /* .staff-home__plus + .staff-home__plus svg removed Day 30 per master plan I.A
    gap #2 — staff side is execution-first; admin owns task creation. */
 
+/* === Day 30 master plan I.B — Pre-Clock-In screen ===
+ * Greeting + date + a single Start-your-day CTA. Renders only when the
+ * staff row's clocked_in_at is null (definitely clocked out). The bucket
+ * deck takes over once they tap Start.
+ */
+.staff-home__pre-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  padding: 12px 4px 0;
+  min-height: 60vh;
+}
+
+.staff-home__pre-clock-greet {
+  padding-top: 6vh;
+}
+
+.staff-home__pre-clock-msg {
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--cream-muted);
+  margin: 4px 0 0;
+}
+
+.staff-home__pre-clock-error {
+  background: rgba(211, 47, 47, 0.10);
+  border: 1px solid rgba(211, 47, 47, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #8A1F1F;
+  font-size: 13px;
+  line-height: 1.4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.staff-home__clock-in-cta {
+  margin-top: auto;
+  background: var(--cream-ink);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 999px;
+  padding: 18px 22px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.staff-home__clock-in-cta:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* === Day 20 staff home — daily brief === */
 .staff-home__brief {
   background: #FFFFFF;
