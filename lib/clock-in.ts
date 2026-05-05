@@ -5,19 +5,23 @@
 // docs/supabase/staff_clocked_in_at.sql.
 //
 // Atomic single-column flip — null = clocked out, set = clocked in at that
-// timestamp. Wrap Shift on E-430 nulls it (Phase 2). The orchestrator
-// rules for dailys.ts / eod.ts continue to use the daily_shift synthesizer
-// for now; Phase 3 will swap them to consume real shift_start events
-// emitted from clockIn.
+// timestamp. Wrap Shift on E-430 nulls it.
+//
+// Day 31 I.C Phase 3: the column flip is also the source of truth for the
+// orchestrator's shift_start / shift_end events. A SECURITY DEFINER trigger
+// `staff_clock_in_event_trigger` on public.staff (see
+// docs/supabase/staff_clock_in_event_trigger.sql) inserts the matching
+// inbound_events row inside the same transaction, so this module stays a
+// thin column-flipper. The browser client doesn't have permission to write
+// inbound_events directly — the trigger is the cleanest way to get an
+// atomic, RLS-correct event written from a browser-initiated action.
 //
 // What's NOT here:
-// - inbound_events 'shift_start' write — deferred to Phase 3 with the
-//   orchestrator swap. Once that lands, clockIn writes one inbound_event
-//   per call and the run.ts synthesizer can drop.
-// - Shift summary computation — deferred to Phase 2 with the Wrap Shift
-//   CTA on E-430. Computed at clockOut time from task_events durations.
-// - 14-day segment write — deferred to Phase 4 (master plan III.J / VII.D).
-//   Segments will be a view over clock-in/out timestamps, not a write.
+// - Shift summary computation — Phase 4 (master plan III.J / VII.D).
+//   Computed at clockOut time from task_events durations + the shift_start
+//   / shift_end event pair.
+// - 14-day segment view — Phase 4. Segments will be a view over clock-in/out
+//   events, not a write.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 

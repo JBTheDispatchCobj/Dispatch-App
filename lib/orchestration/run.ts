@@ -1,11 +1,10 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { dispatch } from "./rules/index.ts";
 import type { InboundEvent, TaskDraft } from "./types.ts";
-import { loadRoster, type RosterMember } from "./roster.ts";
+import { loadRoster } from "./roster.ts";
 import { assignDrafts } from "./assignment-policies.ts";
 import { reshuffle } from "./reshuffle.ts";
 import { writeAuditEvent } from "./audit-events.ts";
-import { PROPERTY_TIMEZONE } from "../dispatch-config.ts";
 
 function makeServiceRoleClient() {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -26,87 +25,12 @@ function toTaskRow(draft: TaskDraft): Omit<TaskDraft, "source_event_id"> {
   return rest;
 }
 
-/**
- * Today's date as YYYY-MM-DD anchored to the property's timezone. Inlined
- * here rather than importing from lib/reservations.ts because that module
- * imports the browser Supabase client; the orchestrator runs with the
- * service-role client. Matches the inlined helper in reshuffle.ts.
- */
-function todayInPropertyTz(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: PROPERTY_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-/**
- * Daily fan-out pre-pass (master plan IV.F option-2 unblocking path).
- *
- * Per master plan I.C, the clock-in flow is partial — there's no
- * 'shift_start' event source today. To get Da-430 + E-430 cards onto every
- * active housekeeper's queue, we synthesize one 'daily_shift' inbound_event
- * per active staff row at the top of every live orchestrator run. Each
- * synthesized event carries staff_id + staff_name in raw_payload; the
- * dailys.standard and eod.standard rules both trigger on event_type
- * 'daily_shift' and produce one draft each, and interpret() stamps the
- * staff_id straight onto each draft so assignment-policies preserves it.
- *
- * Idempotency: the inbound_events table has a UNIQUE constraint on
- * (source, external_id, event_type, event_date). Re-runs on the same day
- * trip the constraint and the upsert with ignoreDuplicates: true silently
- * drops them. New day → new event_date → fresh row, new dailys + eod card
- * for each active staff member.
- *
- * Skipped on dry-run for the same reason reshuffle is skipped: the live
- * synthesizer flips inbound_events.processed_at via the downstream pass,
- * and mixing dry-run + live cycles on the same daily_shift row would
- * leave today's dailys / eod tasks in task_drafts (never promoted to
- * tasks) while the dedup constraint blocks re-synthesis. Live-only keeps
- * the semantics clean.
- *
- * Future: when master plan I.C clock-in flow ships and writes its own
- * 'shift_start' event per housekeeper, drop this synthesizer and update
- * the dailys / eod rule triggers to match.
- */
-async function synthesizeDailyShiftEvents(
-  client: SupabaseClient,
-  roster: RosterMember[],
-): Promise<{ requested: number; inserted: number }> {
-  if (roster.length === 0) return { requested: 0, inserted: 0 };
-
-  const today = todayInPropertyTz();
-  const rows = roster.map((m) => ({
-    source: "internal_daily_fanout",
-    // No date in external_id — event_date column carries the date and is
-    // part of the dedup constraint. Same staff_id tomorrow → different
-    // event_date → fresh row, no conflict.
-    external_id: `daily-shift-${m.staff_id}`,
-    event_type: "daily_shift",
-    event_date: today,
-    raw_payload: { staff_id: m.staff_id, staff_name: m.name },
-  }));
-
-  // ignoreDuplicates: true relies on inbound_events_dedup
-  // (source, external_id, event_type, event_date). Existing rows are
-  // silently dropped — no-op on subsequent same-day runs.
-  const { data, error } = await client
-    .from("inbound_events")
-    .upsert(rows, {
-      onConflict: "source,external_id,event_type,event_date",
-      ignoreDuplicates: true,
-    })
-    .select("id");
-
-  if (error) {
-    throw new Error(
-      `Failed to synthesize daily_shift events: ${error.message}`,
-    );
-  }
-
-  return { requested: rows.length, inserted: data?.length ?? 0 };
-}
+// Day 31 I.C Phase 3: the daily_shift fan-out synthesizer was removed in
+// favor of real shift_start events written by the staff_clock_in_event_trigger
+// on public.staff (see docs/supabase/staff_clock_in_event_trigger.sql).
+// Dailys + EOD cards now appear within one orchestrator cron interval of
+// the staff member clocking in, rather than at the top of every cron cycle.
+// Latency trade-off documented in docs/handoff-day-31.md.
 
 export type OrchestratorResult =
   | { killed: true }
@@ -134,27 +58,17 @@ export async function run(): Promise<OrchestratorResult> {
   const client = makeServiceRoleClient();
 
   // Load today's on-shift roster up-front so we can pass it to assignDrafts
-  // after the event-fan-out loop. Phase 1 treats every active staff row as
-  // on-shift (Clock-In flow per master plan I.C is unbuilt).
+  // after the event-fan-out loop. Pre-Phase-3 treated every active staff
+  // row as on-shift; post-Phase-3 the same convention holds — clockIn flips
+  // staff.clocked_in_at and the trigger writes a shift_start event, but the
+  // assignment-policies pass still consults the full roster for lane logic
+  // on arrivals/departures/stayovers.
   const roster = await loadRoster(client);
   console.log(`[orchestrator] Roster loaded: ${roster.length} member(s).`);
   if (roster.length === 0) {
     console.warn(
       "[orchestrator] Roster is empty — drafts will retain whatever staff_id interpret() seeded (likely null).",
     );
-  }
-
-  // Daily fan-out pre-pass — synthesizes one 'daily_shift' inbound_event per
-  // active staff row so the dailys.standard + eod.standard rules can
-  // generate Da-430 + E-430 cards on the next fetch. Idempotent via the
-  // inbound_events_dedup constraint. Live-only — see synthesizer comment.
-  if (!dryRun) {
-    const synth = await synthesizeDailyShiftEvents(client, roster);
-    console.log(
-      `[orchestrator] Daily fan-out: requested ${synth.requested} event(s); ${synth.inserted} newly inserted (rest already existed today).`,
-    );
-  } else {
-    console.log("[orchestrator] Daily fan-out: skipped (dry-run mode).");
   }
 
   const { data: events, error: fetchErr } = await client
