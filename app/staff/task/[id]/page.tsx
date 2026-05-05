@@ -48,7 +48,7 @@ import {
   NOTE_DEFAULTS,
   type NoteRow,
 } from "@/lib/notes";
-import { clockOut } from "@/lib/clock-in";
+import { canWrapShift, clockOut } from "@/lib/clock-in";
 import NoteComposeForm from "./NoteComposeForm";
 import { supabase } from "@/lib/supabase";
 import {
@@ -152,6 +152,16 @@ export default function StaffTaskExecutionPage() {
   const [pauseBusy, setPauseBusy] = useState(false);
   const [resumeBusy, setResumeBusy] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+
+  // Phase 2b — cross-staff EOD activation gate. wrapBlockedBy is the list
+  // of clocked-in staff names who haven't started their EOD card yet.
+  // canWrapKnown gates the Wrap Shift button until the first fetch returns
+  // (otherwise the user could click in the brief window before the gate
+  // resolves). Fail-open semantics: gate fetch failure → blockedBy=[] →
+  // wrap proceeds.
+  const [wrapBlockedBy, setWrapBlockedBy] = useState<string[]>([]);
+  const [canWrapKnown, setCanWrapKnown] = useState(false);
+  const [canWrapBusy, setCanWrapBusy] = useState(false);
 
   const openCardRunForTaskId = useRef<string | null>(null);
   const prevRouteTaskIdRef = useRef<string | null>(null);
@@ -365,6 +375,34 @@ export default function StaffTaskExecutionPage() {
     await load();
   }, [task, userId, load]);
 
+  // Phase 2b — refresh the EOD activation gate. Re-fetches the cross-staff
+  // gate state from public.staff + public.tasks. Called on EOD card load
+  // and from a manual Refresh button on the gate panel. No-op on non-EOD
+  // cards so we don't pay a query cost for housekeeping turns / arrivals.
+  const refreshCanWrap = useCallback(async () => {
+    if (!task || !staffId) {
+      setCanWrapKnown(true);
+      setWrapBlockedBy([]);
+      return;
+    }
+    const ct = task.card_type.toLowerCase();
+    const isEod = ct === "eod" || ct.includes("end_of_day");
+    if (!isEod) {
+      setCanWrapKnown(true);
+      setWrapBlockedBy([]);
+      return;
+    }
+    setCanWrapBusy(true);
+    const result = await canWrapShift(supabase, staffId);
+    setWrapBlockedBy(result.blockedBy);
+    setCanWrapKnown(true);
+    setCanWrapBusy(false);
+  }, [task, staffId]);
+
+  useEffect(() => {
+    void refreshCanWrap();
+  }, [refreshCanWrap]);
+
   const onPostNote = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
@@ -550,6 +588,10 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        wrapBlockedBy={wrapBlockedBy}
+        canWrapKnown={canWrapKnown}
+        canWrapBusy={canWrapBusy}
+        onRefreshCanWrap={refreshCanWrap}
       />
     );
   }

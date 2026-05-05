@@ -89,6 +89,11 @@ export type EODCardProps = {
   onPause: () => void;
   onResume: () => void;
   onPostNote: (e: FormEvent) => void;
+  /** Phase 2b — cross-staff EOD activation gate state. */
+  wrapBlockedBy: string[];
+  canWrapKnown: boolean;
+  canWrapBusy: boolean;
+  onRefreshCanWrap: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -121,6 +126,10 @@ export default function EODCard({
   onPause,
   onResume,
   onPostNote,
+  wrapBlockedBy,
+  canWrapKnown,
+  canWrapBusy,
+  onRefreshCanWrap,
 }: EODCardProps) {
   const summary = parseEodSummary(task.context);
 
@@ -296,7 +305,37 @@ export default function EODCard({
             <div className="supply" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
           </section>
 
-          {/* CTAs — "Wrap Shift" label on primary; wired to onImDone (label-only change) */}
+          {/* Phase 2b — cross-staff EOD activation gate. The Wrap Shift
+              button is locked when there are still on-shift housekeepers
+              who haven't started their EOD card. Fail-open via
+              canWrapShift's error handling — when the gate fetch errors,
+              wrapBlockedBy stays empty and the button is enabled. */}
+          {!taskDone && wrapBlockedBy.length > 0 ? (
+            <div className="staff-task-exec-eod-gate" role="status" aria-live="polite">
+              <div className="staff-task-exec-eod-gate-icon" aria-hidden>
+                ⏸
+              </div>
+              <div className="staff-task-exec-eod-gate-body">
+                <div className="staff-task-exec-eod-gate-title">Wrap Shift locked</div>
+                <div className="staff-task-exec-eod-gate-msg">
+                  Waiting on {wrapBlockedBy.join(", ")} to start their End of Day.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="staff-task-exec-eod-gate-refresh"
+                onClick={onRefreshCanWrap}
+                disabled={canWrapBusy}
+              >
+                {canWrapBusy ? "…" : "Refresh"}
+              </button>
+            </div>
+          ) : null}
+
+          {/* CTAs — "Wrap Shift" label on primary; wired to onImDone.
+              Phase 2a wires clockOut into onImDone for EOD card_type.
+              Phase 2b disables the button until canWrapKnown resolves
+              and while wrapBlockedBy is non-empty. */}
           <div className="cta">
             <button
               type="button"
@@ -310,7 +349,13 @@ export default function EODCard({
               type="button"
               className="cta__primary"
               onClick={onImDone}
-              disabled={doneBusy || taskDone || paused}
+              disabled={
+                doneBusy ||
+                taskDone ||
+                paused ||
+                !canWrapKnown ||
+                wrapBlockedBy.length > 0
+              }
             >
               {taskDone ? "Done" : doneBusy ? "…" : "Wrap Shift"}
             </button>

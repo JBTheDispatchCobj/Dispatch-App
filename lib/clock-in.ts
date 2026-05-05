@@ -102,3 +102,80 @@ export async function fetchClockedInAt(
   const v = (data as { clocked_in_at: string | null }).clocked_in_at;
   return v ?? null;
 }
+
+// =============================================================================
+// Phase 2b — Cross-staff EOD activation gate
+// =============================================================================
+
+export type CanWrapShiftResult = {
+  /** True when no other clocked-in staff is blocking the wrap. */
+  canWrap: boolean;
+  /** Names of clocked-in staff who haven't started their EOD card yet. */
+  blockedBy: string[];
+};
+
+/**
+ * Master plan I.C — "EOD activation gate: locked until all other on-shift
+ * housekeepers are in their EOD card." Returns the gate state for the
+ * current staff member.
+ *
+ * Definition of "in their EOD card": at least one task with
+ * `card_type='eod'` and `status != 'open'` created in the last 24h. The
+ * 24h window keeps stale EOD rows from previous shifts out of the check.
+ *
+ * Fail-open: any fetch error returns `{ canWrap: true, blockedBy: [] }`.
+ * For 4-staff beta, surfacing a Supabase error to the user inside an
+ * already-failure-prone wrap-shift flow is worse than letting them
+ * proceed. Admin override per master plan exception clause is the
+ * intended escape hatch when the gate misbehaves.
+ */
+export async function canWrapShift(
+  client: SupabaseClient,
+  currentStaffId: string,
+): Promise<CanWrapShiftResult> {
+  const { data: othersRaw, error: othersErr } = await client
+    .from("staff")
+    .select("id, name")
+    .not("clocked_in_at", "is", null)
+    .neq("id", currentStaffId);
+  if (othersErr) {
+    console.warn(
+      "[clock-in] canWrapShift others fetch failed:",
+      othersErr.message,
+    );
+    return { canWrap: true, blockedBy: [] };
+  }
+  const others = (othersRaw ?? []) as Array<{ id: string; name: string }>;
+  if (others.length === 0) {
+    return { canWrap: true, blockedBy: [] };
+  }
+
+  const otherIds = others.map((s) => s.id);
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: eodRaw, error: eodErr } = await client
+    .from("tasks")
+    .select("staff_id")
+    .in("staff_id", otherIds)
+    .eq("card_type", "eod")
+    .neq("status", "open")
+    .gte("created_at", since);
+  if (eodErr) {
+    console.warn(
+      "[clock-in] canWrapShift tasks fetch failed:",
+      eodErr.message,
+    );
+    return { canWrap: true, blockedBy: [] };
+  }
+
+  const inEod = new Set<string>();
+  for (const t of (eodRaw ?? []) as Array<{ staff_id: string }>) {
+    if (t.staff_id) inEod.add(t.staff_id);
+  }
+
+  const blockedBy = others
+    .filter((s) => !inEod.has(s.id))
+    .map((s) => s.name)
+    .filter((n) => typeof n === "string" && n.trim().length > 0);
+
+  return { canWrap: blockedBy.length === 0, blockedBy };
+}

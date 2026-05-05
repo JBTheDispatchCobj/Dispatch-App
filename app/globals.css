@@ -5649,6 +5649,68 @@ main.wrap--wide {
   cursor: progress;
 }
 
+/* === Day 30 master plan I.C Phase 2b — EOD activation gate panel ===
+ * Shown above the Wrap Shift CTA on E-430 when other on-shift staff
+ * haven't started their EOD card yet. Amber-tinted, mobile-first, with
+ * a manual Refresh button.
+ */
+.staff-task-exec-eod-gate {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(217, 168, 44, 0.12);
+  border: 1px solid rgba(217, 168, 44, 0.35);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.staff-task-exec-eod-gate-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #8A6A1C;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.staff-task-exec-eod-gate-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.staff-task-exec-eod-gate-title {
+  font-weight: 600;
+  color: #5A4310;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  margin-bottom: 2px;
+}
+
+.staff-task-exec-eod-gate-msg {
+  color: #5A4310;
+  font-size: 13px;
+}
+
+.staff-task-exec-eod-gate-refresh {
+  flex-shrink: 0;
+  background: #FFFFFF;
+  border: 1px solid rgba(217, 168, 44, 0.55);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #5A4310;
+  cursor: pointer;
+}
+
+.staff-task-exec-eod-gate-refresh:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 /* === Day 20 staff home — daily brief === */
 .staff-home__brief {
   background: #FFFFFF;
