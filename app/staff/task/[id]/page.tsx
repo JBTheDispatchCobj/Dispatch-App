@@ -22,7 +22,6 @@ import {
   displayAssignee,
   normalizeTask,
   TASK_CARD_SELECT_FIELDS,
-  type CommentRow,
   type TaskCard,
 } from "@/app/tasks/[id]/task-card-shared";
 import {
@@ -36,7 +35,6 @@ import {
   type ProfileFetchFailure,
 } from "@/lib/profile";
 import {
-  addTaskComment,
   completeCard,
   openCard,
   pauseCard,
@@ -44,6 +42,13 @@ import {
   resumeCard,
   toggleChecklistItem,
 } from "@/lib/orchestration";
+import {
+  addNote,
+  listNotesForTask,
+  NOTE_DEFAULTS,
+  type NoteRow,
+} from "@/lib/notes";
+import NoteComposeForm from "./NoteComposeForm";
 import { supabase } from "@/lib/supabase";
 import {
   checklistCompletionPercent,
@@ -123,12 +128,22 @@ export default function StaffTaskExecutionPage() {
 
   const [task, setTask] = useState<TaskCard | null>(null);
   const [checklist, setChecklist] = useState<ExecutionChecklistItem[]>([]);
-  const [comments, setComments] = useState<CommentRow[]>([]);
+  const [notes, setNotes] = useState<NoteRow[]>([]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
 
+  // Notes compose state — body + the three taxonomy fields per master plan
+  // III.A. note_type starts blank so the submit button stays disabled until
+  // the user picks one (required field). Status defaults to "Just Noting"
+  // and assigned-to defaults to "Employee" — both sticky between submits
+  // (LinkedIn-comment pattern; only the body clears on Post).
   const [noteBody, setNoteBody] = useState("");
+  const [noteType, setNoteType] = useState("");
+  const [noteStatus, setNoteStatus] = useState<string>(NOTE_DEFAULTS.status);
+  const [noteAssignedTo, setNoteAssignedTo] = useState<string>(
+    NOTE_DEFAULTS.assignedTo,
+  );
   const [noteBusy, setNoteBusy] = useState(false);
   const [helpBusy, setHelpBusy] = useState(false);
   const [doneBusy, setDoneBusy] = useState(false);
@@ -185,7 +200,7 @@ export default function StaffTaskExecutionPage() {
       setLoadError(tErr?.message ?? "Task not found or access denied.");
       setTask(null);
       setChecklist([]);
-      setComments([]);
+      setNotes([]);
       setReady(true);
       return;
     }
@@ -193,21 +208,18 @@ export default function StaffTaskExecutionPage() {
     const t = normalizeTask(tRow as Record<string, unknown>);
     setTask(t);
 
-    const [{ data: cm }, chItems] = await Promise.all([
-      supabase
-        .from("task_comments")
-        .select(
-          "id, task_id, user_id, author_display_name, body, image_url, checklist_item_id, created_at",
-        )
-        .eq("task_id", id)
-        .order("created_at", { ascending: true }),
+    // Notes load against public.notes via lib/notes.ts (master plan III.A).
+    // Replaces the legacy task_comments fetch from Phase 3 — task_comments
+    // table stays in place but new compose writes go to public.notes only.
+    const [noteRows, chItems] = await Promise.all([
+      listNotesForTask(supabase, id),
       loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
         console.warn("[staff-task-exec checklist]", e.message);
         return [] as ExecutionChecklistItem[];
       }),
     ]);
 
-    setComments((cm as CommentRow[]) ?? []);
+    setNotes(noteRows);
     setChecklist(chItems);
 
     setReady(true);
@@ -339,25 +351,46 @@ export default function StaffTaskExecutionPage() {
       if (!task || !userId) return;
       const body = noteBody.trim();
       if (!body) return;
+      // Required field guard. The submit button is also disabled when this
+      // is empty (NoteComposeForm handles that via the `submitDisabled`
+      // expression), so this branch is defensive only.
+      if (!noteType) {
+        setInlineError("Pick a note type before posting.");
+        return;
+      }
       setNoteBusy(true);
       setInlineError(null);
-      const r = await addTaskComment(supabase, {
+      const r = await addNote(supabase, {
         taskId: task.id,
-        userId,
+        authorUserId: userId,
         authorDisplayName: displayName,
         body,
+        noteType,
+        noteStatus,
+        noteAssignedTo,
         imageUrl: null,
-        checklistItemId: null,
       });
       setNoteBusy(false);
       if (!r.ok) {
         setInlineError(r.message);
         return;
       }
+      // Sticky filters: clear body but keep type / status / assigned-to so a
+      // housekeeper posting a quick burst of related notes doesn't have to
+      // re-pick the dropdowns each time.
       setNoteBody("");
       await load();
     },
-    [task, userId, displayName, noteBody, load],
+    [
+      task,
+      userId,
+      displayName,
+      noteBody,
+      noteType,
+      noteStatus,
+      noteAssignedTo,
+      load,
+    ],
   );
 
   if (profileFailure) {
@@ -409,11 +442,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -436,11 +475,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -463,11 +508,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -490,11 +541,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -517,11 +574,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -550,11 +613,17 @@ export default function StaffTaskExecutionPage() {
         userId={userId}
         displayName={displayName}
         checklist={checklist}
-        comments={comments}
+        notes={notes}
         inlineError={inlineError}
         setInlineError={setInlineError}
         noteBody={noteBody}
         setNoteBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -730,50 +799,66 @@ export default function StaffTaskExecutionPage() {
 
         <section className="staff-task-exec-section" aria-label="Notes">
           <h2 className="staff-task-exec-h2">Notes &amp; updates</h2>
-          {comments.length === 0 ? (
+          {notes.length === 0 ? (
             <p className="staff-task-exec-muted">No notes yet.</p>
           ) : (
             <ul className="staff-task-exec-notes" role="list">
-              {comments.map((c) => (
-                <li key={c.id} className="staff-task-exec-note">
+              {notes.map((n) => (
+                <li key={n.id} className="staff-task-exec-note">
                   <div className="staff-task-exec-note-head">
                     <span className="staff-task-exec-note-author">
-                      {c.author_display_name || "Team"}
+                      {n.author_display_name || "Team"}
                     </span>
                     <time
                       className="staff-task-exec-note-time"
-                      dateTime={c.created_at}
+                      dateTime={n.created_at}
                     >
-                      {formatCommentTime(c.created_at)}
+                      {formatCommentTime(n.created_at)}
                     </time>
                   </div>
-                  <p className="staff-task-exec-note-body">{c.body}</p>
+                  {/* Taxonomy chips for the new public.notes shape (master plan
+                      III.A). Empty strings are defensive — public.notes has
+                      NOT NULL constraints on type / assigned-to so empty
+                      shouldn't happen, but the legacy fallback may render
+                      mid-migration. */}
+                  {n.note_type || n.note_status || n.note_assigned_to ? (
+                    <div className="staff-task-exec-note-meta">
+                      {n.note_type ? (
+                        <span className="staff-task-exec-note-chip">
+                          {n.note_type}
+                        </span>
+                      ) : null}
+                      {n.note_status ? (
+                        <span className="staff-task-exec-note-chip staff-task-exec-note-chip--status">
+                          {n.note_status}
+                        </span>
+                      ) : null}
+                      {n.note_assigned_to ? (
+                        <span className="staff-task-exec-note-chip staff-task-exec-note-chip--assigned">
+                          → {n.note_assigned_to}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <p className="staff-task-exec-note-body">{n.body}</p>
                 </li>
               ))}
             </ul>
           )}
           {!taskDone ? (
-            <form className="staff-task-exec-note-form" onSubmit={onPostNote}>
-              <label className="staff-task-exec-note-label" htmlFor="staff-task-note">
-                Add a note
-              </label>
-              <textarea
-                id="staff-task-note"
-                className="staff-task-exec-note-input"
-                rows={2}
-                placeholder="Visible to your team…"
-                value={noteBody}
-                onChange={(e) => setNoteBody(e.target.value)}
-                autoComplete="off"
-              />
-              <button
-                type="submit"
-                className="staff-task-exec-note-send"
-                disabled={noteBusy || !noteBody.trim()}
-              >
-                {noteBusy ? "Sending…" : "Post note"}
-              </button>
-            </form>
+            <NoteComposeForm
+              body={noteBody}
+              setBody={setNoteBody}
+              noteType={noteType}
+              setNoteType={setNoteType}
+              noteStatus={noteStatus}
+              setNoteStatus={setNoteStatus}
+              noteAssignedTo={noteAssignedTo}
+              setNoteAssignedTo={setNoteAssignedTo}
+              onSubmit={onPostNote}
+              busy={noteBusy}
+              className="note-compose--exec"
+            />
           ) : null}
         </section>
       </div>

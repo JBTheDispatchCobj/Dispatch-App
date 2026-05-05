@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { type FormEvent } from "react";
-import {
-  type CommentRow,
-  type TaskCard,
-} from "@/app/tasks/[id]/task-card-shared";
+import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
+import { type NoteRow } from "@/lib/notes";
+import NoteComposeForm from "./NoteComposeForm";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 import { formatCommentTime, formatTodayDate, firstNameFromDisplayName } from "@/lib/staff-card-formatters";
 
@@ -68,11 +67,17 @@ export type EODCardProps = {
   userId: string | null;
   displayName: string;
   checklist: ExecutionChecklistItem[];
-  comments: CommentRow[];
+  notes: NoteRow[];
   inlineError: string | null;
   setInlineError: (e: string | null) => void;
   noteBody: string;
   setNoteBody: (v: string) => void;
+  noteType: string;
+  setNoteType: (v: string) => void;
+  noteStatus: string;
+  setNoteStatus: (v: string) => void;
+  noteAssignedTo: string;
+  setNoteAssignedTo: (v: string) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -95,10 +100,16 @@ export default function EODCard({
   userId: _userId,
   displayName,
   checklist: _checklist,
-  comments,
+  notes,
   inlineError,
   noteBody,
   setNoteBody,
+  noteType,
+  setNoteType,
+  noteStatus,
+  setNoteStatus,
+  noteAssignedTo,
+  setNoteAssignedTo,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -130,10 +141,11 @@ export default function EODCard({
     return notes && notes.length <= 40 ? `${date} · ${notes}` : date;
   })();
 
-  // Review entries — current user's comments posted today only (Gap 5)
+  // Review entries — current user's notes posted today only (Gap 5)
   // Filters to first-person "You noted:" voice: only self-authored, only today.
-  const reviewEntries = comments.filter(
-    (c) => c.user_id === _userId && isToday(c.created_at),
+  // user_id on NoteRow is projected from notes.author_user_id (see lib/notes.ts).
+  const reviewEntries = notes.filter(
+    (n) => n.user_id === _userId && isToday(n.created_at),
   );
 
   const firstName = firstNameFromDisplayName(displayName);
@@ -202,7 +214,7 @@ export default function EODCard({
 
           {inlineError ? <p className="error">{inlineError}</p> : null}
 
-          {/* Review section — current-user comments from today, "You noted:" voice */}
+          {/* Review section — current-user notes from today, "You noted:" voice */}
           <section className="section">
             <header className="section__head">
               <span className="section__label">Review</span>
@@ -214,24 +226,32 @@ export default function EODCard({
             </header>
             {reviewEntries.length > 0 ? (
               <div className="notes">
-                {reviewEntries.map((comment) => (
-                  <button key={comment.id} className="note" type="button">
+                {reviewEntries.map((note) => (
+                  <button key={note.id} className="note" type="button">
                     <div className="note__head">
                       <span className="note__dot" />
                       <div className="note__body">
                         <div className="note__line">
                           <span className="note__name">You</span>
                           <span className="note__action"> noted: </span>
-                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                          <span className="note__quote">&ldquo;{note.body}&rdquo;</span>
                         </div>
-                        {comment.image_url ? (
+                        {note.note_type || note.note_status || note.note_assigned_to ? (
                           <div className="note__chips">
-                            <span className="note__chip">📎 1</span>
+                            {note.note_type ? (
+                              <span className="note__chip">{note.note_type}</span>
+                            ) : null}
+                            {note.note_status ? (
+                              <span className="note__chip">{note.note_status}</span>
+                            ) : null}
+                            {note.note_assigned_to ? (
+                              <span className="note__chip">→ {note.note_assigned_to}</span>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
                       <span className="note__time">
-                        {formatCommentTime(comment.created_at)}
+                        {formatCommentTime(note.created_at)}
                       </span>
                     </div>
                   </button>
@@ -240,28 +260,21 @@ export default function EODCard({
             ) : null}
             {/* Inline compose — drop ＋ topstrip, form is the compose UI */}
             {!taskDone ? (
-              <form onSubmit={onPostNote}>
-                <div className="compose__row">
-                  <input
-                    className="compose__input"
-                    placeholder="Note for the wrap…"
-                    value={noteBody}
-                    onChange={(e) => setNoteBody(e.target.value)}
-                    disabled={noteBusy}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="compose__foot">
-                  <div />
-                  <button
-                    type="submit"
-                    className="compose__send"
-                    disabled={noteBusy || !noteBody.trim()}
-                  >
-                    {noteBusy ? "…" : "Send"}
-                  </button>
-                </div>
-              </form>
+              <NoteComposeForm
+                body={noteBody}
+                setBody={setNoteBody}
+                noteType={noteType}
+                setNoteType={setNoteType}
+                noteStatus={noteStatus}
+                setNoteStatus={setNoteStatus}
+                noteAssignedTo={noteAssignedTo}
+                setNoteAssignedTo={setNoteAssignedTo}
+                onSubmit={onPostNote}
+                busy={noteBusy}
+                placeholder="Note for the wrap…"
+                rows={2}
+                className="note-compose--section"
+              />
             ) : null}
           </section>
 

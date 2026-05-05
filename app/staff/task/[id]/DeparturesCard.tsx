@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import {
-  type CommentRow,
-  type TaskCard,
-} from "@/app/tasks/[id]/task-card-shared";
+import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
+import { type NoteRow } from "@/lib/notes";
+import NoteComposeForm from "./NoteComposeForm";
 import {
   type ExecutionChecklistItem,
   DEPARTURES_CANONICAL_CHECKLIST,
@@ -124,11 +123,17 @@ export type DeparturesCardProps = {
   userId: string | null;
   displayName: string;
   checklist: ExecutionChecklistItem[];
-  comments: CommentRow[];
+  notes: NoteRow[];
   inlineError: string | null;
   setInlineError: (e: string | null) => void;
   noteBody: string;
   setNoteBody: (v: string) => void;
+  noteType: string;
+  setNoteType: (v: string) => void;
+  noteStatus: string;
+  setNoteStatus: (v: string) => void;
+  noteAssignedTo: string;
+  setNoteAssignedTo: (v: string) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -151,11 +156,17 @@ export default function DeparturesCard({
   userId: _userId,
   displayName: _displayName,
   checklist,
-  comments,
+  notes,
   inlineError,
   setInlineError: _setInlineError,
   noteBody,
   setNoteBody,
+  noteType,
+  setNoteType,
+  noteStatus,
+  setNoteStatus,
+  noteAssignedTo,
+  setNoteAssignedTo,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -300,30 +311,31 @@ export default function DeparturesCard({
             </div>
             <div className="setstat__row">
               <div className="setstat__label">Notes</div>
-              <form onSubmit={onPostNote}>
-                {comments.length > 0 ? (
+              <div className="setstat__notes">
+                {notes.length > 0 ? (
                   <p className="setstat__note-count">
-                    {comments.length} note{comments.length !== 1 ? "s" : ""}
+                    {notes.length} note{notes.length !== 1 ? "s" : ""}
                   </p>
                 ) : null}
-                <textarea
-                  className="setstat__input"
-                  placeholder="Add notes for this turnover…"
-                  value={noteBody}
-                  onChange={(e) => setNoteBody(e.target.value)}
-                  disabled={noteBusy || taskDone}
-                  rows={3}
-                />
                 {!taskDone ? (
-                  <button
-                    type="submit"
-                    className="compose__submit"
-                    disabled={noteBusy || !noteBody.trim()}
-                  >
-                    {noteBusy ? "…" : "Post"}
-                  </button>
+                  <NoteComposeForm
+                    body={noteBody}
+                    setBody={setNoteBody}
+                    noteType={noteType}
+                    setNoteType={setNoteType}
+                    noteStatus={noteStatus}
+                    setNoteStatus={setNoteStatus}
+                    noteAssignedTo={noteAssignedTo}
+                    setNoteAssignedTo={setNoteAssignedTo}
+                    onSubmit={onPostNote}
+                    busy={noteBusy}
+                    disabled={taskDone}
+                    placeholder="Add notes for this turnover…"
+                    rows={3}
+                    className="note-compose--setstat"
+                  />
                 ) : null}
-              </form>
+              </div>
             </div>
             <div className="setstat__row setstat__row--status">
               <div className="setstat__label">Status</div>

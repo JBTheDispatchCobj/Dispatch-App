@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import {
-  type CommentRow,
-  type TaskCard,
-} from "@/app/tasks/[id]/task-card-shared";
+import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
+import { type NoteRow } from "@/lib/notes";
+import NoteComposeForm from "./NoteComposeForm";
 import {
   type ExecutionChecklistItem,
   ARRIVALS_CANONICAL_CHECKLIST,
@@ -115,11 +114,17 @@ export type ArrivalsCardProps = {
   userId: string | null;
   displayName: string;
   checklist: ExecutionChecklistItem[];
-  comments: CommentRow[];
+  notes: NoteRow[];
   inlineError: string | null;
   setInlineError: (e: string | null) => void;
   noteBody: string;
   setNoteBody: (v: string) => void;
+  noteType: string;
+  setNoteType: (v: string) => void;
+  noteStatus: string;
+  setNoteStatus: (v: string) => void;
+  noteAssignedTo: string;
+  setNoteAssignedTo: (v: string) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -142,10 +147,16 @@ export default function ArrivalsCard({
   userId: _userId,
   displayName: _displayName,
   checklist,
-  comments,
+  notes,
   inlineError,
   noteBody,
   setNoteBody,
+  noteType,
+  setNoteType,
+  noteStatus,
+  setNoteStatus,
+  noteAssignedTo,
+  setNoteAssignedTo,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -292,30 +303,38 @@ export default function ArrivalsCard({
             <header className="section__head">
               <span className="section__label">Notes</span>
               <span className="section__count">
-                {comments.length > 0
-                  ? `${comments.length} left for you`
+                {notes.length > 0
+                  ? `${notes.length} left for you`
                   : "no notes yet"}
               </span>
             </header>
-            {comments.length > 0 ? (
+            {notes.length > 0 ? (
               <div className="notes">
-                {comments.map((comment) => (
-                  <button key={comment.id} className="note" type="button">
+                {notes.map((note) => (
+                  <button key={note.id} className="note" type="button">
                     <div className="note__head">
                       <span className="note__dot" />
                       <div className="note__body">
                         <div className="note__line">
-                          <span className="note__name">{comment.author_display_name}</span>
+                          <span className="note__name">{note.author_display_name}</span>
                           <span className="note__action"> left a note: </span>
-                          <span className="note__quote">&ldquo;{comment.body}&rdquo;</span>
+                          <span className="note__quote">&ldquo;{note.body}&rdquo;</span>
                         </div>
-                        {comment.image_url ? (
+                        {note.note_type || note.note_status || note.note_assigned_to ? (
                           <div className="note__chips">
-                            <span className="note__chip">📎 1</span>
+                            {note.note_type ? (
+                              <span className="note__chip">{note.note_type}</span>
+                            ) : null}
+                            {note.note_status ? (
+                              <span className="note__chip">{note.note_status}</span>
+                            ) : null}
+                            {note.note_assigned_to ? (
+                              <span className="note__chip">→ {note.note_assigned_to}</span>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
-                      <span className="note__time">{formatCommentTime(comment.created_at)}</span>
+                      <span className="note__time">{formatCommentTime(note.created_at)}</span>
                     </div>
                   </button>
                 ))}
@@ -323,28 +342,21 @@ export default function ArrivalsCard({
             ) : null}
             {/* Inline compose — below feed; ＋ topstrip dropped, form is the compose UI */}
             {!taskDone ? (
-              <form onSubmit={onPostNote}>
-                <div className="compose__row">
-                  <input
-                    className="compose__input"
-                    placeholder="Leave a note for the team…"
-                    value={noteBody}
-                    onChange={(e) => setNoteBody(e.target.value)}
-                    disabled={noteBusy}
-                    autoComplete="off"
-                  />
-                </div>
-                <div className="compose__foot">
-                  <div />
-                  <button
-                    type="submit"
-                    className="compose__send"
-                    disabled={noteBusy || !noteBody.trim()}
-                  >
-                    {noteBusy ? "…" : "Send"}
-                  </button>
-                </div>
-              </form>
+              <NoteComposeForm
+                body={noteBody}
+                setBody={setNoteBody}
+                noteType={noteType}
+                setNoteType={setNoteType}
+                noteStatus={noteStatus}
+                setNoteStatus={setNoteStatus}
+                noteAssignedTo={noteAssignedTo}
+                setNoteAssignedTo={setNoteAssignedTo}
+                onSubmit={onPostNote}
+                busy={noteBusy}
+                placeholder="Leave a note for the team…"
+                rows={2}
+                className="note-compose--section"
+              />
             ) : null}
           </section>
 
