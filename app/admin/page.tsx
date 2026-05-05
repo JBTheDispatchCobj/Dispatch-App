@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import {
-  STAFF,
-  AVATAR_LIZZIE,
-  AVATAR_MARK,
-  AVATAR_ANGIE,
-} from "./staff/data";
+import { STAFF } from "./staff/data";
 import { fetchProfile, type ProfileFetchFailure } from "@/lib/profile";
 import {
   resolveAuthUser,
@@ -16,6 +11,7 @@ import {
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../profile-load-error";
 import AddTaskModal from "@/components/admin/AddTaskModal";
+import ActivityFeed from "@/components/admin/ActivityFeed";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -23,7 +19,6 @@ import styles from "./page.module.css";
 /* ------------------------------------------------------------------ */
 
 type DotColor = "green" | "amber" | "red" | "blue" | "mute";
-type FeedTagType = "done" | "open" | "over";
 
 type LaneItem = { id: string; title: string; body: string; chip: string };
 
@@ -34,17 +29,9 @@ type BriefStat = {
   compact?: boolean;
 };
 
-type FeedItem = {
-  name: string;
-  avatarSrc: string;
-  textBefore: string;
-  linkText: string;
-  textAfter: string;
-  actionPill?: string;
-  tag: FeedTagType;
-  tagLabel: string;
-  time: string;
-};
+// FeedItem / FeedTagType + FEED_ITEMS hardcoded data removed Day 29 III.D
+// Phase 3 — replaced with the live <ActivityFeed/> component sourced from
+// lib/activity-feed.ts (task_events + notes union with severity boost).
 
 /* ------------------------------------------------------------------ */
 /* Inline placeholder data — replace with Supabase queries post-beta  */
@@ -81,41 +68,6 @@ const NOTES_ITEMS: LaneItem[] = [
   { id: "n3", title: "Front desk SOP refresh", body: "Update check-in script for new ResNexus integration", chip: "SOP" },
 ];
 
-const FEED_ITEMS: FeedItem[] = [
-  {
-    name: "Lizzie Larson",
-    avatarSrc: AVATAR_LIZZIE,
-    textBefore: "Completed: “",
-    linkText: "Turn over 33 for 4pm check-in",
-    textAfter: "” assigned 12:15pm by Courtney.",
-    tag: "done",
-    tagLabel: "COMPLETED",
-    time: "1:20 PM",
-  },
-  {
-    name: "Mark Parry",
-    avatarSrc: AVATAR_MARK,
-    textBefore: "Opened: “",
-    linkText: "Replace siding on west side of the property",
-    textAfter: "” with a note attached.",
-    actionPill: "OPEN NOTE",
-    tag: "open",
-    tagLabel: "OPENED",
-    time: "1:20 PM",
-  },
-  {
-    name: "Angie Lopez",
-    avatarSrc: AVATAR_ANGIE,
-    textBefore: "Assigned task “",
-    linkText: "Restock retail snacks after breakfast rush",
-    textAfter: "” is now overdue.",
-    actionPill: "SEND REMINDER",
-    tag: "over",
-    tagLabel: "OVERDUE",
-    time: "1:20 PM",
-  },
-];
-
 /* ------------------------------------------------------------------ */
 /* Lookup maps                                                         */
 /* ------------------------------------------------------------------ */
@@ -126,12 +78,6 @@ const SDOT_CLASS: Record<DotColor, string> = {
   red:   styles.sdotRed,
   blue:  styles.sdotBlue,
   mute:  styles.sdotMute,
-};
-
-const TAG_CLASS: Record<FeedTagType, string> = {
-  done: `${styles.feedTag} ${styles.feedTagDone}`,
-  open: `${styles.feedTag} ${styles.feedTagOpen}`,
-  over: `${styles.feedTag} ${styles.feedTagOver}`,
 };
 
 /* ------------------------------------------------------------------ */
@@ -426,41 +372,11 @@ export default function AdminHomePage() {
           </div>
         )}
 
-        {/* Activity feed */}
-        <div className={styles.sectionLabel}>
-          <span>ACTIVITY</span>
-          <span>LIVE</span>
-        </div>
-        <div className={styles.feed}>
-          {FEED_ITEMS.map((item, i) => (
-            <div key={i} className={styles.feedItem}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className={styles.feedAvatar}
-                src={item.avatarSrc}
-                alt={item.name}
-                width={34}
-                height={34}
-              />
-              <div className={styles.feedBody}>
-                <div className={styles.feedName}>{item.name}</div>
-                <div className={styles.feedText}>
-                  {item.textBefore}
-                  <a href="#">{item.linkText}</a>
-                  {item.textAfter}
-                </div>
-                {item.actionPill && (
-                  <button className={styles.actionPill}>{item.actionPill}</button>
-                )}
-                <div className={`${styles.feedFoot}${item.actionPill ? ` ${styles.feedFootSpaced}` : ""}`}>
-                  <span className={SDOT_CLASS[item.tag === "done" ? "green" : item.tag === "open" ? "amber" : "red"]} />
-                  <span className={TAG_CLASS[item.tag]}>{item.tagLabel}</span>
-                  <span className={styles.feedTime}>{item.time}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Activity feed — Day 29 III.D Phase 3.
+            Live <ActivityFeed/> component replaces the hardcoded FEED_ITEMS
+            array that's been sitting here since the original Phase 3 UI
+            build. Sources task_events + notes via lib/activity-feed.ts. */}
+        <ActivityFeed />
 
         {/* Staff — expanded inline or minimized lane */}
         {staffExpanded && (
