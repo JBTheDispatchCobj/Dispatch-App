@@ -1,4 +1,4 @@
-# Dispatch — Product State (current as of Day 34, 2026-05-06)
+# Dispatch — Product State (current as of Day 35, 2026-05-06)
 
 *Single canonical entry point for new Cowork chat sessions. Read this first; do NOT read the daily handoff history (it has been deleted — use git log if you need archaeology). Forward motion only.*
 
@@ -46,24 +46,54 @@ Stack: Next.js 16 App Router + React 19 + TypeScript strict + Supabase (Postgres
 - Role-based routing in `lib/profile.ts` (`shouldUseManagerHome`, `mayAccessStaffRoutes`).
 - Localhost-only dev role-view switcher in `lib/dev-auth-bypass.ts`.
 
+**Locked design tokens** in `app/globals.css`: six neon bucket palettes (SOD / Departures / Stayovers / Arrivals / Dailys / EOD) + Day 20 cream-surface tokens + sage green admin maintenance lane (`#BACBA0` / `#8A9B75` / `#2C3A1D`, master plan II.C) + per-staff hero gradients (CM peach, LL sky, AL coral, MP sage — 4-name fixed palette per master plan II.D/II.E).
+
 ---
 
 ## Schema in place
 
-**Tables:** `tasks`, `task_events`, `task_checklist_items`, `task_comments` (legacy — pre-beta dev data only), `task_drafts`, `profiles`, `staff` (with `clocked_in_at` column), `reservations`, `inbound_events`, `notes` + 4 taxonomies, `maintenance_issues` + 4 taxonomies.
+**Tables:**
+- `tasks` — `card_type` ∈ {`housekeeping_turn`, `arrival`, `stayover`, `eod`, `dailys`, `start_of_day`, `maintenance`, `generic`}; `status` ∈ {`open`, `in_progress`, `paused`, `blocked`, `done`}; `source` ∈ {`manual`, `staff_report`, `pms`, `system`}; `priority` ∈ {`low`, `medium`, `high`} default `medium`. `context` JSONB carries per-card metadata; required subkey `staff_home_bucket`; conventional subkeys `incoming_guest` / `current_guest` / `outgoing_guest` (object-shaped per `wave_4d_context.sql` — each has `name`/`party_size`/`extras`/etc. depending on guest direction) + `notes` (card-level free text, distinct from `public.notes` table). Always merge-safe write: `{ ...current, <subkey>: { ...current?.<subkey>, <new> } }`. `assignee_name` text mirrors `staff_id` for display fallback.
+- `task_events` — append-only; `schema_version: 1` required via `withTaskEventSchema` from `lib/task-events.ts`. 16 event types; see `docs/TASK_EVENTS_CONTRACT.md`.
+- `task_checklist_items` — staff can only check/uncheck (toggle `done`); `done_at` timestamptz auto-set on done flip via trigger; powers D-430 brow "Done · 1:18 PM" meta.
+- `task_comments` — legacy; pre-beta dev data only; no longer read/written from staff side post-Day-27.
+- `task_drafts` — agent dry-run staging; mirrors `tasks` shape with FKs deliberately dropped (drafts survive deletion of referenced rows); RLS service-role-only. Written by orchestrator when `AGENT_DRY_RUN=true`; promoted via SQL helper (see Orchestrator dry-run pipeline below).
+- `profiles` — `role` ∈ {`admin`, `manager`, `staff`} default `manager`; new `auth.users` get a default-`manager` profile via `handle_new_user_profile()` trigger. **Operational gotcha**: every new authed user starts as manager unless updated.
+- `staff` — staff directory; `clocked_in_at` timestamptz column flips drive the clock-in/out lifecycle. Vestigial `staff_outcomes` companion table from early MVP.
+- `reservations` — full schema in `reservations_br1.sql`. `status` ∈ {`confirmed`, `arrived`, `departed`, `cancelled`, `no_show`}; brief queries filter on `(confirmed, arrived)`. `source` ∈ {`resnexus`, `manual`, `walk_in`} (needs `cloudbeds` add per V.H — one-word change). `nights` is generated: `greatest(1, departure_date - arrival_date)`; same-day stays count as 1. 5 partial indexes tuned for the three brief queries. Powers daily brief counts on staff/admin home + X-430 guest fields. Day 14 ResNexus manual import bridge through `inbound_events` is the population path pre-Cloudbeds.
+- `inbound_events` — append-only raw event queue; service-role-only RLS; `inbound_events_dedup` UNIQUE on `(source, external_id, event_type, event_date)`. Powers the orchestrator's read loop. `staff_clock_in_event_trigger` writes `shift_start` / `shift_end` here with `source='clock_in'`. Dedup constraint silently swallows same-day re-clocks (acceptable for beta single-property).
+- `deep_clean_history` — per-room rolling history of completed deep-clean items; surfaces in future D-430 cards for the same room within 30 days. Spec D-430 R34-R36. Append-only by staff (must own `source_task_id`); admin/manager can correct.
+- `notes` + 4 taxonomies (`note_types` × 11, `note_statuses` × 5, `note_assigned_to` × 5, plus the shared `maintenance_severities`).
+- `maintenance_issues` + 4 taxonomies (`maintenance_locations` × 21, `maintenance_items` × 11, `maintenance_types` × 10, `maintenance_severities` × 3).
 
-**Views:** `staff_shifts_v`, `staff_segments_v`, `shift_summary_v`.
+**Views:**
+- `staff_shifts_v` — pairs `shift_start` + `shift_end` events from `inbound_events` (LATERAL by timestamp, not event_date — handles cross-midnight). `is_current = (shift_end_at IS NULL)`; `duration_minutes` is NULL for in-flight shifts.
+- `staff_segments_v` — Wed-anchored 14-day buckets aggregated from `staff_shifts_v`. Reference Wednesday `2026-01-07`. Math: `segment_start = reference_wed + FLOOR((shift_date - reference_wed) / 14) * 14`. Excludes currently-clocked-in shifts (they appear once they end). Per-staff `shift_count` + `total_minutes` per (segment_start, segment_end = segment_start + 13).
+- `shift_summary_v` — per-shift task counts by card_type. Six FILTER aggregates: `departures_completed` (housekeeping_turn) / `arrivals_completed` / `stayovers_completed` / `dailys_completed` / `eod_completed` / `maintenance_completed` + `total_tasks_completed`. Join window `[shift_start_at, effective_end_at]` where `effective_end_at = COALESCE(shift_end_at, now())` so in-flight shifts have a moving window. `staff_id::text` cast required (raw_payload field is text). Completion gate is `completed_at IS NOT NULL`, not `status='done'`.
 
 **Triggers:**
-- `staff_clock_in_event_trigger` — `staff.clocked_in_at` flip → `inbound_events` row (SECURITY DEFINER).
-- `tasks_staff_field_guard()` — defense-in-depth alongside RLS for staff-write-blocked task fields.
-- Denormalize triggers on `notes` + `maintenance_issues` (fill `room_number` + `card_type` from parent task).
+- `staff_clock_in_event_trigger` — `staff.clocked_in_at` flip → `inbound_events` row, `event_type` ∈ {`shift_start`, `shift_end`}, `source='clock_in'` (SECURITY DEFINER, `search_path` locked).
+- `tasks_staff_field_guard()` — defense-in-depth alongside RLS for staff-write-blocked task fields. Permits status, timing, and `context` writes only.
+- `task_checklist_staff_guard()` — second staff guard; blocks staff INSERT/DELETE on checklist items and any UPDATE that changes `task_id`/`title`/`sort_order`. Staff can only toggle `done`.
+- `tasks_seed_default_checklist()` — AFTER INSERT on `tasks`; auto-inserts 3 hard-coded items ("Remove used linens", "Replace sheets and pillowcases", "Set up rollaway") when `card_type='housekeeping_turn'` AND `staff_id` is set AND `is_staff_report=false`. **Operational gotcha**: AddTaskModal-created housekeeping tasks always get these 3.
+- `task_checklist_set_done_at()` — sets `done_at = now()` on `done` flip false→true; clears on true→false.
+- `handle_new_user_profile()` — AFTER INSERT on `auth.users`; creates default `role='manager'` profile.
+- `reservations_set_updated_at()` — bumps `updated_at` on every write; stamps `cancelled_at` on status flip to `cancelled`.
+- Denormalize triggers on `notes` + `maintenance_issues` — fill `room_number` + `card_type` from parent task on insert; may go stale if parent task is later edited (acceptable for beta).
 
-**Storage:** `task-files` bucket (compose-drawer wiring still pending — III.E PARTIAL).
+**Storage:** `task-files` bucket — `public = true` (authenticated users can read by URL with no further auth check). Upload path convention: first folder must equal `auth.uid()::text` (enforced by `task_files_insert_own` policy). Compose-drawer wiring still pending — III.E PARTIAL; upload helper exists at `lib/task-events.ts:45` (`uploadTaskFile`).
 
-**RLS:** `auth_profile_role()` SECURITY DEFINER function avoids `profiles` policy recursion. Staff cannot update reassigned/priority/due/context fields. Notes + maintenance_issues policies mirror — staff insert-self-only, admin/manager full CRUD, select gated by `can_read_task` or self-author.
+**Orchestrator dry-run pipeline:** the orchestrator runs in dry-run mode by default (`AGENT_DRY_RUN=true`). In dry-run, generated tasks land in `task_drafts` (service-role-only RLS) instead of `tasks` — staff home only reads `tasks`, so drafts are invisible to the UI. Manual promotion via SECURITY DEFINER helpers in `promote_drafts_to_tasks.sql`: `select promote_draft_to_task('<uuid>')` (single) or `select promote_all_drafts_from_source('<source>')` (bulk). Promotion copies the row into `tasks` and deletes the source draft (destructive). `AGENT_KILL=true` shuts the orchestrator off entirely. Both env vars default to `true` for the first Vercel deploy as a safety net (master plan VIII.A + VIII.E).
 
-**Migration files in `docs/supabase/`:** `cards_mvp.sql`, `milestone1_architecture_lock.sql`, `fix_rls_profiles_recursion_manager_path.sql`, `taxonomy_tables.sql`, `notes_table.sql`, `maintenance_issues_table.sql`, `staff_clocked_in_at.sql`, `staff_clock_in_event_trigger.sql`, `staff_shifts_view.sql`, `staff_segments_view.sql`, `shift_summary_view.sql`, `drop_activity_events_table.sql`. Apply via Supabase dashboard SQL editor; idempotent.
+**RLS:** `auth_profile_role()` SECURITY DEFINER function avoids `profiles` policy recursion. `can_read_task(p_task_id uuid)` (defined in `cards_mvp.sql`) is the single source of truth for staff task visibility — manager/admin pass unconditionally; staff pass if the task's `staff_id` matches their `profiles.staff_id` OR they're `created_by_user_id`. Staff cannot update most task fields (title, description, priority, due_date, due_time, staff_id, assignee_name, card_type, source, template, room, location_label, expected_duration_minutes, require_checklist_complete, attachment_url, report_*); they CAN update `status`, timing fields, and `context` (the latter post-`allow_staff_context_update.sql` — D-430's departure_status chip needs it). Notes + maintenance_issues policies mirror — staff insert-self-only, admin/manager full CRUD, select gated by `can_read_task` or self-author.
+
+**Migration files in `docs/supabase/`:** 26 total, applied via Supabase dashboard SQL editor; all idempotent except `reservations_seed.sql` (truncate to reset).
+
+Pre-Day-24 base / early-MVP files (already applied; listed for completeness): `dispatch.sql` (vestigial `dispatch_day` daily-brief table from earliest MVP), `staff.sql` (staff + staff_outcomes table creation), `activity.sql` (created `activity_events`, dropped Day 29 by `drop_activity_events_table.sql`), `tasks.sql`, `tasks_staff_id.sql`, `tasks_priority.sql`, `cards_mvp.sql` (profiles + `auth_profile_role()` + `can_read_task()` + `tasks_staff_field_guard()` + checklist + task_events + task-files storage bucket), `milestone1_architecture_lock.sql` (paused status + tasks new columns + staff field guard rev + default-checklist-seed trigger), `fix_rls_profiles_recursion_manager_path.sql`, `inbound_events_and_task_drafts.sql` (Day 14 ResNexus manual import bridge + dry-run staging), `reservations_br1.sql`, `reservations_seed.sql` (3 arrivals / 2 departures / 4 stayovers / 1 cancelled — matches pre-BR1 hardcoded brief counts so live read renders identically to fallback), `promote_drafts_to_tasks.sql` (`promote_draft_to_task(uuid)` + `promote_all_drafts_from_source(text)` SECURITY DEFINER helpers), `add_card_type_sod_eod.sql` (8-value `tasks_card_type_check`), `allow_staff_context_update.sql` (removes `context` from staff field guard's blocked-field list), `taxonomy_tables.sql`, `notes_table.sql`, `maintenance_issues_table.sql`, `deep_clean_history.sql`, `wave_4d_context.sql` (`task_checklist_items.done_at` + `done_at` auto-set trigger + JSONB context subkey conventions documented).
+
+Day-25-and-later files (clock-in lifecycle + view trio): `staff_clocked_in_at.sql`, `staff_clock_in_event_trigger.sql`, `staff_shifts_view.sql`, `staff_segments_view.sql`, `shift_summary_view.sql`, `drop_activity_events_table.sql`.
+
+Apply order matters in two places: `taxonomy_tables.sql` BEFORE `notes_table.sql` + `maintenance_issues_table.sql` (FKs); `reservations_br1.sql` AFTER `profiles` + `auth_profile_role()` exist.
 
 ---
 
@@ -115,6 +145,91 @@ When you start a session, pick the highest-priority chase that's unblocked. Upda
 
 ---
 
+## Reading paths by chase type
+
+When picking up a chase, load only what you need. Total chase-specific load should fit in ~15-20K tokens — substantive product knowledge, not narrative redundancy. Tier 1 always; Tier 2 by chase type. If a chase doesn't fit cleanly, lean toward the LIGHTER load and surface the gap.
+
+### Tier 1 — always load (every session)
+
+- `docs/STATE.md` (this file — orientation, closure ledger, conventions)
+- `CLAUDE.md` (operating manual)
+
+That's it for orientation. Everything else is chase-specific.
+
+### Tier 2 — load by chase type
+
+**Section I staff card chase** (X-430 card UI, status pills, checklist variants, gating, time targets)
+- `docs/dispatch-master-plan.md` §I.A-I.I (only the relevant item — skim, don't full-read)
+- `app/staff/page.tsx` + `app/staff/task/[id]/page.tsx`
+- The target card component: `app/staff/task/[id]/{Departures,Stayovers,StartOfDay,Arrivals,Dailys,EOD}Card.tsx`
+- `lib/staff-task-execution-checklist.ts` if checklist-related
+- `lib/dispatch-config.ts` Sections 9 + 12 for time targets / status time targets / triggers
+- For KB-driven content: `docs/kb-spreadsheet-index.md` + the relevant tab
+
+**Section II admin surfaces chase** (admin live-data wirings, AddTaskModal, manager card view, admin staff profile, admin tasks dashboard, admin maintenance)
+- `docs/dispatch-master-plan.md` §II.A-II.I (only the relevant item — skim)
+- The target page file under `app/admin/*` + any sibling `*.module.css`
+- Live-data reference: `app/admin/staff/[id]/page.tsx` (already wired to the three Day 32 views — mirror this pattern for new live-data wirings)
+- For data layer: `lib/notes.ts`, `lib/maintenance.ts`, `lib/activity-feed.ts`, or `lib/orchestration/index.ts` depending on what the page consumes
+- For AddTaskModal: `components/admin/AddTaskModal.tsx` + `lib/assignable-staff.ts`
+- Skip orchestrator code, KB docs, Section I card files — irrelevant to admin UI
+
+**Section III cross-cutter chase** (notes, maintenance, activity feed, photo pipeline, reassignment, segments, audit/archive)
+- `docs/dispatch-master-plan.md` §III item being chased
+- `docs/TASK_EVENTS_CONTRACT.md` (event vocabulary contract)
+- Lib pair for the cross-cutter:
+  - Notes/maintenance → `lib/notes.ts` + `lib/maintenance.ts` + `lib/activity-feed.ts`
+  - Per-task lifecycle (reassign, pause, complete) → `lib/orchestration/index.ts` + `lib/task-events.ts`
+  - Photo → `lib/task-events.ts` (`uploadTaskFile` at line 45)
+- Compose form if UI work: `app/staff/task/[id]/{NoteComposeForm,MaintenanceComposeForm}.tsx`
+- Schema reference: `docs/supabase/{notes_table,maintenance_issues_table,taxonomy_tables}.sql`
+
+**Section IV rule engine chase** (assignment policies, reshuffle, dailys/eod rule files, Wed-occupancy Deep Clean trigger, realtime dailys reassignment, repeated-instance meta-trigger)
+- `docs/dispatch-master-plan.md` §IV item being chased
+- `lib/orchestration/{run,interpret,assignment-policies,reshuffle,audit-events}.ts`
+- The relevant rule file: `lib/orchestration/rules/{dailys,eod,arrivals,departures,stayovers,maintenance}.ts`
+- `lib/dispatch-config.ts` (constants live here — Sections 9 + 12 + 14)
+- `docs/TASK_EVENTS_CONTRACT.md` if adding new audit event types
+- **WARNING:** orchestrator-side modules use `.ts` extensions and inline string literals to be Node-safe (Day 29 caveat). Anything in `lib/orchestration/` that imports a browser-coupled module (one that imports `lib/supabase`) compiles but fails at orchestrator runtime. Exception: `lib/orchestration/index.ts` is intentionally browser-side.
+
+**Section V data-layer chase** (BR4 reservation fallbacks, BR5 cancellation edges, Cloudbeds payload, weather, Google events, holiday calendar)
+- `docs/dispatch-master-plan.md` §V item being chased
+- `lib/reservations.ts` (BR4/BR5 helpers exist here)
+- `docs/supabase/cards_mvp.sql` for reservations + inbound_events schema
+- The relevant card file under `app/staff/task/[id]/*Card.tsx` if wiring fallback to UI
+
+**Section VI KB authoring chase** (Jennifer's content lane — checklist trees, affirmations, variant lists, time-target matrix, daily-task estimates)
+- `docs/kb-spreadsheet-index.md`
+- `docs/kb/README.md` + `docs/kb/Dispatch — Rules Table Handoff.md`
+- The specific tab(s) in the governance spreadsheet at `docs/kb/Dispatch — Rules Table for Card and Section Governance.xlsx`
+- `lib/checklists/variants/*.ts` if converting authored content to runtime config
+- `lib/dispatch-config.ts` if updating constants from authored values
+- Skip code unless converting authored content to runtime config
+
+**Section VII schema chase** (new tables, RLS, derived views)
+- `docs/dispatch-master-plan.md` §VII item being chased
+- All existing migrations in `docs/supabase/*.sql` for naming conventions + RLS patterns
+- `docs/supabase/fix_rls_profiles_recursion_manager_path.sql` for SECURITY DEFINER pattern reference
+- `docs/supabase/notes_table.sql` or `maintenance_issues_table.sql` for the dual-sink + denormalize-trigger pattern
+- The lib data-access file for the new table follows the `lib/notes.ts` / `lib/maintenance.ts` pattern
+
+**Section VIII deploy chase** (Vercel deploy, magic-link redirect URL config, smoke test, env vars)
+- `docs/deployment/vercel-checklist.md`
+- Skip everything else
+
+**Section IX quality / non-functional chase** (RLS hardening per new table, perf tuning, multi-property timezone, idempotency)
+- `docs/dispatch-master-plan.md` §IX item being chased
+- The specific table or module being hardened
+- Reference patterns from existing RLS / idempotency in `docs/supabase/*.sql`
+
+### When STATE.md is missing something
+
+If you're orienting and find a load-bearing fact that's not in STATE.md (an architectural rule, Jennifer caveat, schema convention, gotcha), **add it inline before continuing the chase**. STATE.md is meant to be living, not a one-shot snapshot. Drift between STATE.md and the bedrock (master plan + schema migrations + code) is the failure mode to prevent — surfacing gaps and filling them is how that gets prevented.
+
+If a specific question requires a back-reference into deleted handoff history, the 21 deleted handoff docs are preserved in git history. `git show HEAD~N:docs/handoff-day-X.md` retrieves any of them. Targeted retrieval, not blanket re-reading.
+
+---
+
 ## Critical operating conventions
 
 These are hard rules. Don't relearn them each session.
@@ -149,9 +264,13 @@ These are hard rules. Don't relearn them each session.
 ### Architecture rules (do not violate)
 
 - **`profiles` RLS depends on `auth_profile_role()`** SECURITY DEFINER function. Never query `profiles` inside a `profiles` policy body directly.
-- **Staff cannot update certain task fields** (assignee, priority, due date, context). Defense-in-depth: RLS + Postgres trigger `tasks_staff_field_guard()`. If you add a field that only managers should edit, update both.
+- **Staff cannot update most task fields** (assignee, priority, due date, title, description, room, card_type, source, template, attachment, report_*). They CAN update `status`, timing fields, and `context` (the last permitted by `allow_staff_context_update.sql` — D-430's departure_status chip needs it). Defense-in-depth: RLS + Postgres triggers `tasks_staff_field_guard()` + `task_checklist_staff_guard()`. If you add a field that only managers should edit, update both the RLS policy and the relevant trigger.
 - **`task_events` is append-only.** No updates, no deletes. Schema is versioned at `schema_version: 1`. Don't mutate v1; bump to v2 if you need to evolve.
-- **`tasks.context` is JSONB.** The one field that absolutely must be set for staff UX is `context.staff_home_bucket`. Enforce in UI; DB default is sloppy.
+- **`tasks.context` is JSONB.** The one field that absolutely must be set for staff UX is `context.staff_home_bucket`. Enforce in UI; DB default is sloppy. Conventional subkeys (`incoming_guest` / `current_guest` / `outgoing_guest` / `notes`) follow merge-safe write pattern; see `wave_4d_context.sql` comment block for the contract.
+- **`tasks.card_type` constraint enumerates 8 values:** `housekeeping_turn`, `arrival`, `stayover`, `eod`, `dailys`, `start_of_day`, `maintenance`, `generic`. AddTaskModal + `lib/orchestration/interpret.ts` must respect this enum.
+- **Default checklist seed** auto-inserts 3 hard-coded items on every new `housekeeping_turn` task with non-null `staff_id` and `is_staff_report=false` (`tasks_seed_default_checklist()` trigger). AddTaskModal-created housekeeping tasks always get these 3 — if you need a different starting set, delete + replace, don't expect a clean slate.
+- **New `auth.users` default to `role='manager'`** via `handle_new_user_profile()` trigger. To add a staff user: insert auth user → trigger creates default-manager profile → manually `update public.profiles set role='staff', staff_id='<uuid>' where id='<auth_uid>'`.
+- **`AGENT_KILL` + `AGENT_DRY_RUN` env vars** gate the orchestrator's live writes. Both default to `true` in production until explicitly flipped — the orchestrator writes to `task_drafts` (invisible to staff UI) until promoted via SQL helper. See "Orchestrator dry-run pipeline" under Schema in place.
 - **`resolveAuthUser(session)`** returns the real Supabase user — never a forged or dev user.
 - **Role-based routing** lives in `lib/profile.ts`. Managers/admins → `/`, staff → `/staff`.
 
@@ -228,12 +347,18 @@ Three multipliers held throughout: (1) batching cross-cutters that unblock multi
 
 ---
 
-## Last session close (Day 34, 2026-05-06)
+## Last session close (Day 35, 2026-05-06)
 
-Master plan III.H closed at the helper layer via Scope A: extracted `reassignTask()` to `lib/orchestration/index.ts` (next to `openCard` / `pauseCard` / `completeCard`); swapped the existing inline log at `manager-card-detail.tsx:380-387` for a call to the helper; formalized event detail with `withTaskEventSchema` + `from_staff_name` / `to_staff_name`; documented `reassigned` in `TASK_EVENTS_CONTRACT.md`; classified `reassigned` as `warn` in `lib/activity-feed.ts`. End-to-end verified: Lizzie Larson → Courtney Manager swap on task `57744497-b061-48dc-8d67-01e827266670` produced exactly one task_events row at `2026-05-06 15:41:36.819+00` with all expected detail fields + row update landed.
+STATE.md gap audit. Read all 26 migrations in `docs/supabase/` + master plan front-to-back side-by-side with STATE.md to surface load-bearing facts that didn't make the Day 34 cut. Landed inline:
 
-Commit `303fb32` on origin/main. Build clean. No schema change. 4 files touched (`lib/orchestration/index.ts`, `app/tasks/[id]/manager-card-detail.tsx`, `lib/activity-feed.ts`, `docs/TASK_EVENTS_CONTRACT.md`), 116 insertions / 12 deletions.
+- **Tables block** expanded from 1 paragraph to 12 per-table entries with constraints/enums/conventions. Added: `tasks` enums (card_type × 8, status × 5, source × 4, priority × 3); `tasks.context` JSONB subkey contract (`incoming_guest` / `current_guest` / `outgoing_guest` / `notes`) + merge-safe write pattern; `reservations` schema details (5-value status lifecycle, source enum needing `cloudbeds` add, generated `nights`, 5 partial indexes); `task_drafts` dry-run staging mechanics; `inbound_events_dedup` constraint; `deep_clean_history` (was completely missing); profile-default-manager gotcha.
+- **Views block** expanded — segment math formula `segment_start = reference_wed + FLOOR((D - reference_wed) / 14) * 14`; `is_current` flag; `effective_end_at = COALESCE(shift_end_at, now())` convention; six FILTER aggregate columns in `shift_summary_v`.
+- **Triggers block** expanded from 3 to 8 — added `task_checklist_staff_guard`, `tasks_seed_default_checklist` (operational gotcha — every housekeeping_turn task auto-gets 3 hard-coded items), `task_checklist_set_done_at`, `handle_new_user_profile`, `reservations_set_updated_at`.
+- **Storage** expanded — `public = true` flag + `auth.uid()::text` upload path convention.
+- **New "Orchestrator dry-run pipeline" subsection** — `AGENT_DRY_RUN` + `AGENT_KILL` operational mechanics, `task_drafts` invisible-to-UI dynamic, `promote_draft_to_task()` SQL helper workflow.
+- **RLS block** corrected (staff CAN update `context` post-`allow_staff_context_update.sql` — STATE.md previously said the opposite); `can_read_task()` localized to `cards_mvp.sql` with full predicate.
+- **Migration files** rewritten — full 26-file enumeration replacing the previous 12-file list, with apply-order notes.
+- **Locked design tokens** new block (sage green admin maintenance lane + 4-name hero gradients).
+- **Architecture rules** added: card_type 8-enum constraint, default-checklist seed gotcha, default-manager-on-signup gotcha, `AGENT_KILL` / `AGENT_DRY_RUN` gate, second corrective patch on staff-cannot-update list (was duplicated).
 
-Side discovery: `/admin/tasks` dashboard links to `/admin/tasks/[id]` (master plan II.G admin task view modal — mostly mocked, no live reassign UI), not to `/tasks/[id]` (master plan II.B — `manager-card-detail.tsx`, the live form with the reassign UI). Two separate pages; pre-existing per Day 28 audit. Carry-forward chase #2.
-
-Documentation cleanup landed alongside: this `docs/STATE.md` created as the new canonical entry point; 14 obsolete daily handoff docs deleted (`handoff-day-22.md` through `handoff-day-34.md` + `phase-4-handoff.md`); `CLAUDE.md` updated to point new sessions at `STATE.md` first. ~50K-token-per-session tax on Cowork onboarding eliminated.
+Markdown-only commit; build verify skipped per convention. No schema change. STATE.md grew from 325 → ~370 lines. Net: substantive product knowledge re-anchored after the Day 34 50K → 15K reduction. The aim is durable bedrock that survives many sessions; future drift gets caught by the "When STATE.md is missing something" rule.
