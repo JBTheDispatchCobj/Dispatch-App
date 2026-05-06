@@ -333,6 +333,9 @@ function readTaskJoin(
 const WARN_TASK_EVENT_TYPES: ReadonlySet<string> = new Set([
   taskEventType.assignmentCrossHallOverride,
   taskEventType.assignmentAboveStandardLoad,
+  // Day 34 III.H — admin reassignment is a significant action; surface
+  // alongside cross-hall override / above-standard-load on the activity feed.
+  taskEventType.reassigned,
 ]);
 
 function classifyTaskEventSeverity(
@@ -415,6 +418,18 @@ function composeTaskEventMessage(
     const fromHall = detail.from_hall ? String(detail.from_hall) : "—";
     const toHall = detail.to_hall ? String(detail.to_hall) : "—";
     return `${actorName} cross-hall: ${fromHall} → ${toHall}${titleSuffix}`;
+  }
+
+  // Reassignment: include from → to staff names. Falls back to "Unassigned"
+  // when either side is null (newly assigned or unassigned).
+  if (eventType === taskEventType.reassigned && detail) {
+    const fromName = detail.from_staff_name
+      ? String(detail.from_staff_name)
+      : "Unassigned";
+    const toName = detail.to_staff_name
+      ? String(detail.to_staff_name)
+      : "Unassigned";
+    return `${actorName} reassigned: ${fromName} → ${toName}${titleSuffix}`;
   }
 
   return `${actorName} ${verb}${titleSuffix}`;

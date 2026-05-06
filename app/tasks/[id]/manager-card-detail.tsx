@@ -9,6 +9,7 @@ import {
   taskEventType,
   uploadTaskFile,
 } from "@/lib/task-events";
+import { reassignTask } from "@/lib/orchestration";
 import {
   fetchAssignableStaffOptions,
   parseStaffRowId,
@@ -276,6 +277,28 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
     setMgrSaving(true);
     setError(null);
     const prev = taskSnapshot.current;
+
+    // Day 34 III.H — reassignment goes through the lifecycle helper FIRST so
+    // the staff_id / assignee_name update + reassigned task_events row land
+    // atomically (per master plan III.H / Global Rules R23). The main task
+    // update below intentionally omits staff_id + assignee_name now; if a
+    // reassignment is in flight, reassignTask has already written them.
+    if (prev && prev.staff_id !== staffIdParsed) {
+      const reassignResult = await reassignTask(supabase, {
+        taskId: task.id,
+        fromStaffId: prev.staff_id,
+        toStaffId: staffIdParsed,
+        fromStaffName: prev.assignee_name?.trim() || null,
+        toStaffName: assigneeName?.trim() || null,
+        userId,
+      });
+      if (!reassignResult.ok) {
+        setMgrSaving(false);
+        setError(reassignResult.message);
+        return;
+      }
+    }
+
     const { error: upErr } = await supabase
       .from("tasks")
       .update({
@@ -285,8 +308,6 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
         priority: mgrPriority,
         due_date: mgrDueDate.trim() || null,
         due_time: mgrDueTime.trim() || null,
-        staff_id: staffIdParsed,
-        assignee_name: assigneeName,
         ...(task.card_type === "housekeeping_turn"
           ? {
               context: {
@@ -377,14 +398,8 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
           userId,
         );
       }
-      if (prev.staff_id !== staffIdParsed) {
-        void logTaskEvent(
-          task.id,
-          taskEventType.reassigned,
-          { from_staff_id: prev.staff_id, to_staff_id: staffIdParsed },
-          userId,
-        );
-      }
+      // Reassignment logging now lives in reassignTask (called above before
+      // the main update). Day 34 III.H Scope A.
       const prevDue = `${prev.due_date ?? ""}|${prev.due_time ?? ""}`;
       const nextDue = `${mgrDueDate.trim() || ""}|${mgrDueTime.trim() || ""}`;
       if (prevDue !== nextDue) {

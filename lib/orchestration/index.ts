@@ -361,3 +361,76 @@ export async function addTaskComment(
   );
   return { ok: true };
 }
+
+/**
+ * Admin reassignment of a task between staff (master plan III.H / Global
+ * Rules R23). Mutates `tasks.staff_id` + `assignee_name` and emits a single
+ * `reassigned` task_events row carrying both staff IDs + names + optional
+ * reason.
+ *
+ * Dual-logging spec: the master plan calls for the event to surface on
+ * BOTH the prior and new staff profiles + on the card itself. That happens
+ * automatically downstream — Day 29's `getActivityForUser(userId)` query
+ * filters task_events by user_id (the actor admin), and the property-wide
+ * `getActivityFeed` query renders the row for the card. The detail carries
+ * both staff_ids + names so a future per-target-staff query can filter on
+ * `detail->>from_staff_id` or `detail->>to_staff_id` without re-joining.
+ *
+ * `fromStaffId` / `toStaffId` may be null (unassigned). `fromStaffName` /
+ * `toStaffName` may be null when the corresponding ID is null. `reason` is
+ * optional (Day 34 helper-only scope; discrete reassign UI with a required
+ * reason note is the next chase).
+ *
+ * No-op guard: if `fromStaffId === toStaffId` we return ok without touching
+ * the row or emitting an event. Caller is expected to detect actual changes
+ * before invoking, but we defensively short-circuit.
+ */
+export async function reassignTask(
+  client: SupabaseClient,
+  input: {
+    taskId: string;
+    fromStaffId: string | null;
+    toStaffId: string | null;
+    fromStaffName: string | null;
+    toStaffName: string | null;
+    userId: string;
+    reason?: string;
+  },
+): Promise<OrchestrationResult> {
+  const {
+    taskId,
+    fromStaffId,
+    toStaffId,
+    fromStaffName,
+    toStaffName,
+    userId,
+    reason,
+  } = input;
+
+  if (fromStaffId === toStaffId) {
+    return { ok: true };
+  }
+
+  const { error: upErr } = await client
+    .from("tasks")
+    .update({
+      staff_id: toStaffId,
+      assignee_name: toStaffName ?? "",
+    })
+    .eq("id", taskId);
+  if (upErr) return { ok: false, message: upErr.message };
+
+  await logTaskEvent(
+    taskId,
+    taskEventType.reassigned,
+    withTaskEventSchema({
+      from_staff_id: fromStaffId,
+      to_staff_id: toStaffId,
+      from_staff_name: fromStaffName,
+      to_staff_name: toStaffName,
+      ...(reason ? { reason } : {}),
+    }),
+    userId,
+  );
+  return { ok: true };
+}
