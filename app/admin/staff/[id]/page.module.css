@@ -537,3 +537,78 @@
 .taskDotInProgress  { background: var(--status-active);  box-shadow: 0 0 0 2px rgba(74,127,168,0.2); }
 .taskDotBlocked     { background: var(--status-overdue); box-shadow: 0 0 0 2px rgba(199,95,95,0.2); }
 .taskDotPaused      { background: rgba(44,22,8,0.3); }
+
+/* ==========================================================
+   Phase 4d — 14-day segment block (master plan I.C / III.J)
+   Lives between the Stats trio and the Profile nav rows.
+   Reuses existing white-card visual language; matches the
+   sky-text + mono-label tokens used throughout this surface.
+   ========================================================== */
+
+.segmentTrio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.shiftList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shiftRow {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  box-shadow:
+    0 1px 2px rgba(30,20,10,0.1),
+    0 3px 8px rgba(30,20,10,0.05),
+    inset 0 1px 0 rgba(255,255,255,0.9),
+    inset 0 -1px 0 rgba(30,20,10,0.05);
+}
+
+/* Currently-clocked-in shift gets a sky-tinted background to signal "live." */
+.shiftRowCurrent {
+  background: var(--sky-body);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -1px 0 rgba(20,35,55,0.1),
+    0 1px 2px rgba(20,35,55,0.18);
+}
+
+.shiftRowMain {
+  min-width: 0;
+}
+
+.shiftRowDate {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sky-text);
+  line-height: 1.28;
+}
+
+.shiftRowSub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: rgba(27,51,64,0.55);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.shiftRowChips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}

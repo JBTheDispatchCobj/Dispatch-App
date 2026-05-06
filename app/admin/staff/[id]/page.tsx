@@ -50,6 +50,32 @@ type TaskRow = {
   room_number: string | null;
 };
 
+// Master plan I.C Phase 4d — segment data shapes from the three views
+// landed in Phase 4a-4c (staff_shifts_v / staff_segments_v / shift_summary_v).
+// staff_id is text in all three views (sourced from inbound_events
+// raw_payload->>'staff_id'), so the join is text-on-text.
+
+type SegmentRow = {
+  segment_start: string; // YYYY-MM-DD (a Wednesday)
+  segment_end: string;   // YYYY-MM-DD (a Tuesday, segment_start + 13)
+  shift_count: number;
+  total_minutes: number;
+};
+
+type ShiftSummaryRow = {
+  shift_start_at: string;       // ISO timestamptz
+  shift_end_at: string | null;
+  duration_minutes: number | null;
+  is_current: boolean;
+  departures_completed: number;
+  arrivals_completed: number;
+  stayovers_completed: number;
+  dailys_completed: number;
+  eod_completed: number;
+  maintenance_completed: number;
+  total_tasks_completed: number;
+};
+
 /* ------------------------------------------------------------------ */
 /* Static profile data — replace with Supabase fetch post-beta        */
 /* ------------------------------------------------------------------ */
@@ -171,6 +197,45 @@ function statusDotClass(status: string): string {
   return `${styles.taskStatusDot} ${map[status] ?? ""}`.trim();
 }
 
+// Phase 4d formatters.
+
+/** Today's date as YYYY-MM-DD in property timezone (matches the views' event_date). */
+function todayInPropertyTz(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+    year:  "numeric",
+    month: "2-digit",
+    day:   "2-digit",
+  }).format(new Date());
+}
+
+/** "5h 23m" / "23m" / "—" depending on minutes. */
+function formatHoursMinutes(mins: number | null): string {
+  if (mins === null || mins === undefined) return "—";
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/** "Apr 29 – May 12" from two YYYY-MM-DD strings. Same-month collapses. */
+function formatSegmentRange(startIso: string, endIso: string): string {
+  // Parse as UTC noon to dodge DST and TZ math; we only display month/day.
+  const s = new Date(`${startIso}T12:00:00Z`);
+  const e = new Date(`${endIso}T12:00:00Z`);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return `${fmt(s)} – ${fmt(e)}`;
+}
+
+/** "Tue · May 5" from an ISO timestamptz, in property TZ. */
+function formatShiftDate(iso: string): string {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/Chicago" });
+  const md      = d.toLocaleDateString("en-US", { month: "short",   day: "numeric", timeZone: "America/Chicago" });
+  return `${weekday} · ${md}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
@@ -182,6 +247,11 @@ export default function StaffProfilePage() {
   const [tasksError, setTasksError] = useState<string | null>(null);
   const [staffRowId, setStaffRowId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Phase 4d — segment data state.
+  const [currentSegment, setCurrentSegment] = useState<SegmentRow | null>(null);
+  const [segmentShifts, setSegmentShifts] = useState<ShiftSummaryRow[]>([]);
+  const [lifetimeMinutes, setLifetimeMinutes] = useState<number | null>(null);
 
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
@@ -226,6 +296,80 @@ export default function StaffProfilePage() {
     if (error) setTasksError(error.message);
   }
 
+  // Phase 4d — fetch segment + shifts + lifetime in parallel. staff_id in
+  // the views is text (raw_payload->>'staff_id'), so we pass the UUID as a
+  // string. Failures degrade gracefully — the segment block renders an
+  // empty state rather than blocking the page.
+  async function fetchSegmentData(sid: string) {
+    const today = todayInPropertyTz();
+
+    const [segmentRes, shiftsRes, lifetimeRes] = await Promise.all([
+      // Current segment: the row whose [segment_start, segment_end] window
+      // contains today.
+      supabase
+        .from("staff_segments_v")
+        .select("segment_start, segment_end, shift_count, total_minutes")
+        .eq("staff_id", sid)
+        .lte("segment_start", today)
+        .gte("segment_end", today)
+        .maybeSingle(),
+
+      // All shifts (with summaries) in roughly the last 14 days. Filtering
+      // by exact segment_start / segment_end happens client-side once we
+      // know the segment — keeps the query simple and lets us include the
+      // currently-clocked-in shift even when it's outside the segment view's
+      // duration_minutes-NOT-NULL filter.
+      supabase
+        .from("shift_summary_v")
+        .select(
+          "shift_start_at, shift_end_at, duration_minutes, is_current, " +
+          "departures_completed, arrivals_completed, stayovers_completed, " +
+          "dailys_completed, eod_completed, maintenance_completed, " +
+          "total_tasks_completed",
+        )
+        .eq("staff_id", sid)
+        .order("shift_start_at", { ascending: false })
+        .limit(20),
+
+      // Lifetime: sum of every segment's total_minutes for this staff.
+      supabase
+        .from("staff_segments_v")
+        .select("total_minutes")
+        .eq("staff_id", sid),
+    ]);
+
+    if (segmentRes.error) {
+      console.warn("[admin-staff] staff_segments_v fetch failed:", segmentRes.error.message);
+    }
+    setCurrentSegment((segmentRes.data as SegmentRow | null) ?? null);
+
+    if (shiftsRes.error) {
+      console.warn("[admin-staff] shift_summary_v fetch failed:", shiftsRes.error.message);
+    }
+    const allShifts = (shiftsRes.data ?? []) as ShiftSummaryRow[];
+    // Client-side filter to current segment range. If we don't know the
+    // segment yet (no shifts in it), fall back to the most recent shift so
+    // the section isn't empty when there's data.
+    const segStart = (segmentRes.data as SegmentRow | null)?.segment_start ?? null;
+    const segEnd   = (segmentRes.data as SegmentRow | null)?.segment_end ?? null;
+    const inSegment = segStart && segEnd
+      ? allShifts.filter((s) => {
+          const d = s.shift_start_at.slice(0, 10); // YYYY-MM-DD prefix; close enough for property-TZ approximation
+          return d >= segStart && d <= segEnd;
+        })
+      : allShifts.slice(0, 1);
+    setSegmentShifts(inSegment);
+
+    if (lifetimeRes.error) {
+      console.warn("[admin-staff] staff_segments_v lifetime fetch failed:", lifetimeRes.error.message);
+      setLifetimeMinutes(null);
+    } else {
+      const rows = (lifetimeRes.data ?? []) as Array<{ total_minutes: number }>;
+      const total = rows.reduce((acc, r) => acc + (r.total_minutes ?? 0), 0);
+      setLifetimeMinutes(total);
+    }
+  }
+
   // Fetch tasks once auth is confirmed
   useEffect(() => {
     if (!ready) return;
@@ -242,7 +386,7 @@ export default function StaffProfilePage() {
       if (cancelled || !staffRow) return;
       const sid = staffRow.id as string;
       if (!cancelled) setStaffRowId(sid);
-      await fetchTasks(sid);
+      await Promise.all([fetchTasks(sid), fetchSegmentData(sid)]);
     })();
     return () => {
       cancelled = true;
@@ -334,6 +478,78 @@ export default function StaffProfilePage() {
               <div className={styles.statLbl}>{m.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Phase 4d — 14-day segment block (master plan I.C Phase 4 / III.J).
+            Wired to staff_segments_v + shift_summary_v, both landed Day 32.
+            Renders an empty state when no segment data yet (e.g., staff has
+            never clocked in). */}
+        <div className={styles.sectionWrap}>
+          <div className={styles.sectionLabel}>
+            <span>14-DAY SEGMENT</span>
+            {currentSegment && (
+              <span>{formatSegmentRange(currentSegment.segment_start, currentSegment.segment_end)}</span>
+            )}
+          </div>
+
+          {currentSegment ? (
+            <>
+              <div className={styles.segmentTrio}>
+                <div className={styles.stat}>
+                  <div className={styles.statVal}>{formatHoursMinutes(currentSegment.total_minutes)}</div>
+                  <div className={styles.statLbl}>Segment</div>
+                </div>
+                <div className={styles.stat}>
+                  <div className={styles.statVal}>{currentSegment.shift_count}</div>
+                  <div className={styles.statLbl}>Shifts</div>
+                </div>
+                <div className={styles.stat}>
+                  <div className={styles.statVal}>{formatHoursMinutes(lifetimeMinutes)}</div>
+                  <div className={styles.statLbl}>Lifetime</div>
+                </div>
+              </div>
+
+              {segmentShifts.length > 0 && (
+                <div className={styles.shiftList}>
+                  {segmentShifts.map((shift) => (
+                    <div
+                      key={shift.shift_start_at}
+                      className={`${styles.shiftRow}${shift.is_current ? ` ${styles.shiftRowCurrent}` : ""}`}
+                    >
+                      <div className={styles.shiftRowMain}>
+                        <div className={styles.shiftRowDate}>{formatShiftDate(shift.shift_start_at)}</div>
+                        <div className={styles.shiftRowSub}>
+                          <span>
+                            {shift.is_current
+                              ? "In progress"
+                              : formatHoursMinutes(shift.duration_minutes)}
+                          </span>
+                          <span aria-hidden>·</span>
+                          <span>{shift.total_tasks_completed} done</span>
+                        </div>
+                      </div>
+                      <div className={styles.shiftRowChips}>
+                        {shift.departures_completed > 0 && (
+                          <span className={`${styles.chip} ${styles.chipDep}`}>{shift.departures_completed} D</span>
+                        )}
+                        {shift.arrivals_completed > 0 && (
+                          <span className={`${styles.chip} ${styles.chipArr}`}>{shift.arrivals_completed} A</span>
+                        )}
+                        {shift.stayovers_completed > 0 && (
+                          <span className={`${styles.chip} ${styles.chipSta}`}>{shift.stayovers_completed} S</span>
+                        )}
+                        {shift.dailys_completed > 0 && (
+                          <span className={`${styles.chip} ${styles.chipDly}`}>{shift.dailys_completed} Da</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className={styles.tasksEmpty}>No segment data yet.</div>
+          )}
         </div>
 
         {/* Profile nav rows */}
