@@ -63,6 +63,11 @@ import {
   loadStaffExecutionChecklist,
   type ExecutionChecklistItem,
 } from "@/lib/staff-task-execution-checklist";
+import {
+  getCurrentReservationForRoom,
+  getNextIncomingReservationForRoom,
+  type Reservation,
+} from "@/lib/reservations";
 
 function roomFromTitle(title: string | null): string | null {
   if (!title) return null;
@@ -141,6 +146,18 @@ export default function StaffTaskExecutionPage() {
   const [maintenanceItems, setMaintenanceItems] = useState<
     MaintenanceIssueRow[]
   >([]);
+
+  // Master plan V.A BR4 — reservation fallback for X-430 brief guest fields.
+  // Loaded in parallel with notes/maintenance/checklist when the task has a
+  // room_number AND a card_type that surfaces guest fields. Cards consume as
+  // optional props; each card falls back to the reservation row only when its
+  // task.context.{outgoing,incoming,current}_guest subkey is missing/empty.
+  // currentReservation is shared between D-430 (as "outgoing") and S-430
+  // (as "current") — same DB row, different framing in the brief.
+  const [currentReservation, setCurrentReservation] =
+    useState<Reservation | null>(null);
+  const [incomingReservation, setIncomingReservation] =
+    useState<Reservation | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -254,18 +271,59 @@ export default function StaffTaskExecutionPage() {
     // lib/maintenance.ts (master plan III.B — Day 33 Phase 1+2). Fetched
     // in parallel; failures degrade gracefully via lib's listMaintenance-
     // IssuesForTask warn-and-return-[] handler.
-    const [noteRows, maintRows, chItems] = await Promise.all([
-      listNotesForTask(supabase, id),
-      listMaintenanceIssuesForTask(supabase, id),
-      loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
-        console.warn("[staff-task-exec checklist]", e.message);
-        return [] as ExecutionChecklistItem[];
-      }),
-    ]);
+    //
+    // Reservation fallbacks (master plan V.A BR4) — fetched only when the
+    // task has a room_number AND the card_type surfaces guest fields:
+    //   housekeeping_turn → both current (outgoing) + next-incoming
+    //   arrival           → next-incoming
+    //   stayover          → current
+    // Failures degrade to null (the card's brief stays at "—" placeholders,
+    // same as today). The cards consume these as optional props and only
+    // use them when their context guest subkey is missing/empty.
+    const ctLower = t.card_type.toLowerCase();
+    const room = t.room_number?.trim() || null;
+    const isDeparture =
+      ctLower === "housekeeping_turn" ||
+      ctLower.includes("departure") ||
+      ctLower.includes("checkout");
+    const isArrival =
+      ctLower === "arrival" ||
+      ctLower.includes("arrival") ||
+      ctLower.includes("checkin");
+    const isStayover =
+      ctLower === "stayover" ||
+      ctLower.includes("stayover") ||
+      ctLower.includes("stay_over");
+    const needsCurrent = !!room && (isDeparture || isStayover);
+    const needsIncoming = !!room && (isDeparture || isArrival);
+
+    const [noteRows, maintRows, chItems, currentRes, incomingRes] =
+      await Promise.all([
+        listNotesForTask(supabase, id),
+        listMaintenanceIssuesForTask(supabase, id),
+        loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
+          console.warn("[staff-task-exec checklist]", e.message);
+          return [] as ExecutionChecklistItem[];
+        }),
+        needsCurrent && room
+          ? getCurrentReservationForRoom(room).catch((e: Error) => {
+              console.warn("[staff-task-exec reservation:current]", e.message);
+              return null;
+            })
+          : Promise.resolve(null),
+        needsIncoming && room
+          ? getNextIncomingReservationForRoom(room).catch((e: Error) => {
+              console.warn("[staff-task-exec reservation:incoming]", e.message);
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
 
     setNotes(noteRows);
     setMaintenanceItems(maintRows);
     setChecklist(chItems);
+    setCurrentReservation(currentRes);
+    setIncomingReservation(incomingRes);
 
     setReady(true);
   }, [id]);
@@ -748,6 +806,7 @@ export default function StaffTaskExecutionPage() {
         setMaintSeverity={setMaintSeverity}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
+        currentReservation={currentReservation}
       />
     );
   }
@@ -794,6 +853,7 @@ export default function StaffTaskExecutionPage() {
         setMaintSeverity={setMaintSeverity}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
+        incomingReservation={incomingReservation}
       />
     );
   }
@@ -846,6 +906,8 @@ export default function StaffTaskExecutionPage() {
         setMaintSeverity={setMaintSeverity}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
+        outgoingReservation={currentReservation}
+        incomingReservation={incomingReservation}
       />
     );
   }

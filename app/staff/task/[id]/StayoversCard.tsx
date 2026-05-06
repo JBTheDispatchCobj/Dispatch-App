@@ -5,6 +5,10 @@ import { useCallback, useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
+import {
+  todayInPropertyTz,
+  type Reservation,
+} from "@/lib/reservations";
 import NoteComposeForm from "./NoteComposeForm";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
@@ -116,6 +120,37 @@ function parseCurrentGuest(ctx: Record<string, unknown>): CurrentGuest | null {
   };
 }
 
+// Master plan V.A BR4 — derive a CurrentGuest from a reservation row when
+// task.context.current_guest is missing. nights_remaining is computed from
+// departure_date minus today in property TZ. Both YYYY-MM-DD strings are
+// parsed at noon-local to avoid DST/zone rounding.
+function currentGuestFromReservation(r: Reservation): CurrentGuest {
+  const today = todayInPropertyTz();
+  const todayDate = new Date(`${today}T12:00:00`);
+  const departDate = new Date(`${r.departure_date}T12:00:00`);
+  let nightsLeft: string | null = null;
+  if (
+    !Number.isNaN(todayDate.getTime()) &&
+    !Number.isNaN(departDate.getTime())
+  ) {
+    const ms = departDate.getTime() - todayDate.getTime();
+    const days = Math.max(0, Math.round(ms / 86_400_000));
+    nightsLeft = `${days} ${days === 1 ? "night" : "nights"} left`;
+  }
+  const requests =
+    r.special_requests && r.special_requests.length > 0
+      ? r.special_requests.join(", ")
+      : r.guest_notes && r.guest_notes.trim()
+        ? r.guest_notes.trim()
+        : null;
+  return {
+    name: r.guest_name?.trim() || null,
+    nights_remaining: nightsLeft,
+    party_size: r.party_size,
+    special_requests: requests,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Canonical checklist merge
 // ---------------------------------------------------------------------------
@@ -213,6 +248,9 @@ export type StayoversCardProps = {
   setMaintSeverity: (v: string) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
+  // Master plan V.A BR4 — reservation fallback for the current guest brief.
+  // Used only when task.context.current_guest is missing.
+  currentReservation?: Reservation | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -259,6 +297,7 @@ export default function StayoversCard({
   setMaintSeverity,
   maintBusy,
   onPostMaintenance,
+  currentReservation = null,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -307,7 +346,15 @@ export default function StayoversCard({
   // intentionally preserved but not called from S-430 UI.
   void onToggleStayoverStatus;
 
-  const guest = parseCurrentGuest(task.context);
+  const parsedGuest = parseCurrentGuest(task.context);
+  // Reservation fallback (master plan V.A BR4) — only kicks in when context
+  // had no current_guest subkey AND a matching live reservation exists for
+  // this room.
+  const guest =
+    parsedGuest ??
+    (currentReservation
+      ? currentGuestFromReservation(currentReservation)
+      : null);
 
   const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";

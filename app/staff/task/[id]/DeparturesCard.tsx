@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
+import { type Reservation } from "@/lib/reservations";
 import NoteComposeForm from "./NoteComposeForm";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
@@ -64,6 +65,53 @@ function parseGuestRecord(raw: unknown): GuestRecord {
     clean_type: str("clean_type"),
     party:      str("party"),
     notes:      str("notes"),
+  };
+}
+
+// Master plan V.A BR4 — when task.context.{outgoing,incoming}_guest is missing
+// or empty, derive a GuestRecord from the matching reservation row instead of
+// rendering "—" placeholders. clean_type has no reservation-side source (per-
+// turn cleaning tier is KB-driven), so it stays null on fallback.
+function isAllNull(r: GuestRecord): boolean {
+  return (
+    r.name === null &&
+    r.guests === null &&
+    r.nights === null &&
+    r.clean_type === null &&
+    r.party === null &&
+    r.notes === null
+  );
+}
+
+function guestRecordFromReservation(
+  r: Reservation,
+  direction: "outgoing" | "incoming",
+): GuestRecord {
+  const partyString = `${r.party_size} guest${r.party_size !== 1 ? "s" : ""}`;
+  const nightsString = `${r.nights} night${r.nights !== 1 ? "s" : ""}`;
+  const notesString =
+    r.guest_notes && r.guest_notes.trim()
+      ? r.guest_notes.trim()
+      : r.special_requests && r.special_requests.length > 0
+        ? r.special_requests.join(", ")
+        : null;
+  if (direction === "outgoing") {
+    return {
+      name:       r.guest_name?.trim() || null,
+      guests:     partyString,
+      nights:     nightsString,
+      clean_type: null,
+      party:      null,
+      notes:      null,
+    };
+  }
+  return {
+    name:       r.guest_name?.trim() || null,
+    guests:     null,
+    nights:     nightsString,
+    clean_type: null,
+    party:      partyString,
+    notes:      notesString,
   };
 }
 
@@ -161,6 +209,10 @@ export type DeparturesCardProps = {
   setMaintSeverity: (v: string) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
+  // Master plan V.A BR4 — reservation fallback for outgoing/incoming briefs.
+  // Used only when task.context.outgoing_guest / incoming_guest is missing.
+  outgoingReservation?: Reservation | null;
+  incomingReservation?: Reservation | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -207,14 +259,26 @@ export default function DeparturesCard({
   setMaintSeverity,
   maintBusy,
   onPostMaintenance,
+  outgoingReservation = null,
+  incomingReservation = null,
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
 
   const departureStatus = parseDepartureStatus(task.context.departure_status);
 
   const checklistTree = resolveChecklist("housekeeping_turn", task.room_number);
-  const outgoing = parseGuestRecord(task.context.outgoing_guest);
-  const incoming = parseGuestRecord(task.context.incoming_guest);
+  const outgoingParsed = parseGuestRecord(task.context.outgoing_guest);
+  const incomingParsed = parseGuestRecord(task.context.incoming_guest);
+  // Reservation fallback (master plan V.A BR4) — only kicks in when the task
+  // context guest subkey was missing/empty AND a matching reservation exists.
+  const outgoing =
+    isAllNull(outgoingParsed) && outgoingReservation
+      ? guestRecordFromReservation(outgoingReservation, "outgoing")
+      : outgoingParsed;
+  const incoming =
+    isAllNull(incomingParsed) && incomingReservation
+      ? guestRecordFromReservation(incomingReservation, "incoming")
+      : incomingParsed;
 
   const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";

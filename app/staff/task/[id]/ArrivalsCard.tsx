@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
+import { type Reservation } from "@/lib/reservations";
 import NoteComposeForm from "./NoteComposeForm";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
@@ -52,6 +53,26 @@ function parseIncomingGuest(ctx: Record<string, unknown>): IncomingGuest | null 
     nights: num("nights"),
     party_size: num("party_size"),
     special_requests: str("special_requests"),
+  };
+}
+
+// Master plan V.A BR4 — derive an IncomingGuest from a reservation row when
+// task.context.incoming_guest is missing. checkin_time formats are aligned
+// with formatDueTime's HH:MM regex (HH:MM:SS slices fine — the parser only
+// reads the leading "HH:MM").
+function incomingGuestFromReservation(r: Reservation): IncomingGuest {
+  const requests =
+    r.special_requests && r.special_requests.length > 0
+      ? r.special_requests.join(", ")
+      : r.guest_notes && r.guest_notes.trim()
+        ? r.guest_notes.trim()
+        : null;
+  return {
+    name: r.guest_name?.trim() || null,
+    checkin_time: r.arrival_time,
+    nights: r.nights,
+    party_size: r.party_size,
+    special_requests: requests,
   };
 }
 
@@ -152,6 +173,9 @@ export type ArrivalsCardProps = {
   setMaintSeverity: (v: string) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
+  // Master plan V.A BR4 — reservation fallback for the incoming guest brief.
+  // Used only when task.context.incoming_guest is missing.
+  incomingReservation?: Reservation | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -197,11 +221,20 @@ export default function ArrivalsCard({
   setMaintSeverity,
   maintBusy,
   onPostMaintenance,
+  incomingReservation = null,
 }: ArrivalsCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
 
   const checklistTree = resolveChecklist("arrival", task.room_number);
-  const guest = parseIncomingGuest(task.context);
+  const parsedGuest = parseIncomingGuest(task.context);
+  // Reservation fallback (master plan V.A BR4) — only kicks in when context
+  // had no incoming_guest subkey AND a matching next-incoming reservation
+  // exists for this room.
+  const guest =
+    parsedGuest ??
+    (incomingReservation
+      ? incomingGuestFromReservation(incomingReservation)
+      : null);
 
   const taskDone = task.status === "done";
   const inProgress = task.status === "in_progress";
