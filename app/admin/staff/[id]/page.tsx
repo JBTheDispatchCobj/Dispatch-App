@@ -346,7 +346,7 @@ export default function StaffProfilePage() {
     if (shiftsRes.error) {
       console.warn("[admin-staff] shift_summary_v fetch failed:", shiftsRes.error.message);
     }
-    const allShifts = (shiftsRes.data ?? []) as ShiftSummaryRow[];
+    const allShifts = (shiftsRes.data ?? []) as unknown as ShiftSummaryRow[];
     // Client-side filter to current segment range. If we don't know the
     // segment yet (no shifts in it), fall back to the most recent shift so
     // the section isn't empty when there's data.
