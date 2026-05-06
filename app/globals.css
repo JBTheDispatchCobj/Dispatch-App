@@ -6208,6 +6208,95 @@ main.wrap--wide {
   cursor: not-allowed;
 }
 
+/* ----------------------------------------------------------------------------
+ * .maint-list / .maint-row — Maintenance issue list rendered above the
+ * compose form inside each X-430 card's Maintenance section. Scoped via
+ * .maint-list parent so it works inside any card shell (.preview-d-430,
+ * .preview-s-430, etc.) without color-token conflicts.
+ *
+ * Severity-high chip gets a red accent; the other three chips (location /
+ * item / type) stay neutral so the high-severity flag pops visually.
+ * ---------------------------------------------------------------------------- */
+
+.maint-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.maint-row {
+  background: #FFFFFF;
+  border: 1px solid var(--hairline, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.maint-row__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.maint-row__author {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink, #111);
+}
+
+.maint-row__time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  color: var(--ink-muted, rgba(0, 0, 0, 0.55));
+}
+
+.maint-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.maint-row__chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--ink, #111);
+}
+
+.maint-row__chip--severity-high {
+  background: #B91C1C;
+  color: #FFFFFF;
+}
+
+.maint-row__body {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--ink, #111);
+}
+
+/* Severity-high chip variant for the legacy execution surface (page.tsx
+ * fallback render). Mirrors .maint-row__chip--severity-high but uses the
+ * exec-shell class scoping. */
+.staff-task-exec-note-chip--severity-high {
+  background: #B91C1C !important;
+  color: #FFFFFF !important;
+}
+
 /* Legacy execution surface — Notes section thread chips */
 .staff-task-exec-note-meta {
   display: flex;

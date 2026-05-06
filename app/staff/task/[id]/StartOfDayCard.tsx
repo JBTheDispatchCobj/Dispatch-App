@@ -4,7 +4,9 @@ import Link from "next/link";
 import { type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
+import { type MaintenanceIssueRow } from "@/lib/maintenance";
 import NoteComposeForm from "./NoteComposeForm";
+import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 import { formatSodDateShort, firstNameFromDisplayName, formatCommentTime } from "@/lib/staff-card-formatters";
 
@@ -98,6 +100,20 @@ export type StartOfDayCardProps = {
   onPause: () => void;
   onResume: () => void;
   onPostNote: (e: FormEvent) => void;
+  // Master plan III.B — Maintenance compose drawer (Day 33).
+  maintenanceItems: MaintenanceIssueRow[];
+  maintBody: string;
+  setMaintBody: (v: string) => void;
+  maintLocation: string;
+  setMaintLocation: (v: string) => void;
+  maintItem: string;
+  setMaintItem: (v: string) => void;
+  maintType: string;
+  setMaintType: (v: string) => void;
+  maintSeverity: string;
+  setMaintSeverity: (v: string) => void;
+  maintBusy: boolean;
+  onPostMaintenance: (e: FormEvent) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -130,6 +146,19 @@ export default function StartOfDayCard({
   onPause,
   onResume,
   onPostNote,
+  maintenanceItems,
+  maintBody,
+  setMaintBody,
+  maintLocation,
+  setMaintLocation,
+  maintItem,
+  setMaintItem,
+  maintType,
+  setMaintType,
+  maintSeverity,
+  setMaintSeverity,
+  maintBusy,
+  onPostMaintenance,
 }: StartOfDayCardProps) {
   const brief = parseSodBrief(task.context);
 
@@ -302,6 +331,76 @@ export default function StartOfDayCard({
                 placeholder="Leave a note for the team…"
                 rows={2}
                 className="note-compose--section"
+              />
+            ) : null}
+          </section>
+
+          {/* Maintenance compose drawer — master plan III.B (Day 33). */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Maintenance</span>
+              <span className="section__count">
+                {maintenanceItems.length === 0
+                  ? "Report an issue"
+                  : `${maintenanceItems.length} issue${maintenanceItems.length !== 1 ? "s" : ""}`}
+              </span>
+            </header>
+            {maintenanceItems.length > 0 ? (
+              <ul className="maint-list" role="list">
+                {maintenanceItems.map((m) => (
+                  <li key={m.id} className="maint-row">
+                    <div className="maint-row__head">
+                      <span className="maint-row__author">
+                        {m.author_display_name || "Team"}
+                      </span>
+                      <time
+                        className="maint-row__time"
+                        dateTime={m.created_at}
+                      >
+                        {new Date(m.created_at).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </div>
+                    <div className="maint-row__chips">
+                      <span className="maint-row__chip">{m.location}</span>
+                      <span className="maint-row__chip">{m.item}</span>
+                      <span className="maint-row__chip">{m.type}</span>
+                      <span
+                        className={
+                          m.severity === "High"
+                            ? "maint-row__chip maint-row__chip--severity-high"
+                            : "maint-row__chip"
+                        }
+                      >
+                        {m.severity}
+                      </span>
+                    </div>
+                    {m.body ? (
+                      <p className="maint-row__body">{m.body}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!taskDone ? (
+              <MaintenanceComposeForm
+                body={maintBody}
+                setBody={setMaintBody}
+                location={maintLocation}
+                setLocation={setMaintLocation}
+                item={maintItem}
+                setItem={setMaintItem}
+                type={maintType}
+                setType={setMaintType}
+                severity={maintSeverity}
+                setSeverity={setMaintSeverity}
+                onSubmit={onPostMaintenance}
+                busy={maintBusy}
+                className="maint-compose--card"
               />
             ) : null}
           </section>

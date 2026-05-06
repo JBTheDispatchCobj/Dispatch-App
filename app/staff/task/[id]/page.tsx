@@ -48,8 +48,15 @@ import {
   NOTE_DEFAULTS,
   type NoteRow,
 } from "@/lib/notes";
+import {
+  addMaintenanceIssue,
+  listMaintenanceIssuesForTask,
+  MAINTENANCE_DEFAULTS,
+  type MaintenanceIssueRow,
+} from "@/lib/maintenance";
 import { canWrapShift, clockOut } from "@/lib/clock-in";
 import NoteComposeForm from "./NoteComposeForm";
+import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { supabase } from "@/lib/supabase";
 import {
   checklistCompletionPercent,
@@ -131,6 +138,9 @@ export default function StaffTaskExecutionPage() {
   const [task, setTask] = useState<TaskCard | null>(null);
   const [checklist, setChecklist] = useState<ExecutionChecklistItem[]>([]);
   const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [maintenanceItems, setMaintenanceItems] = useState<
+    MaintenanceIssueRow[]
+  >([]);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -147,6 +157,21 @@ export default function StaffTaskExecutionPage() {
     NOTE_DEFAULTS.assignedTo,
   );
   const [noteBusy, setNoteBusy] = useState(false);
+
+  // Maintenance compose state — body is OPTIONAL (the schema allows null
+  // body), unlike notes where body is required. Submit gates on the three
+  // required taxonomy fields (location/item/type), each starting "" so the
+  // submit button stays disabled until they're picked. Severity defaults to
+  // 'Normal' and is sticky between submits (LinkedIn-comment pattern; only
+  // body clears on Post). Master plan III.B + Global Rules R12-R17.
+  const [maintBody, setMaintBody] = useState("");
+  const [maintLocation, setMaintLocation] = useState("");
+  const [maintItem, setMaintItem] = useState("");
+  const [maintType, setMaintType] = useState("");
+  const [maintSeverity, setMaintSeverity] = useState<string>(
+    MAINTENANCE_DEFAULTS.severity,
+  );
+  const [maintBusy, setMaintBusy] = useState(false);
   const [helpBusy, setHelpBusy] = useState(false);
   const [doneBusy, setDoneBusy] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
@@ -224,8 +249,14 @@ export default function StaffTaskExecutionPage() {
     // Notes load against public.notes via lib/notes.ts (master plan III.A).
     // Replaces the legacy task_comments fetch from Phase 3 — task_comments
     // table stays in place but new compose writes go to public.notes only.
-    const [noteRows, chItems] = await Promise.all([
+    //
+    // Maintenance load against public.maintenance_issues via
+    // lib/maintenance.ts (master plan III.B — Day 33 Phase 1+2). Fetched
+    // in parallel; failures degrade gracefully via lib's listMaintenance-
+    // IssuesForTask warn-and-return-[] handler.
+    const [noteRows, maintRows, chItems] = await Promise.all([
       listNotesForTask(supabase, id),
+      listMaintenanceIssuesForTask(supabase, id),
       loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
         console.warn("[staff-task-exec checklist]", e.message);
         return [] as ExecutionChecklistItem[];
@@ -233,6 +264,7 @@ export default function StaffTaskExecutionPage() {
     ]);
 
     setNotes(noteRows);
+    setMaintenanceItems(maintRows);
     setChecklist(chItems);
 
     setReady(true);
@@ -451,6 +483,58 @@ export default function StaffTaskExecutionPage() {
     ],
   );
 
+  // Maintenance compose handler — mirrors onPostNote. Three required taxonomy
+  // fields gate submit (location/item/type); body is OPTIONAL. Severity
+  // always has a default. Sticky filters: clear body but keep dropdowns
+  // sticky so a housekeeper filing several issues from the same room
+  // doesn't have to re-pick Location each time. Master plan III.B.
+  const onPostMaintenance = useCallback(
+    async (e: FormEvent) => {
+      e.preventDefault();
+      if (!task || !userId) return;
+      // Defensive guards — submit button is also disabled when these are
+      // empty (MaintenanceComposeForm handles via submitDisabled).
+      if (!maintLocation || !maintItem || !maintType) {
+        setInlineError(
+          "Pick a location, item, and type before posting a maintenance issue.",
+        );
+        return;
+      }
+      setMaintBusy(true);
+      setInlineError(null);
+      const r = await addMaintenanceIssue(supabase, {
+        taskId: task.id,
+        authorUserId: userId,
+        authorDisplayName: displayName,
+        body: maintBody,
+        location: maintLocation,
+        item: maintItem,
+        type: maintType,
+        severity: maintSeverity,
+        imageUrl: null,
+      });
+      setMaintBusy(false);
+      if (!r.ok) {
+        setInlineError(r.message);
+        return;
+      }
+      // Sticky filters: clear body, keep Location/Item/Type/Severity.
+      setMaintBody("");
+      await load();
+    },
+    [
+      task,
+      userId,
+      displayName,
+      maintBody,
+      maintLocation,
+      maintItem,
+      maintType,
+      maintSeverity,
+      load,
+    ],
+  );
+
   if (profileFailure) {
     return <ProfileLoadError failure={profileFailure} />;
   }
@@ -522,6 +606,19 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        maintenanceItems={maintenanceItems}
+        maintBody={maintBody}
+        setMaintBody={setMaintBody}
+        maintLocation={maintLocation}
+        setMaintLocation={setMaintLocation}
+        maintItem={maintItem}
+        setMaintItem={setMaintItem}
+        maintType={maintType}
+        setMaintType={setMaintType}
+        maintSeverity={maintSeverity}
+        setMaintSeverity={setMaintSeverity}
+        maintBusy={maintBusy}
+        onPostMaintenance={onPostMaintenance}
       />
     );
   }
@@ -555,6 +652,19 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        maintenanceItems={maintenanceItems}
+        maintBody={maintBody}
+        setMaintBody={setMaintBody}
+        maintLocation={maintLocation}
+        setMaintLocation={setMaintLocation}
+        maintItem={maintItem}
+        setMaintItem={setMaintItem}
+        maintType={maintType}
+        setMaintType={setMaintType}
+        maintSeverity={maintSeverity}
+        setMaintSeverity={setMaintSeverity}
+        maintBusy={maintBusy}
+        onPostMaintenance={onPostMaintenance}
       />
     );
   }
@@ -625,6 +735,19 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        maintenanceItems={maintenanceItems}
+        maintBody={maintBody}
+        setMaintBody={setMaintBody}
+        maintLocation={maintLocation}
+        setMaintLocation={setMaintLocation}
+        maintItem={maintItem}
+        setMaintItem={setMaintItem}
+        maintType={maintType}
+        setMaintType={setMaintType}
+        maintSeverity={maintSeverity}
+        setMaintSeverity={setMaintSeverity}
+        maintBusy={maintBusy}
+        onPostMaintenance={onPostMaintenance}
       />
     );
   }
@@ -658,6 +781,19 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        maintenanceItems={maintenanceItems}
+        maintBody={maintBody}
+        setMaintBody={setMaintBody}
+        maintLocation={maintLocation}
+        setMaintLocation={setMaintLocation}
+        maintItem={maintItem}
+        setMaintItem={setMaintItem}
+        maintType={maintType}
+        setMaintType={setMaintType}
+        maintSeverity={maintSeverity}
+        setMaintSeverity={setMaintSeverity}
+        maintBusy={maintBusy}
+        onPostMaintenance={onPostMaintenance}
       />
     );
   }
@@ -697,6 +833,19 @@ export default function StaffTaskExecutionPage() {
         onPause={onPause}
         onResume={onResume}
         onPostNote={onPostNote}
+        maintenanceItems={maintenanceItems}
+        maintBody={maintBody}
+        setMaintBody={setMaintBody}
+        maintLocation={maintLocation}
+        setMaintLocation={setMaintLocation}
+        maintItem={maintItem}
+        setMaintItem={setMaintItem}
+        maintType={maintType}
+        setMaintType={setMaintType}
+        maintSeverity={maintSeverity}
+        setMaintSeverity={setMaintSeverity}
+        maintBusy={maintBusy}
+        onPostMaintenance={onPostMaintenance}
       />
     );
   }
@@ -920,6 +1069,74 @@ export default function StaffTaskExecutionPage() {
               onSubmit={onPostNote}
               busy={noteBusy}
               className="note-compose--exec"
+            />
+          ) : null}
+        </section>
+
+        <section
+          className="staff-task-exec-section"
+          aria-label="Maintenance"
+        >
+          <h2 className="staff-task-exec-h2">Maintenance</h2>
+          {maintenanceItems.length === 0 ? (
+            <p className="staff-task-exec-muted">No maintenance issues yet.</p>
+          ) : (
+            <ul className="staff-task-exec-notes" role="list">
+              {maintenanceItems.map((m) => (
+                <li key={m.id} className="staff-task-exec-note">
+                  <div className="staff-task-exec-note-head">
+                    <span className="staff-task-exec-note-author">
+                      {m.author_display_name || "Team"}
+                    </span>
+                    <time
+                      className="staff-task-exec-note-time"
+                      dateTime={m.created_at}
+                    >
+                      {formatCommentTime(m.created_at)}
+                    </time>
+                  </div>
+                  <div className="staff-task-exec-note-meta">
+                    <span className="staff-task-exec-note-chip">
+                      {m.location}
+                    </span>
+                    <span className="staff-task-exec-note-chip">
+                      {m.item}
+                    </span>
+                    <span className="staff-task-exec-note-chip">
+                      {m.type}
+                    </span>
+                    <span
+                      className={
+                        m.severity === "High"
+                          ? "staff-task-exec-note-chip staff-task-exec-note-chip--severity-high"
+                          : "staff-task-exec-note-chip staff-task-exec-note-chip--status"
+                      }
+                    >
+                      {m.severity}
+                    </span>
+                  </div>
+                  {m.body ? (
+                    <p className="staff-task-exec-note-body">{m.body}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!taskDone ? (
+            <MaintenanceComposeForm
+              body={maintBody}
+              setBody={setMaintBody}
+              location={maintLocation}
+              setLocation={setMaintLocation}
+              item={maintItem}
+              setItem={setMaintItem}
+              type={maintType}
+              setType={setMaintType}
+              severity={maintSeverity}
+              setSeverity={setMaintSeverity}
+              onSubmit={onPostMaintenance}
+              busy={maintBusy}
+              className="maint-compose--exec"
             />
           ) : null}
         </section>

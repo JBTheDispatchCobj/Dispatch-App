@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
+import { type MaintenanceIssueRow } from "@/lib/maintenance";
 import NoteComposeForm from "./NoteComposeForm";
+import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
   type ExecutionChecklistItem,
   DEPARTURES_CANONICAL_CHECKLIST,
@@ -145,6 +147,20 @@ export type DeparturesCardProps = {
   onPause: () => void;
   onResume: () => void;
   onPostNote: (e: FormEvent) => void;
+  // Master plan III.B — Maintenance compose drawer (Day 33).
+  maintenanceItems: MaintenanceIssueRow[];
+  maintBody: string;
+  setMaintBody: (v: string) => void;
+  maintLocation: string;
+  setMaintLocation: (v: string) => void;
+  maintItem: string;
+  setMaintItem: (v: string) => void;
+  maintType: string;
+  setMaintType: (v: string) => void;
+  maintSeverity: string;
+  setMaintSeverity: (v: string) => void;
+  maintBusy: boolean;
+  onPostMaintenance: (e: FormEvent) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -178,6 +194,19 @@ export default function DeparturesCard({
   onPause,
   onResume,
   onPostNote,
+  maintenanceItems,
+  maintBody,
+  setMaintBody,
+  maintLocation,
+  setMaintLocation,
+  maintItem,
+  setMaintItem,
+  maintType,
+  setMaintType,
+  maintSeverity,
+  setMaintSeverity,
+  maintBusy,
+  onPostMaintenance,
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
 
@@ -419,11 +448,11 @@ export default function DeparturesCard({
             </div>
           </section>
 
-          {/* Per-room work — DC and MX as locked placeholders (beta scope gaps 3 & 4) */}
+          {/* Per-room work — Deep Clean placeholder (beta scope gap 3) */}
           <section className="section">
             <header className="section__head">
               <span className="section__label">Per-room work</span>
-              <span className="section__count">Deep Clean · Maintenance</span>
+              <span className="section__count">Deep Clean</span>
             </header>
 
             <div className="exrow" data-open="false">
@@ -436,17 +465,78 @@ export default function DeparturesCard({
                 <span className="exrow__chev">›</span>
               </div>
             </div>
+          </section>
 
-            <div className="exrow" data-open="false" style={{ marginTop: "8px" }}>
-              <div className="exrow__head" style={{ cursor: "default", opacity: 0.55 }}>
-                <span className="exrow__icon">MX</span>
-                <div className="exrow__text">
-                  <div className="exrow__title">Maintenance</div>
-                  <div className="exrow__sub">Coming soon</div>
-                </div>
-                <span className="exrow__chev">›</span>
-              </div>
-            </div>
+          {/* Maintenance compose drawer — master plan III.B (Day 33). Replaces
+              the locked MX exrow placeholder. Issue list above + compose form
+              below. Issues persist on archived cards forever per Global Rules R21. */}
+          <section className="section">
+            <header className="section__head">
+              <span className="section__label">Maintenance</span>
+              <span className="section__count">
+                {maintenanceItems.length === 0
+                  ? "Report an issue"
+                  : `${maintenanceItems.length} issue${maintenanceItems.length !== 1 ? "s" : ""}`}
+              </span>
+            </header>
+            {maintenanceItems.length > 0 ? (
+              <ul className="maint-list" role="list">
+                {maintenanceItems.map((m) => (
+                  <li key={m.id} className="maint-row">
+                    <div className="maint-row__head">
+                      <span className="maint-row__author">
+                        {m.author_display_name || "Team"}
+                      </span>
+                      <time
+                        className="maint-row__time"
+                        dateTime={m.created_at}
+                      >
+                        {new Date(m.created_at).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </div>
+                    <div className="maint-row__chips">
+                      <span className="maint-row__chip">{m.location}</span>
+                      <span className="maint-row__chip">{m.item}</span>
+                      <span className="maint-row__chip">{m.type}</span>
+                      <span
+                        className={
+                          m.severity === "High"
+                            ? "maint-row__chip maint-row__chip--severity-high"
+                            : "maint-row__chip"
+                        }
+                      >
+                        {m.severity}
+                      </span>
+                    </div>
+                    {m.body ? (
+                      <p className="maint-row__body">{m.body}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!taskDone ? (
+              <MaintenanceComposeForm
+                body={maintBody}
+                setBody={setMaintBody}
+                location={maintLocation}
+                setLocation={setMaintLocation}
+                item={maintItem}
+                setItem={setMaintItem}
+                type={maintType}
+                setType={setMaintType}
+                severity={maintSeverity}
+                setSeverity={setMaintSeverity}
+                onSubmit={onPostMaintenance}
+                busy={maintBusy}
+                className="maint-compose--card"
+              />
+            ) : null}
           </section>
 
           {/* CTAs */}
