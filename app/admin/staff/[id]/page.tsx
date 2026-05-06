@@ -23,23 +23,20 @@ import styles from "./page.module.css";
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
 
-type StaffProfile = {
-  slug: string;
-  firstName: string;
-  fullName: string;
-  heroRole: string;
-  heroStatus: string;
-  roleLine: string;
-  statusLine: string;
-  off: boolean;
-  avatarSrc: string;
-  metrics: [
-    { label: string; value: number },
-    { label: string; value: number },
-    { label: string; value: number },
-  ];
-  activitySub: string;
-  ctaLabel: string;
+/**
+ * Live staff row backing every per-staff display field on this page.
+ * Shape mirrors the public.staff columns we need (per Day 35 STATE.md
+ * Schema in place — staff has id, name, role, status, notes, created_at,
+ * clocked_in_at). The 4-name fixed palette + slug → fullName + avatar map
+ * stays static (locked design tokens per master plan II.D/II.E); everything
+ * around it derives from this row.
+ */
+type StaffLive = {
+  id: string;
+  name: string;
+  role: string;
+  status: string;
+  clocked_in_at: string | null;
 };
 
 type TaskRow = {
@@ -48,6 +45,7 @@ type TaskRow = {
   card_type: string;
   status: string;
   room_number: string | null;
+  completed_at: string | null;
 };
 
 // Master plan I.C Phase 4d — segment data shapes from the three views
@@ -77,87 +75,67 @@ type ShiftSummaryRow = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Static profile data — replace with Supabase fetch post-beta        */
+/* Slug → fullName + avatar map (locked design tokens)                  */
+/*                                                                      */
+/* The 4-name fixed palette is locked per master plan II.D/II.E (CM     */
+/* peach, LL sky, AL coral, MP sage — Profile surfaces handoff). Slugs  */
+/* are URL-stable; full names bridge to the public.staff row by name    */
+/* match; avatars are inline SVG data URIs from ../data.ts. Everything  */
+/* else (role, status, metrics, lines) derives from the live staff row  */
+/* + a small task fetch.                                                 */
 /* ------------------------------------------------------------------ */
 
-const PROFILES: StaffProfile[] = [
-  {
-    slug: "courtney-manager",
-    firstName: "Courtney",
-    fullName: "Courtney Manager",
-    heroRole: "MANAGER",
-    heroStatus: "ON SHIFT",
-    roleLine: "Front desk lead · until 10pm",
-    statusLine: "ACTIVE · RM 12, RM 8",
-    off: false,
-    avatarSrc: AVATAR_COURTNEY,
-    metrics: [
-      { label: "Rooms", value: 6 },
-      { label: "Open", value: 2 },
-      { label: "Done today", value: 9 },
-    ],
-    activitySub: "9 completions · 3 notes today",
-    ctaLabel: "Message Courtney",
-  },
-  {
-    slug: "lizzie-larson",
-    firstName: "Lizzie",
-    fullName: "Lizzie Larson",
-    heroRole: "OPS LEAD",
-    heroStatus: "ON SHIFT",
-    roleLine: "Front of house",
-    statusLine: "ACTIVE · LOBBY",
-    off: false,
-    avatarSrc: AVATAR_LIZZIE,
-    metrics: [
-      { label: "Rooms", value: 4 },
-      { label: "Open", value: 1 },
-      { label: "Done today", value: 7 },
-    ],
-    activitySub: "7 completions · 1 note today",
-    ctaLabel: "Message Lizzie",
-  },
-  {
-    slug: "angie-lopez",
-    firstName: "Angie",
-    fullName: "Angie Lopez",
-    heroRole: "HOUSEKEEPING",
-    heroStatus: "ON SHIFT",
-    roleLine: "Shift 7–3",
-    statusLine: "ACTIVE · RM 18, RM 22",
-    off: false,
-    avatarSrc: AVATAR_ANGIE,
-    metrics: [
-      { label: "Rooms", value: 8 },
-      { label: "Open", value: 3 },
-      { label: "Done today", value: 5 },
-    ],
-    activitySub: "5 completions · 2 notes today",
-    ctaLabel: "Message Angie",
-  },
-  {
-    slug: "mark-parry",
-    firstName: "Mark",
-    fullName: "Mark Parry",
-    heroRole: "GC / MAINT",
-    heroStatus: "OFF SITE",
-    roleLine: "Off-site · on call",
-    statusLine: "OFF SITE · ON CALL",
-    off: true,
-    avatarSrc: AVATAR_MARK,
-    metrics: [
-      { label: "Jobs", value: 3 },
-      { label: "Open", value: 2 },
-      { label: "Done today", value: 1 },
-    ],
-    activitySub: "1 completion today",
-    ctaLabel: "Message Mark",
-  },
-];
+type SlugMeta = { fullName: string; avatarSrc: string };
+
+const SLUG_PROFILES: Record<string, SlugMeta> = {
+  "courtney-manager": { fullName: "Courtney Manager", avatarSrc: AVATAR_COURTNEY },
+  "lizzie-larson":    { fullName: "Lizzie Larson",    avatarSrc: AVATAR_LIZZIE   },
+  "angie-lopez":      { fullName: "Angie Lopez",      avatarSrc: AVATAR_ANGIE    },
+  "mark-parry":       { fullName: "Mark Parry",       avatarSrc: AVATAR_MARK     },
+};
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+function firstNameOf(fullName: string): string {
+  return fullName.split(/\s+/)[0] ?? fullName;
+}
+
+/** Loose match — "GC / MAINT", "Maintenance", "MAINT", etc. all read as a
+ *  maintenance-flavored role for the metric label swap (Jobs vs Rooms). */
+function isMaintenanceRole(role: string): boolean {
+  const r = role.toUpperCase();
+  return r.includes("MAINT") || r.includes("GC");
+}
+
+function heroRoleOf(staff: StaffLive): string {
+  return staff.role.trim() ? staff.role.toUpperCase() : "STAFF";
+}
+
+function heroStatusOf(staff: StaffLive): string {
+  if (staff.status === "inactive") return "INACTIVE";
+  return staff.clocked_in_at ? "ON SHIFT" : "OFF SHIFT";
+}
+
+function roleLineOf(staff: StaffLive): string {
+  const role = staff.role.trim() || "Staff";
+  if (staff.clocked_in_at) {
+    const since = new Date(staff.clocked_in_at).toLocaleTimeString("en-US", {
+      hour:   "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Chicago",
+    });
+    return `${role} · On shift since ${since}`;
+  }
+  return staff.status === "inactive" ? `${role} · Inactive` : `${role} · Off shift`;
+}
+
+function statusLineOf(staff: StaffLive): string {
+  if (staff.status === "inactive") return "INACTIVE";
+  return staff.clocked_in_at ? "ACTIVE" : "OFF SHIFT";
+}
 
 function cardTypeLabel(cardType: string): string {
   const map: Record<string, string> = {
@@ -197,7 +175,7 @@ function statusDotClass(status: string): string {
   return `${styles.taskStatusDot} ${map[status] ?? ""}`.trim();
 }
 
-// Phase 4d formatters.
+// Phase 4d formatters (kept).
 
 /** Today's date as YYYY-MM-DD in property timezone (matches the views' event_date). */
 function todayInPropertyTz(): string {
@@ -243,9 +221,18 @@ function formatShiftDate(iso: string): string {
 export default function StaffProfilePage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+
+  // Live staff row + lookup state.
+  const [staffLive, setStaffLive] = useState<StaffLive | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [staffRowId, setStaffRowId] = useState<string | null>(null);
+
+  // Tasks + derived metrics (rooms/jobs, open count, done-today count).
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [tasksError, setTasksError] = useState<string | null>(null);
-  const [staffRowId, setStaffRowId] = useState<string | null>(null);
+  const [metricRooms, setMetricRooms] = useState<number>(0);
+  const [metricDoneToday, setMetricDoneToday] = useState<number>(0);
+
   const [modalOpen, setModalOpen] = useState(false);
 
   // Phase 4d — segment data state.
@@ -255,6 +242,7 @@ export default function StaffProfilePage() {
 
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
+  const slugMeta = SLUG_PROFILES[id] ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -285,15 +273,46 @@ export default function StaffProfilePage() {
     };
   }, []);
 
-  async function fetchTasks(sid: string) {
+  /**
+   * Tasks + derived metrics. Single fetch over all tasks for this staff
+   * (open + recent-done); we partition client-side. Mirrors the dashboard
+   * pattern at /admin/tasks. "Rooms" / "Jobs" label swaps based on role.
+   */
+  async function fetchTasksAndMetrics(sid: string) {
+    const today = todayInPropertyTz();
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, title, card_type, status, room_number")
+      .select("id, title, card_type, status, room_number, completed_at")
       .eq("staff_id", sid)
-      .neq("status", "done")
       .order("created_at", { ascending: false });
-    setTaskRows(data ?? []);
-    if (error) setTasksError(error.message);
+
+    if (error) {
+      setTasksError(error.message);
+      setTaskRows([]);
+      setMetricRooms(0);
+      setMetricDoneToday(0);
+      return;
+    }
+    setTasksError(null);
+
+    const all = (data ?? []) as TaskRow[];
+    const open = all.filter((t) => t.status !== "done");
+    setTaskRows(open);
+
+    const distinctRooms = new Set<string>();
+    for (const t of open) {
+      const r = t.room_number?.trim();
+      if (r) distinctRooms.add(r);
+    }
+    setMetricRooms(distinctRooms.size);
+
+    const doneTodayCount = all.filter(
+      (t) =>
+        t.status === "done" &&
+        t.completed_at &&
+        t.completed_at.slice(0, 10) === today,
+    ).length;
+    setMetricDoneToday(doneTodayCount);
   }
 
   // Phase 4d — fetch segment + shifts + lifetime in parallel. staff_id in
@@ -304,8 +323,6 @@ export default function StaffProfilePage() {
     const today = todayInPropertyTz();
 
     const [segmentRes, shiftsRes, lifetimeRes] = await Promise.all([
-      // Current segment: the row whose [segment_start, segment_end] window
-      // contains today.
       supabase
         .from("staff_segments_v")
         .select("segment_start, segment_end, shift_count, total_minutes")
@@ -314,11 +331,6 @@ export default function StaffProfilePage() {
         .gte("segment_end", today)
         .maybeSingle(),
 
-      // All shifts (with summaries) in roughly the last 14 days. Filtering
-      // by exact segment_start / segment_end happens client-side once we
-      // know the segment — keeps the query simple and lets us include the
-      // currently-clocked-in shift even when it's outside the segment view's
-      // duration_minutes-NOT-NULL filter.
       supabase
         .from("shift_summary_v")
         .select(
@@ -331,7 +343,6 @@ export default function StaffProfilePage() {
         .order("shift_start_at", { ascending: false })
         .limit(20),
 
-      // Lifetime: sum of every segment's total_minutes for this staff.
       supabase
         .from("staff_segments_v")
         .select("total_minutes")
@@ -347,14 +358,11 @@ export default function StaffProfilePage() {
       console.warn("[admin-staff] shift_summary_v fetch failed:", shiftsRes.error.message);
     }
     const allShifts = (shiftsRes.data ?? []) as unknown as ShiftSummaryRow[];
-    // Client-side filter to current segment range. If we don't know the
-    // segment yet (no shifts in it), fall back to the most recent shift so
-    // the section isn't empty when there's data.
     const segStart = (segmentRes.data as SegmentRow | null)?.segment_start ?? null;
     const segEnd   = (segmentRes.data as SegmentRow | null)?.segment_end ?? null;
     const inSegment = segStart && segEnd
       ? allShifts.filter((s) => {
-          const d = s.shift_start_at.slice(0, 10); // YYYY-MM-DD prefix; close enough for property-TZ approximation
+          const d = s.shift_start_at.slice(0, 10);
           return d >= segStart && d <= segEnd;
         })
       : allShifts.slice(0, 1);
@@ -370,23 +378,34 @@ export default function StaffProfilePage() {
     }
   }
 
-  // Fetch tasks once auth is confirmed
+  // Auth-gated: bridge slug → live staff row, then fan out to tasks + segments.
   useEffect(() => {
     if (!ready) return;
-    const member = PROFILES.find((p) => p.slug === id);
-    if (!member) return;
+    if (!slugMeta) return;
     let cancelled = false;
     void (async () => {
-      // Bridge slug → staff UUID via public.staff.name
-      const { data: staffRow } = await supabase
+      const { data: staffRow, error: staffErr } = await supabase
         .from("staff")
-        .select("id")
-        .eq("name", member.fullName)
+        .select("id, name, role, status, clocked_in_at")
+        .eq("name", slugMeta.fullName)
         .maybeSingle();
-      if (cancelled || !staffRow) return;
-      const sid = staffRow.id as string;
-      if (!cancelled) setStaffRowId(sid);
-      await Promise.all([fetchTasks(sid), fetchSegmentData(sid)]);
+      if (cancelled) return;
+      if (staffErr) {
+        setStaffError(staffErr.message);
+        return;
+      }
+      if (!staffRow) {
+        setStaffLive(null);
+        setStaffRowId(null);
+        return;
+      }
+      const live = staffRow as StaffLive;
+      setStaffLive(live);
+      setStaffRowId(live.id);
+      await Promise.all([
+        fetchTasksAndMetrics(live.id),
+        fetchSegmentData(live.id),
+      ]);
     })();
     return () => {
       cancelled = true;
@@ -396,15 +415,28 @@ export default function StaffProfilePage() {
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
   if (!ready) return null;
 
-  const member = PROFILES.find((p) => p.slug === id) ?? null;
-
-  if (!member) {
+  if (!slugMeta) {
     return (
       <div className={styles.page}>
         <div className={styles.notFound}>
           Staff member not found.{" "}
           <Link href="/admin/staff">Back to roster</Link>
         </div>
+      </div>
+    );
+  }
+
+  // Pre-staff-fetch render — slug resolved, but staff row still loading.
+  // Show the avatar + name from the slug map so the page isn't blank during
+  // the live fetch round-trip.
+  const fullName  = slugMeta.fullName;
+  const firstName = firstNameOf(fullName);
+  const avatarSrc = slugMeta.avatarSrc;
+
+  if (staffError) {
+    return (
+      <div className={styles.page}>
+        <div className="error" style={{ margin: 14 }}>{staffError}</div>
       </div>
     );
   }
@@ -419,7 +451,7 @@ export default function StaffProfilePage() {
           </Link>
           <div className={styles.crumb}>
             <span className={styles.crumbParent}>STAFF /</span>
-            {member.firstName.toUpperCase()}
+            {firstName.toUpperCase()}
           </div>
           <div className={styles.spacer} />
         </div>
@@ -428,28 +460,32 @@ export default function StaffProfilePage() {
         <div className={styles.heroWrap}>
           <div className={styles.hero}>
             <div className={styles.heroStrip}>
-              <span className={styles.heroStripLeft}>{member.heroRole}</span>
-              <span>{member.heroStatus}</span>
+              <span className={styles.heroStripLeft}>
+                {staffLive ? heroRoleOf(staffLive) : "STAFF"}
+              </span>
+              <span>{staffLive ? heroStatusOf(staffLive) : "—"}</span>
             </div>
             <div className={styles.heroBody}>
               <div className={styles.heroTop}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   className={styles.avatarLg}
-                  src={member.avatarSrc}
-                  alt={member.fullName}
+                  src={avatarSrc}
+                  alt={fullName}
                   width={60}
                   height={60}
                 />
                 <div>
-                  <h1 className={styles.heroName}>{member.fullName}</h1>
-                  <div className={styles.heroRoleLine}>{member.roleLine}</div>
+                  <h1 className={styles.heroName}>{fullName}</h1>
+                  <div className={styles.heroRoleLine}>
+                    {staffLive ? roleLineOf(staffLive) : "Loading…"}
+                  </div>
                 </div>
               </div>
 
               <div className={styles.statusPill}>
                 <span className={styles.statusDot} />
-                {member.statusLine}
+                {staffLive ? statusLineOf(staffLive) : "—"}
               </div>
 
               <div className={styles.quickRow}>
@@ -470,14 +506,22 @@ export default function StaffProfilePage() {
           </div>
         </div>
 
-        {/* Stats trio */}
+        {/* Stats trio — live derived */}
         <div className={styles.stats}>
-          {member.metrics.map((m, i) => (
-            <div key={i} className={styles.stat}>
-              <div className={styles.statVal}>{m.value}</div>
-              <div className={styles.statLbl}>{m.label}</div>
+          <div className={styles.stat}>
+            <div className={styles.statVal}>{metricRooms}</div>
+            <div className={styles.statLbl}>
+              {staffLive && isMaintenanceRole(staffLive.role) ? "Jobs" : "Rooms"}
             </div>
-          ))}
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.statVal}>{taskRows.length}</div>
+            <div className={styles.statLbl}>Open</div>
+          </div>
+          <div className={styles.stat}>
+            <div className={styles.statVal}>{metricDoneToday}</div>
+            <div className={styles.statLbl}>Done today</div>
+          </div>
         </div>
 
         {/* Phase 4d — 14-day segment block (master plan I.C Phase 4 / III.J).
@@ -637,7 +681,7 @@ export default function StaffProfilePage() {
             <div className={styles.navIcon}>⏸</div>
             <div>
               <div className={styles.navTitle}>Activity</div>
-              <div className={styles.navSub}>{member.activitySub}</div>
+              <div className={styles.navSub}>{metricDoneToday} completions today</div>
             </div>
             <div className={styles.chev}>&rsaquo;</div>
           </div>
@@ -656,21 +700,21 @@ export default function StaffProfilePage() {
         <div className={styles.ctaRow}>
           <button className={`${styles.cta} ${styles.ctaSecondary}`}>Flag</button>
           <button className={`${styles.cta} ${styles.ctaPrimary}`}>
-            {member.ctaLabel}
+            Message {firstName}
           </button>
         </div>
 
         <div className={styles.footnote}>
-          ADMIN VIEW · {member.firstName.toUpperCase()} · MAR 21
+          ADMIN VIEW · {firstName.toUpperCase()} · {todayInPropertyTz()}
         </div>
       </div>
       {staffRowId && (
         <AddTaskModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          onSuccess={() => void fetchTasks(staffRowId)}
+          onSuccess={() => void fetchTasksAndMetrics(staffRowId)}
           preselectedStaffId={staffRowId}
-          preselectedStaffName={member.fullName}
+          preselectedStaffName={fullName}
         />
       )}
     </div>

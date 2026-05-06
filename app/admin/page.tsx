@@ -34,7 +34,7 @@ type BriefStat = {
 // lib/activity-feed.ts (task_events + notes union with severity boost).
 
 /* ------------------------------------------------------------------ */
-/* Inline placeholder data — replace with Supabase queries post-beta  */
+/* BRIEF_STATS — out of chase #1 scope; stays mocked                   */
 /* ------------------------------------------------------------------ */
 
 const BRIEF_STATS: BriefStat[] = [
@@ -43,30 +43,192 @@ const BRIEF_STATS: BriefStat[] = [
   { label: "EVENT", value: "Dueling Pianos · Balsam", unit: "", compact: true },
 ];
 
-// TODO post-beta: wire to real watchlist table
-const WATCHLIST_ITEMS: LaneItem[] = [
-  { id: "wl1", title: "AC compressor — Room 14", body: "Waiting on parts (ETA 5/3)", chip: "MAINTENANCE" },
-  { id: "wl2", title: "Pool pump cycling loud", body: "Vendor scheduled 5/1", chip: "MAINTENANCE" },
-];
+/* ------------------------------------------------------------------ */
+/* Lane fetchers — Day 36 chase #1 derives                              */
+/*                                                                      */
+/* All four lane types share the LaneItem shape so the rendering loop   */
+/* doesn't care about source. Each fetcher returns LaneItem[] and       */
+/* degrades gracefully on error (logs + empty array).                   */
+/* ------------------------------------------------------------------ */
 
-// TODO post-beta: wire to real scheduling table
-const SCHEDULING_ITEMS: LaneItem[] = [
-  { id: "sch1", title: "Courtney — on-call", body: "Until 10pm Sat", chip: "ON-CALL" },
-  { id: "sch2", title: "Lizzie — off Sun", body: "Returning Mon AM", chip: "OFF" },
-  { id: "sch3", title: "Mark — late shift swap", body: "Covering for Angie Fri", chip: "SWAP" },
-];
+function excerpt(s: string | null | undefined, max = 70): string {
+  if (!s) return "";
+  const trimmed = s.trim();
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+}
 
-// TODO post-beta: wire to real critical table
-const CRITICAL_ITEMS: LaneItem[] = [
-  { id: "crit1", title: "Front desk understaffed late shift", body: "Hire ASAP — coverage gap weekends", chip: "HIRING" },
-];
+/** WATCHLIST — unresolved maintenance issues, severity desc → newest first. */
+async function fetchWatchlistItems(): Promise<LaneItem[]> {
+  const { data, error } = await supabase
+    .from("maintenance_issues")
+    .select("id, location, item, type, severity, body, room_number, created_at, resolved_at")
+    .is("resolved_at", null)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) {
+    console.warn("[admin-home] watchlist fetch failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as Array<{
+    id: string;
+    location: string;
+    item: string;
+    type: string;
+    severity: string;
+    body: string | null;
+    room_number: string | null;
+  }>;
+  // Severity sort client-side: High → Normal → Low (mirrors UI severity order).
+  const SEV_RANK: Record<string, number> = { High: 0, Normal: 1, Low: 2 };
+  rows.sort((a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9));
+  return rows.slice(0, 5).map((r) => ({
+    id: `mnt-${r.id}`,
+    title: `${r.location} — ${r.item}`,
+    body:
+      excerpt(r.body) ||
+      [r.type, r.severity, r.room_number ? `RM ${r.room_number}` : null]
+        .filter(Boolean)
+        .join(" · "),
+    chip: "MAINTENANCE",
+  }));
+}
 
-// TODO post-beta: wire to real notes table
-const NOTES_ITEMS: LaneItem[] = [
-  { id: "n1", title: "Customer feedback — Mary in 14", body: "AC noise complaint, follow up after repair", chip: "FEEDBACK" },
-  { id: "n2", title: "Halloween plan", body: "Finalize decor budget by 10/15", chip: "EVENT" },
-  { id: "n3", title: "Front desk SOP refresh", body: "Update check-in script for new ResNexus integration", chip: "SOP" },
-];
+/** SCHEDULING — clock-in snapshot from public.staff. Honest substrate
+ *  (not II.K Calendar) — on-shift staff first, then off-shift, then inactive. */
+async function fetchSchedulingItems(): Promise<LaneItem[]> {
+  const { data, error } = await supabase
+    .from("staff")
+    .select("id, name, role, status, clocked_in_at")
+    .order("name", { ascending: true });
+  if (error) {
+    console.warn("[admin-home] scheduling fetch failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as Array<{
+    id: string;
+    name: string;
+    role: string | null;
+    status: string | null;
+    clocked_in_at: string | null;
+  }>;
+  // Sort: on-shift first, then active off-shift, then inactive.
+  const sortKey = (r: typeof rows[number]): number => {
+    if (r.clocked_in_at) return 0;
+    if ((r.status ?? "active") === "active") return 1;
+    return 2;
+  };
+  rows.sort((a, b) => sortKey(a) - sortKey(b));
+  return rows.slice(0, 8).map((r) => {
+    const onShift = Boolean(r.clocked_in_at);
+    const since = r.clocked_in_at
+      ? new Date(r.clocked_in_at).toLocaleTimeString("en-US", {
+          hour:   "numeric",
+          minute: "2-digit",
+          hour12: true,
+          timeZone: "America/Chicago",
+        })
+      : null;
+    const isInactive = (r.status ?? "active") === "inactive";
+    const body = onShift
+      ? `On shift since ${since}`
+      : isInactive
+        ? `Inactive`
+        : `Off shift${r.role ? ` · ${r.role}` : ""}`;
+    return {
+      id: `sch-${r.id}`,
+      title: r.name,
+      body,
+      chip: onShift ? "ON SHIFT" : isInactive ? "INACTIVE" : "OFF",
+    };
+  });
+}
+
+/** CRITICAL — high-priority open tasks + any blocked tasks. */
+async function fetchCriticalItems(): Promise<LaneItem[]> {
+  // Two queries, merge — Postgres OR across (priority + status) needs `.or()`
+  // syntax and we'd still need to filter status != 'done' on one side. Two
+  // narrow queries are easier to read and keep the limit math sane.
+  const [highRes, blockedRes] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select("id, title, priority, status, card_type, room_number, assignee_name, context")
+      .eq("priority", "high")
+      .neq("status", "done")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("tasks")
+      .select("id, title, priority, status, card_type, room_number, assignee_name, context")
+      .eq("status", "blocked")
+      .order("created_at", { ascending: false })
+      .limit(10),
+  ]);
+  if (highRes.error) console.warn("[admin-home] critical/high fetch failed:", highRes.error.message);
+  if (blockedRes.error) console.warn("[admin-home] critical/blocked fetch failed:", blockedRes.error.message);
+  const seen = new Set<string>();
+  const merged: Array<{
+    id: string; title: string; priority: string | null; status: string;
+    card_type: string; room_number: string | null; assignee_name: string | null;
+    context: Record<string, unknown> | null;
+  }> = [];
+  for (const r of [...(highRes.data ?? []), ...(blockedRes.data ?? [])] as Array<{
+    id: string; title: string; priority: string | null; status: string;
+    card_type: string; room_number: string | null; assignee_name: string | null;
+    context: Record<string, unknown> | null;
+  }>) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    merged.push(r);
+  }
+  return merged.slice(0, 5).map((r) => {
+    const bucket =
+      r.context && typeof r.context === "object"
+        ? String((r.context as Record<string, unknown>).staff_home_bucket ?? r.card_type)
+        : r.card_type;
+    const bodyParts = [
+      r.assignee_name?.trim() || "Unassigned",
+      bucket,
+      r.room_number?.trim() ? `RM ${r.room_number.trim()}` : null,
+    ].filter(Boolean);
+    return {
+      id: `crit-${r.id}`,
+      title: r.title || "(untitled)",
+      body: bodyParts.join(" · "),
+      chip: r.status === "blocked" ? "BLOCKED" : (r.priority ?? "HIGH").toUpperCase(),
+    };
+  });
+}
+
+/** NOTES — recent rows from public.notes. */
+async function fetchNotesItems(): Promise<LaneItem[]> {
+  const { data, error } = await supabase
+    .from("notes")
+    .select("id, body, note_type, note_status, author_display_name, room_number, created_at")
+    .order("created_at", { ascending: false })
+    .limit(10);
+  if (error) {
+    console.warn("[admin-home] notes fetch failed:", error.message);
+    return [];
+  }
+  const rows = (data ?? []) as Array<{
+    id: string;
+    body: string;
+    note_type: string;
+    note_status: string;
+    author_display_name: string;
+    room_number: string | null;
+  }>;
+  return rows.slice(0, 5).map((r) => ({
+    id: `note-${r.id}`,
+    title: excerpt(r.body) || `[${r.note_type}]`,
+    body: [
+      r.note_type,
+      r.author_display_name,
+      r.room_number ? `RM ${r.room_number}` : null,
+    ].filter(Boolean).join(" · "),
+    chip: (r.note_status || r.note_type || "NOTE").toUpperCase(),
+  }));
+}
 
 /* ------------------------------------------------------------------ */
 /* Lookup maps                                                         */
@@ -93,6 +255,12 @@ export default function AdminHomePage() {
   const [schedulingExpanded, setSchedulingExpanded] = useState(false);
   const [criticalExpanded, setCriticalExpanded] = useState(false);
   const [notesExpanded, setNotesExpanded] = useState(false);
+
+  // Live lane state.
+  const [watchlistItems, setWatchlistItems]   = useState<LaneItem[]>([]);
+  const [schedulingItems, setSchedulingItems] = useState<LaneItem[]>([]);
+  const [criticalItems, setCriticalItems]     = useState<LaneItem[]>([]);
+  const [notesItems, setNotesItems]           = useState<LaneItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +290,28 @@ export default function AdminHomePage() {
       cancelled = true;
     };
   }, []);
+
+  // Fan-out lane fetches in parallel once auth resolves.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    void (async () => {
+      const [watch, sched, crit, notes] = await Promise.all([
+        fetchWatchlistItems(),
+        fetchSchedulingItems(),
+        fetchCriticalItems(),
+        fetchNotesItems(),
+      ]);
+      if (cancelled) return;
+      setWatchlistItems(watch);
+      setSchedulingItems(sched);
+      setCriticalItems(crit);
+      setNotesItems(notes);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
 
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
   if (!ready) return null;
@@ -169,7 +359,7 @@ export default function AdminHomePage() {
               role="button"
               tabIndex={0}
             >
-              <span>WATCHLIST &middot; {WATCHLIST_ITEMS.length} ITEMS</span>
+              <span>WATCHLIST &middot; {watchlistItems.length} ITEMS</span>
               <span className={styles.collapseHint}>
                 TAP TO COLLAPSE
                 <span className={styles.chevDown}>&#9662;</span>
@@ -179,8 +369,12 @@ export default function AdminHomePage() {
               className={styles.laneItemGrid}
               style={{ "--lchip-bg": "rgba(217,168,44,0.18)", "--lchip-text": "#8A6A1C" } as React.CSSProperties}
             >
-              {WATCHLIST_ITEMS.slice(0, 5).map((item) => (
-                // TODO post-beta: wire to watchlist item detail
+              {watchlistItems.length === 0 && (
+                <div className={styles.laneItem}>
+                  <div className={styles.laneItemBody}>No open maintenance issues.</div>
+                </div>
+              )}
+              {watchlistItems.slice(0, 5).map((item) => (
                 <div key={item.id} className={styles.laneItem}>
                   <div className={styles.laneItemHead}>
                     <div className={styles.laneItemTitle}>{item.title}</div>
@@ -189,8 +383,8 @@ export default function AdminHomePage() {
                   <div className={styles.laneItemBody}>{item.body}</div>
                 </div>
               ))}
-              {WATCHLIST_ITEMS.length > 5 && (
-                <div className={styles.laneItemMore}>+{WATCHLIST_ITEMS.length - 5} more</div>
+              {watchlistItems.length > 5 && (
+                <div className={styles.laneItemMore}>+{watchlistItems.length - 5} more</div>
               )}
             </div>
           </>
@@ -206,14 +400,14 @@ export default function AdminHomePage() {
               <div className={styles.laneTitle}>Watchlist</div>
               <div className={styles.laneSub}>
                 <span className={styles.sdotAmber} />
-                {WATCHLIST_ITEMS.length} items
+                {watchlistItems.length} items
               </div>
             </div>
             <div className={styles.chev}>&rsaquo;</div>
           </div>
         )}
 
-        {/* Scheduling lane */}
+        {/* Scheduling lane — clock-in snapshot until II.K Calendar lands */}
         {schedulingExpanded ? (
           <>
             <div
@@ -222,7 +416,7 @@ export default function AdminHomePage() {
               role="button"
               tabIndex={0}
             >
-              <span>SCHEDULING &middot; {SCHEDULING_ITEMS.length} ITEMS</span>
+              <span>SCHEDULING &middot; {schedulingItems.length} ITEMS</span>
               <span className={styles.collapseHint}>
                 TAP TO COLLAPSE
                 <span className={styles.chevDown}>&#9662;</span>
@@ -232,8 +426,12 @@ export default function AdminHomePage() {
               className={styles.laneItemGrid}
               style={{ "--lchip-bg": "rgba(46,123,84,0.16)", "--lchip-text": "#1F5C3C" } as React.CSSProperties}
             >
-              {SCHEDULING_ITEMS.slice(0, 5).map((item) => (
-                // TODO post-beta: wire to scheduling item detail
+              {schedulingItems.length === 0 && (
+                <div className={styles.laneItem}>
+                  <div className={styles.laneItemBody}>No staff records.</div>
+                </div>
+              )}
+              {schedulingItems.slice(0, 5).map((item) => (
                 <div key={item.id} className={styles.laneItem}>
                   <div className={styles.laneItemHead}>
                     <div className={styles.laneItemTitle}>{item.title}</div>
@@ -242,8 +440,8 @@ export default function AdminHomePage() {
                   <div className={styles.laneItemBody}>{item.body}</div>
                 </div>
               ))}
-              {SCHEDULING_ITEMS.length > 5 && (
-                <div className={styles.laneItemMore}>+{SCHEDULING_ITEMS.length - 5} more</div>
+              {schedulingItems.length > 5 && (
+                <div className={styles.laneItemMore}>+{schedulingItems.length - 5} more</div>
               )}
             </div>
           </>
@@ -259,7 +457,7 @@ export default function AdminHomePage() {
               <div className={styles.laneTitle}>Scheduling</div>
               <div className={styles.laneSub}>
                 <span className={styles.sdotGreen} />
-                {SCHEDULING_ITEMS.length} on roster
+                {schedulingItems.length} on roster
               </div>
             </div>
             <div className={styles.chev}>&rsaquo;</div>
@@ -275,7 +473,7 @@ export default function AdminHomePage() {
               role="button"
               tabIndex={0}
             >
-              <span>CRITICAL &middot; {CRITICAL_ITEMS.length} ITEMS</span>
+              <span>CRITICAL &middot; {criticalItems.length} ITEMS</span>
               <span className={styles.collapseHint}>
                 TAP TO COLLAPSE
                 <span className={styles.chevDown}>&#9662;</span>
@@ -285,8 +483,12 @@ export default function AdminHomePage() {
               className={styles.laneItemGrid}
               style={{ "--lchip-bg": "rgba(199,95,95,0.18)", "--lchip-text": "#8A3A3A" } as React.CSSProperties}
             >
-              {CRITICAL_ITEMS.slice(0, 5).map((item) => (
-                // TODO post-beta: wire to critical item detail
+              {criticalItems.length === 0 && (
+                <div className={styles.laneItem}>
+                  <div className={styles.laneItemBody}>Nothing critical.</div>
+                </div>
+              )}
+              {criticalItems.slice(0, 5).map((item) => (
                 <div key={item.id} className={styles.laneItem}>
                   <div className={styles.laneItemHead}>
                     <div className={styles.laneItemTitle}>{item.title}</div>
@@ -295,8 +497,8 @@ export default function AdminHomePage() {
                   <div className={styles.laneItemBody}>{item.body}</div>
                 </div>
               ))}
-              {CRITICAL_ITEMS.length > 5 && (
-                <div className={styles.laneItemMore}>+{CRITICAL_ITEMS.length - 5} more</div>
+              {criticalItems.length > 5 && (
+                <div className={styles.laneItemMore}>+{criticalItems.length - 5} more</div>
               )}
             </div>
           </>
@@ -312,7 +514,7 @@ export default function AdminHomePage() {
               <div className={styles.laneTitle}>Critical</div>
               <div className={styles.laneSub}>
                 <span className={styles.sdotRed} />
-                {CRITICAL_ITEMS.length} active
+                {criticalItems.length} active
               </div>
             </div>
             <div className={styles.chev}>&rsaquo;</div>
@@ -328,7 +530,7 @@ export default function AdminHomePage() {
               role="button"
               tabIndex={0}
             >
-              <span>NOTES &middot; {NOTES_ITEMS.length} ITEMS</span>
+              <span>NOTES &middot; {notesItems.length} ITEMS</span>
               <span className={styles.collapseHint}>
                 TAP TO COLLAPSE
                 <span className={styles.chevDown}>&#9662;</span>
@@ -338,8 +540,12 @@ export default function AdminHomePage() {
               className={styles.laneItemGrid}
               style={{ "--lchip-bg": "rgba(74,127,168,0.18)", "--lchip-text": "#2B6C8A" } as React.CSSProperties}
             >
-              {NOTES_ITEMS.slice(0, 5).map((item) => (
-                // TODO post-beta: wire to notes item detail
+              {notesItems.length === 0 && (
+                <div className={styles.laneItem}>
+                  <div className={styles.laneItemBody}>No recent notes.</div>
+                </div>
+              )}
+              {notesItems.slice(0, 5).map((item) => (
                 <div key={item.id} className={styles.laneItem}>
                   <div className={styles.laneItemHead}>
                     <div className={styles.laneItemTitle}>{item.title}</div>
@@ -348,8 +554,8 @@ export default function AdminHomePage() {
                   <div className={styles.laneItemBody}>{item.body}</div>
                 </div>
               ))}
-              {NOTES_ITEMS.length > 5 && (
-                <div className={styles.laneItemMore}>+{NOTES_ITEMS.length - 5} more</div>
+              {notesItems.length > 5 && (
+                <div className={styles.laneItemMore}>+{notesItems.length - 5} more</div>
               )}
             </div>
           </>
@@ -365,7 +571,7 @@ export default function AdminHomePage() {
               <div className={styles.laneTitle}>Notes</div>
               <div className={styles.laneSub}>
                 <span className={styles.sdotBlue} />
-                {NOTES_ITEMS.length} items
+                {notesItems.length} items
               </div>
             </div>
             <div className={styles.chev}>&rsaquo;</div>
@@ -487,10 +693,7 @@ export default function AdminHomePage() {
             <div className={styles.laneTitle}>Maintenance</div>
             <div className={styles.laneSub}>
               <span className={styles.sdotAmber} />
-              3 open
-              <span className={styles.laneSep}>&middot;</span>
-              <span className={styles.sdotRed} />
-              1 overdue
+              {watchlistItems.length} open
             </div>
           </div>
           <div className={styles.chev}>&rsaquo;</div>
