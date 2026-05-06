@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -10,6 +10,7 @@ import {
   redirectToLoginUnlessLocalDevBypass,
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../../profile-load-error";
+import ReassignPanel from "@/components/admin/ReassignPanel";
 import { AVATAR_ANGIE } from "../../staff/data";
 import styles from "./page.module.css";
 
@@ -129,10 +130,51 @@ export default function AdminTaskViewPage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
   const [priority, setPriority] = useState<Priority>(TASK.priority);
+  const [liveStaffId, setLiveStaffId] = useState<string | null>(null);
+  const [liveStaffName, setLiveStaffName] = useState<string | null>(null);
 
   const params = useParams();
   const router = useRouter();
   const id = typeof params.id === "string" ? params.id : "";
+
+  // Day 35 III.H Scope B / II.G — live assignee fetch backing the ReassignPanel.
+  // The rest of this page is still mocked (chase #1 territory); we only need
+  // staff_id + assignee_name (+ embedded staff name) for the reassign flow.
+  const loadLiveAssignee = useCallback(async () => {
+    if (!id || id === "unknown") return;
+    const { data } = await supabase
+      .from("tasks")
+      .select("id, staff_id, assignee_name, staff (name)")
+      .eq("id", id)
+      .maybeSingle();
+    if (!data) {
+      setLiveStaffId(null);
+      setLiveStaffName(null);
+      return;
+    }
+    const staffId =
+      typeof data.staff_id === "string" ? data.staff_id : null;
+    setLiveStaffId(staffId);
+    const staffEmbed = data.staff as unknown;
+    let embeddedName: string | undefined;
+    if (
+      Array.isArray(staffEmbed) &&
+      staffEmbed[0] &&
+      typeof staffEmbed[0] === "object"
+    ) {
+      embeddedName = (staffEmbed[0] as { name?: string }).name;
+    } else if (
+      staffEmbed &&
+      typeof staffEmbed === "object" &&
+      !Array.isArray(staffEmbed)
+    ) {
+      embeddedName = (staffEmbed as { name?: string }).name;
+    }
+    const fallback =
+      typeof data.assignee_name === "string" ? data.assignee_name : "";
+    const resolved = (embeddedName?.trim() || fallback.trim()) || null;
+    setLiveStaffName(resolved);
+  }, [id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +204,11 @@ export default function AdminTaskViewPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    void loadLiveAssignee();
+  }, [ready, loadLiveAssignee]);
 
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
   if (!ready) return null;
@@ -313,6 +360,16 @@ export default function AdminTaskViewPage() {
               ))}
             </div>
           </div>
+
+          {/* Reassign panel — live, plumbed to reassignTask helper. */}
+          {id && id !== "unknown" ? (
+            <ReassignPanel
+              taskId={id}
+              currentStaffId={liveStaffId}
+              currentStaffName={liveStaffName}
+              onSuccess={loadLiveAssignee}
+            />
+          ) : null}
 
           {/* CTA pair — TODO: Save & Deploy wires admin write-path post-beta */}
           <div className={styles.ctaPair}>

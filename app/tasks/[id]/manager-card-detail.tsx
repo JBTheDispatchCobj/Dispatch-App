@@ -9,16 +9,12 @@ import {
   taskEventType,
   uploadTaskFile,
 } from "@/lib/task-events";
-import { reassignTask } from "@/lib/orchestration";
-import {
-  fetchAssignableStaffOptions,
-  parseStaffRowId,
-} from "@/lib/assignable-staff";
 import {
   redirectToLoginUnlessLocalDevBypass,
   resolveAuthUser,
 } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
+import ReassignPanel from "@/components/admin/ReassignPanel";
 import {
   checklistProgress,
   displayAssignee,
@@ -28,8 +24,6 @@ import {
   type CommentRow,
   type TaskCard,
 } from "./task-card-shared";
-
-type StaffOpt = { id: string; name: string };
 
 function parseNumField(s: string): number | undefined {
   const n = Number(s.trim());
@@ -45,7 +39,6 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [mentionTargets, setMentionTargets] = useState<
     { id: string; display_name: string }[]
   >([]);
-  const [staffOptions, setStaffOptions] = useState<StaffOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const openedLogged = useRef(false);
@@ -57,7 +50,6 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   const [mgrPriority, setMgrPriority] = useState("medium");
   const [mgrDueDate, setMgrDueDate] = useState("");
   const [mgrDueTime, setMgrDueTime] = useState("");
-  const [mgrStaffId, setMgrStaffId] = useState("");
   const [mgrSaving, setMgrSaving] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
 
@@ -142,7 +134,6 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
     setMgrPriority(t.priority);
     setMgrDueDate(t.due_date ?? "");
     setMgrDueTime(t.due_time ?? "");
-    setMgrStaffId(t.staff_id ?? "");
     const gCtx = t.context.guest as Record<string, unknown> | null | undefined;
     if (gCtx && typeof gCtx === "object") {
       setGuestName(typeof gCtx.guestName === "string" ? gCtx.guestName : "");
@@ -214,7 +205,7 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       setStaySpecialRequests("");
     }
 
-    const [{ data: ch }, { data: cm }, mt, staffRes] = await Promise.all([
+    const [{ data: ch }, { data: cm }, mt] = await Promise.all([
       supabase
         .from("task_checklist_items")
         .select("id, task_id, title, sort_order, done")
@@ -228,16 +219,11 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
         .eq("task_id", taskId)
         .order("created_at", { ascending: true }),
       fetchMentionTargets(supabase),
-      fetchAssignableStaffOptions(supabase),
     ]);
 
     setChecklist((ch as CheckRow[]) ?? []);
     setComments((cm as CommentRow[]) ?? []);
     setMentionTargets(mt);
-    setStaffOptions(staffRes.options);
-    if (staffRes.error && process.env.NODE_ENV === "development") {
-      console.warn("[manager-card-detail] staff list", staffRes.error);
-    }
 
     if (!openedLogged.current) {
       openedLogged.current = true;
@@ -268,36 +254,13 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
   async function onManagerSave(e: FormEvent) {
     e.preventDefault();
     if (!task || !userId) return;
-    const staffIdParsed = parseStaffRowId(mgrStaffId);
-    const assigneeName = staffIdParsed
-      ? staffOptions.find(
-          (s) => s.id.trim().toLowerCase() === staffIdParsed,
-        )?.name?.trim() ?? ""
-      : "";
     setMgrSaving(true);
     setError(null);
     const prev = taskSnapshot.current;
 
-    // Day 34 III.H — reassignment goes through the lifecycle helper FIRST so
-    // the staff_id / assignee_name update + reassigned task_events row land
-    // atomically (per master plan III.H / Global Rules R23). The main task
-    // update below intentionally omits staff_id + assignee_name now; if a
-    // reassignment is in flight, reassignTask has already written them.
-    if (prev && prev.staff_id !== staffIdParsed) {
-      const reassignResult = await reassignTask(supabase, {
-        taskId: task.id,
-        fromStaffId: prev.staff_id,
-        toStaffId: staffIdParsed,
-        fromStaffName: prev.assignee_name?.trim() || null,
-        toStaffName: assigneeName?.trim() || null,
-        userId,
-      });
-      if (!reassignResult.ok) {
-        setMgrSaving(false);
-        setError(reassignResult.message);
-        return;
-      }
-    }
+    // Day 35 III.H Scope B — reassignment is now its own discrete action via
+    // <ReassignPanel/>, which routes through reassignTask() directly. This
+    // form no longer touches staff_id / assignee_name; the panel above does.
 
     const { error: upErr } = await supabase
       .from("tasks")
@@ -398,8 +361,8 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
           userId,
         );
       }
-      // Reassignment logging now lives in reassignTask (called above before
-      // the main update). Day 34 III.H Scope A.
+      // Reassignment logging lives in reassignTask via <ReassignPanel/>.
+      // Day 35 III.H Scope B (Day 34 Scope A introduced the helper).
       const prevDue = `${prev.due_date ?? ""}|${prev.due_time ?? ""}`;
       const nextDue = `${mgrDueDate.trim() || ""}|${mgrDueTime.trim() || ""}`;
       if (prevDue !== nextDue) {
@@ -631,6 +594,16 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
+      <ReassignPanel
+        taskId={task.id}
+        currentStaffId={task.staff_id}
+        currentStaffName={displayAssignee(task) || null}
+        onSuccess={async () => {
+          await load();
+          router.refresh();
+        }}
+      />
+
       <section className="card-panel">
         <form className="card-form" onSubmit={onManagerSave}>
           <label className="card-label">Title</label>
@@ -689,20 +662,6 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
             onChange={(e) => setMgrDueTime(e.target.value)}
             disabled={mgrSaving}
           />
-          <label className="card-label">Assign to staff</label>
-          <select
-            className="card-input"
-            value={mgrStaffId}
-            onChange={(e) => setMgrStaffId(e.target.value)}
-            disabled={mgrSaving}
-          >
-            <option value="">— Unassigned —</option>
-            {staffOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
           {task.card_type === "housekeeping_turn" ? (
             <>
               <label className="card-label">Guest name</label>

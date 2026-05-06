@@ -1,0 +1,129 @@
+/*
+ * ReassignPanel — minimal, mobile-first plumbing styles.
+ * Visual polish per surface evolves with the rest of the admin views.
+ */
+
+.panel {
+  border: 1px solid #e0d8c8;
+  border-radius: 8px;
+  background: var(--shell-cream, #f5efe1);
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.h3 {
+  font-size: 1rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.current {
+  font-size: 0.875rem;
+  color: #6b6557;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.label {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4a4538;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 1px solid #c8bfae;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: #2a2620;
+  font: inherit;
+}
+
+.chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chipActive {
+  background: #2a2620;
+  color: #fff;
+  border-color: #2a2620;
+}
+
+.textarea {
+  width: 100%;
+  border: 1px solid #c8bfae;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  resize: vertical;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.textarea:disabled {
+  opacity: 0.6;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit {
+  background: #2a2620;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.muted {
+  color: #6b6557;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.error {
+  color: #b00020;
+  font-size: 0.875rem;
+  margin: 0;
+}
