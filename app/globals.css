@@ -6071,6 +6071,143 @@ main.wrap--wide {
   cursor: not-allowed;
 }
 
+/* ----------------------------------------------------------------------------
+ * .maint-compose — Maintenance compose form (master plan III.B + Global
+ * Rules R12-R17).
+ *
+ * Used inside every X-430 card's Maintenance section (D-430, A-430,
+ * S-430, Da-430, SOD-430 — NOT E-430 per master plan I.I) + the legacy
+ * fallback execution surface. Three required dropdowns (Location / Item /
+ * Type) sit in a wrap row above a Severity row, an optional textarea, and
+ * a Post button. Mobile-first per dispatch-ui-rules; selects collapse to
+ * one-per-row at narrow widths and line up in three columns at typical
+ * phone widths. Mirrors .note-compose 1:1 with the addition of a Severity
+ * row beneath the cascading triple.
+ * ---------------------------------------------------------------------------- */
+
+.maint-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.maint-compose__selects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.maint-compose__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 calc(33% - 6px);
+  min-width: 96px;
+}
+
+.maint-compose__field-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-muted, rgba(0, 0, 0, 0.55));
+  opacity: 0.85;
+}
+
+.maint-compose__select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--hairline, rgba(0, 0, 0, 0.12));
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: inherit;
+  outline: none;
+  width: 100%;
+  min-height: 32px;
+}
+
+.maint-compose__select:focus {
+  border-color: var(--accent, #2A5BFF);
+}
+
+.maint-compose__select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.maint-compose__severity-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.maint-compose__field--severity {
+  flex: 0 0 50%;
+  min-width: 120px;
+}
+
+.maint-compose__body-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-muted, rgba(0, 0, 0, 0.55));
+  opacity: 0.85;
+}
+
+.maint-compose__body {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline, rgba(0, 0, 0, 0.12));
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: inherit;
+  outline: none;
+  resize: vertical;
+  width: 100%;
+  min-height: 60px;
+}
+
+.maint-compose__body:focus {
+  border-color: var(--accent, #2A5BFF);
+}
+
+.maint-compose__body:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.maint-compose__submit {
+  align-self: flex-end;
+  background: var(--ink, #111);
+  color: #FFFFFF;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+
+.maint-compose__submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.maint-compose__submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Legacy execution surface — Notes section thread chips */
 .staff-task-exec-note-meta {
   display: flex;
