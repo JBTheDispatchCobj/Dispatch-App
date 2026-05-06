@@ -30,8 +30,8 @@ Stack: Next.js 16 App Router + React 19 + TypeScript strict + Supabase (Postgres
 - `AddTaskModal` mounted on `/admin`, `/admin/tasks`, `/admin/staff/[id]`. All six buckets selectable, priority chips, assignee chips, room field, notes panel, pre-selected-staff lock mode.
 - `/tasks/[id]` manager card view with editable assignee dropdown → fires reassignTask helper on save (Day 34).
 - `/admin/tasks` dashboard (mostly mocked — LANES + STAT_* hardcoded; carry-forward chase #1 below).
-- `/admin/maintenance/[id]` (mostly mocked — depends on II.H wiring; carry-forward chase #6).
-- `/admin/tasks/[id]` (II.G admin task view modal — mostly mocked; carry-forward chase #2).
+- `/admin/maintenance/[id]` (mostly mocked — depends on II.H wiring; carry-forward chase #5).
+- `/admin/tasks/[id]` (II.G admin task view modal — Reassign action is live post-Day-35; the rest is mocked, bundled into chase #1).
 
 **Data layer:**
 - Real `shift_start` / `shift_end` events written to `inbound_events` via SECURITY DEFINER Postgres trigger on `staff.clocked_in_at` flips.
@@ -97,7 +97,7 @@ Apply order matters in two places: `taxonomy_tables.sql` BEFORE `notes_table.sql
 
 ---
 
-## Closure ledger — master plan items closed (Days 27-34)
+## Closure ledger — master plan items closed (Days 27-35)
 
 The master plan at `docs/dispatch-master-plan.md` was authored Day 24 with State labels (BUILT / PARTIAL / UNBUILT / AUTHORING). Items below have closed since; the master plan inline labels haven't been re-annotated. This ledger overrides.
 
@@ -105,9 +105,9 @@ The master plan at `docs/dispatch-master-plan.md` was authored Day 24 with State
 - ✓ **I.B** — Pre-Clock-In screen (Day 30).
 - ✓ **I.C** — Clock-In + Wrap Shift end-to-end (4 phases, Days 30-32). Staff clocks in → `clocked_in_at` flips → trigger writes `shift_start` → orchestrator picks up → tasks generate. Wrap Shift on E-430 nulls `clocked_in_at` → trigger writes `shift_end`. Cross-staff EOD activation gate locks Wrap Shift until other on-shift housekeepers are in their EOD card.
 - ✓ **III.A** — Notes compose drawer + 3-sink routing + dual-sink read pattern (Day 27).
-- ✓ **III.B** — Maintenance compose drawer at staff side (4 of 4 listed phases, Day 33). Phase 5 (`maintenance_issues` source swap in activity feed) is a small remaining slice — see chase #4 below.
+- ✓ **III.B** — Maintenance compose drawer at staff side (4 of 4 listed phases, Day 33). Phase 5 (`maintenance_issues` source swap in activity feed) is a small remaining slice — see chase #3 below.
 - ✓ **III.D** — Activity feed (admin), 7 phases end-to-end (Day 29). Three new audit event types (`assignment_cross_hall_override`, `assignment_above_standard_load`, `reshuffle_tier_changed`) + severity classification + day-grouped UI + filters + dismiss persistence.
-- ✓ **III.H** — Reassignment dual-logging at the data/helper layer (Day 34, Scope A). `reassignTask()` in `lib/orchestration/index.ts` mutates `tasks.staff_id` + `assignee_name` and emits a single `task_events` row with `from_staff_id` + `to_staff_id` + `from_staff_name` + `to_staff_name` + optional `reason`. Surface side: existing dropdown on `manager-card-detail.tsx` consumes the helper. Scope B (discrete reassign panel with required reason note) + II.G admin task view modal wiring are carry-forward.
+- ✓ **III.H** — Reassignment closed end-to-end (Days 34-35). Scope A (Day 34): `reassignTask()` helper at `lib/orchestration/index.ts`. Scope B (Day 35): discrete `ReassignPanel` at `components/admin/ReassignPanel.tsx` (chip-row staff picker + required reason textarea + Reassign button). Mounted on BOTH `/tasks/[id]` (replacing the dropdown + inline reassign-on-save flow — dropdown fully removed) AND `/admin/tasks/[id]` (II.G admin task view, between Activity and CTA pair, backed by a small live assignee fetch). Single component, two surfaces. **II.G partial credit**: the Reassign admin action is wired; the rest of II.G's surface (priority chips, admin notes, activity feed, Save & Deploy) remains chase #1 territory.
 - ✓ **III.J** — 14-day segment infrastructure via three views (Day 32). View-for-beta lean honored; no new tables.
 - ✓ **VII.D** — Segments table-vs-view question (resolved as views, Day 32).
 
@@ -121,27 +121,25 @@ The master plan at `docs/dispatch-master-plan.md` was authored Day 24 with State
 
 When you start a session, pick the highest-priority chase that's unblocked. Update this list when items close — move closed items to the closure ledger above.
 
-1. **Section II live-data wirings cluster** (~2 hours). Replace `LANES` + `STAT_OPEN/DONE/OVERDUE` hardcoded in `app/admin/tasks/page.tsx` with Supabase queries (~45 min). Replace `WATCHLIST_ITEMS / SCHEDULING_ITEMS / CRITICAL_ITEMS / NOTES_ITEMS` hardcoded in `app/admin/page.tsx` with derived queries (~1 hr). Replace `PROFILES` const lookup in `app/admin/staff/[id]/page.tsx` with live `public.staff` fetch (~30 min — the segment block is already live data; this swaps the static profile metadata around it). Skip `/admin/maintenance/[id]` for now — covered by chase #6. **Biggest visible payoff in the queue.**
+1. **Section II live-data wirings cluster** (~2 hours). Replace `LANES` + `STAT_OPEN/DONE/OVERDUE` hardcoded in `app/admin/tasks/page.tsx` with Supabase queries (~45 min). Replace `WATCHLIST_ITEMS / SCHEDULING_ITEMS / CRITICAL_ITEMS / NOTES_ITEMS` hardcoded in `app/admin/page.tsx` with derived queries (~1 hr). Replace `PROFILES` const lookup in `app/admin/staff/[id]/page.tsx` with live `public.staff` fetch (~30 min — the segment block is already live data; this swaps the static profile metadata around it). The II.G admin task view (`app/admin/tasks/[id]/page.tsx`) is partially live post-Day-35 (Reassign panel + assignee fetch); the rest of its surface (priority/admin-notes/activity/Save & Deploy) lives in this chase too. Skip `/admin/maintenance/[id]` for now — covered by chase #5. **Biggest visible payoff in the queue.**
 
-2. **III.H Scope B + II.G admin task view modal wiring** (~1 hr combined). Build a discrete reassign panel component: assignee chip row reusing `fetchAssignableStaffOptions` from `AddTaskModal` + required reason textarea + "Reassign" button calling `reassignTask({reason})`. Drop into `app/tasks/[id]/manager-card-detail.tsx` (replacing or augmenting the dropdown-on-save flow) AND into `app/admin/tasks/[id]/page.tsx` (currently mocked II.G — wire the assignee block to the new panel). Single component, two surfaces. Closes the III.H surface side and the Day 28 audit's II.G "Reassign" UNBUILT admin action in one chase.
+2. **V.A BR4 X-430 brief reservation fallback** (1-2 hours). Per-card edits to fall back to `getCurrentReservationForRoom()` / `getNextIncomingReservationForRoom()` (in `lib/reservations.ts`) when `task.context.{incoming_guest, current_guest, outgoing_guest}` is missing. Unblocks I.E + I.F live guest data wirings AND I.G Last Stayover Status lookup.
 
-3. **V.A BR4 X-430 brief reservation fallback** (1-2 hours). Per-card edits to fall back to `getCurrentReservationForRoom()` / `getNextIncomingReservationForRoom()` (in `lib/reservations.ts`) when `task.context.{incoming_guest, current_guest, outgoing_guest}` is missing. Unblocks I.E + I.F live guest data wirings AND I.G Last Stayover Status lookup.
+3. **III.B Phase 5 — `maintenance_issues` source swap in activity feed** (~30 min). Replace placeholder `notes WHERE note_type='Maintenance'` source in `lib/activity-feed.ts:12` with a real `maintenance_issues` query branch. Day 34's `reassigned`-as-warn classification + the existing severity-boost ordering means High-severity maintenance items will surface above info entries via the same path once the source swap lands.
 
-4. **III.B Phase 5 — `maintenance_issues` source swap in activity feed** (~30 min). Replace placeholder `notes WHERE note_type='Maintenance'` source in `lib/activity-feed.ts:12` with a real `maintenance_issues` query branch. Day 34's `reassigned`-as-warn classification + the existing severity-boost ordering means High-severity maintenance items will surface above info entries via the same path once the source swap lands.
+4. **III.E + V.G photo pipeline wiring** (1-2 hours). `uploadTaskFile` helper exists at `lib/task-events.ts:45`. Wire into `NoteComposeForm` + `MaintenanceComposeForm`: file input + call `uploadTaskFile` + pass `imageUrl` to `addNote` / `addMaintenanceIssue`. Storage RLS policies need verification (master plan VII.F PARTIAL).
 
-5. **III.E + V.G photo pipeline wiring** (1-2 hours). `uploadTaskFile` helper exists at `lib/task-events.ts:45`. Wire into `NoteComposeForm` + `MaintenanceComposeForm`: file input + call `uploadTaskFile` + pass `imageUrl` to `addNote` / `addMaintenanceIssue`. Storage RLS policies need verification (master plan VII.F PARTIAL).
+5. **II.H Admin Maintenance live-data wiring** (~1-2 hours). Schema unblocked by Day 33's `maintenance_issues` table. Wire `app/admin/maintenance/[id]/page.tsx` to query `public.maintenance_issues` filtered by location / by type, plus per-issue card view. Replace `ORDER` mock const.
 
-6. **II.H Admin Maintenance live-data wiring** (~1-2 hours). Schema unblocked by Day 33's `maintenance_issues` table. Wire `app/admin/maintenance/[id]/page.tsx` to query `public.maintenance_issues` filtered by location / by type, plus per-issue card view. Replace `ORDER` mock const.
+6. **IV.H Wed-occupancy Deep Clean trigger** (~1 hour). Constants exist in `dispatch-config.ts` Section 12. Unblocked by III.D's audit-event sink (Day 29). All four conditions: <5 departures + 40%+ occupancy in last 45 days + no deep clean in 45 days + ≤3 deep items completed in 45 days. Auto-elevates Standard → Deep on Wednesdays.
 
-7. **IV.H Wed-occupancy Deep Clean trigger** (~1 hour). Constants exist in `dispatch-config.ts` Section 12. Unblocked by III.D's audit-event sink (Day 29). All four conditions: <5 departures + 40%+ occupancy in last 45 days + no deep clean in 45 days + ≤3 deep items completed in 45 days. Auto-elevates Standard → Deep on Wednesdays.
+7. **II.A `AddTaskModal` confirmation pass** (~30 min). Verify the modal matches master plan II.A spec end-to-end. Possible bucket-model tweak — maintenance currently routes to `staff_home_bucket: "start_of_day"` since maintenance has no staff bucket; confirm or surface as own bucket.
 
-8. **II.A `AddTaskModal` confirmation pass** (~30 min). Verify the modal matches master plan II.A spec end-to-end. Possible bucket-model tweak — maintenance currently routes to `staff_home_bucket: "start_of_day"` since maintenance has no staff bucket; confirm or surface as own bucket.
+8. **I.G remaining sub-items.** Last Stayover Status lookup (blocks on chase #2 V.A BR4), checklist variants for Sheet Change weekly + * guest (pending Jennifer's KB authoring), status-driven auto-complete (DND/Desk OK/Guest OK pre-selection auto-completes + auto-archives), Sheet Change skip semantics. Bundled or split as makes sense.
 
-9. **I.G remaining sub-items.** Last Stayover Status lookup (blocks on chase #3 V.A BR4), checklist variants for Sheet Change weekly + * guest (pending Jennifer's KB authoring), status-driven auto-complete (DND/Desk OK/Guest OK pre-selection auto-completes + auto-archives), Sheet Change skip semantics. Bundled or split as makes sense.
+9. **Item I — Vercel deploy** (~30 min). Bryan's parallel lane via `docs/deployment/vercel-checklist.md`. GitHub push → Vercel CLI → first deploy → env vars (incl. `AGENT_KILL=true` and `AGENT_DRY_RUN=true` for safety) → Supabase magic-link redirect URL config → smoke test in incognito.
 
-10. **Item I — Vercel deploy** (~30 min). Bryan's parallel lane via `docs/deployment/vercel-checklist.md`. GitHub push → Vercel CLI → first deploy → env vars (incl. `AGENT_KILL=true` and `AGENT_DRY_RUN=true` for safety) → Supabase magic-link redirect URL config → smoke test in incognito.
-
-11. **V.C Cloudbeds.** Bryan's separate thread, outside engineering critical path. Pending sales quote.
+10. **V.C Cloudbeds.** Bryan's separate thread, outside engineering critical path. Pending sales quote.
 
 ---
 
@@ -311,17 +309,16 @@ These are hard rules. Don't relearn them each session.
 - Re-key `dispatch-config.ts` Section 14 maps from full names to UUIDs.
 - Legacy `task_comments` table cleanup. Pre-beta dev data only; no longer read/written from staff side post-Day-27.
 - `lib/task-event-types.ts` extraction (post-beta polish). Day 29 Phase 7 fix duplicated 4 string literals + `TASK_EVENT_SCHEMA_VERSION` constant across 3 orchestration files. Long-term cleanup is to extract a Node-safe shared module.
-- Surface map decision: `/admin/tasks` links to mocked II.G page (`/admin/tasks/[id]`) vs. live II.B page (`/tasks/[id]`). Lean: wire II.G to the helper (covered by chase #2 above).
+- Surface map: `/admin/tasks` links to a partially-mocked II.G page (`/admin/tasks/[id]`) vs. live II.B page (`/tasks/[id]`). II.G's Reassign action is wired post-Day-35; the rest of II.G's data wiring is bundled into chase #1.
 - Same-day re-clock loses pair accuracy in `staff_clock_in_event_trigger`. Acceptable for beta single-property typical-shift.
 - `PROPERTY_TIMEZONE` hardcoded `'America/Chicago'` in trigger + `dispatch-config.ts`. Master plan IX.C tracks moving to per-property column post-beta.
 - 24h `created_at` window for cross-staff EOD activation gate (Day 30). For multi-shift / overnight scenarios may need adjustment; for typical 7-3 / 3-11 shifts at the beta hotel, generous enough.
 - `onImDone` `clockOut` is fire-and-forget on failure. If `completeCard` succeeds and `clockOut` fails, staff stays clocked in despite EOD card done. Recovery: admin SQL `UPDATE public.staff SET clocked_in_at = NULL WHERE name = '<name>'`.
 - High-severity push notification for maintenance issues deferred to Phase 5 of III.B. Beta surfaces High at the top of the activity feed via sort boost only; true live push is post-beta.
 - E-430 (EOD) intentionally NOT a Maintenance host per master plan I.I. Threading is defensive — if Jennifer wants Maintenance on EOD later, the prop block is one paste away.
-- `imageUrl=null` pre-pipeline for both Notes + Maintenance. V.G photo pipeline still PARTIAL (chase #5).
+- `imageUrl=null` pre-pipeline for both Notes + Maintenance. V.G photo pipeline still PARTIAL (chase #4).
 - No automatic `tasks` row creation on maintenance issue insert. The `maintenance_issues` row presented as a card view IS the third "admin task card" sink (KISS).
 - No same-day-shift dedup on maintenance. Staff can file the same issue twice; admin resolves duplicates manually.
-- Reassignment as side-effect of "Save card" retained in `manager-card-detail.tsx`. Helper fires before the main update. Scope B (chase #2) introduces a discrete reassign panel; the dropdown can become read-only at that point.
 - Per-target-staff activity feed query (filter on `detail->>from_staff_id` / `detail->>to_staff_id` for III.H reassign rows). Detail shape supports it; query-side wiring deferred to post-beta. Property-wide feed at `/admin` carries the entry visibly enough for beta.
 - Verification kit data persistence: Lizzie Larson has real-looking test tasks left from Day 31 / Day 34 verifications (`task 57744497-b061-48dc-8d67-01e827266670` + similar). Acceptable; representative of production data.
 
@@ -341,7 +338,7 @@ These are hard rules. Don't relearn them each session.
 
 ## Path to "well below 3-5 weeks"
 
-The master plan footer (Day 24) estimated 6-10 weeks of focused engineering. Day 28 audit revised to ~4-6 weeks. Days 29-34 closures (III.A + III.B-staff + III.D + III.H + I.A + I.B + I.C + III.J) trim further. Practical path remains: chase the 11 items above back-to-back across ~2-3 focused weeks, then Vercel deploy + smoke test, then post-beta items (II.J KB Editor, II.K Calendar, II.L Recap, VII.H KB versioning, VIII.F-G ops) push off the critical path. Section II.J + II.K are post-beta per the spreadsheet's own marking — formal `[DEFER]` to a v2 lane satisfies "no cuts" without violating the promise.
+The master plan footer (Day 24) estimated 6-10 weeks of focused engineering. Day 28 audit revised to ~4-6 weeks. Days 29-35 closures (III.A + III.B-staff + III.D + III.H both scopes + I.A + I.B + I.C + III.J + II.G Reassign action) trim further. Practical path remains: chase the 10 items above back-to-back across ~2-3 focused weeks, then Vercel deploy + smoke test, then post-beta items (II.J KB Editor, II.K Calendar, II.L Recap, VII.H KB versioning, VIII.F-G ops) push off the critical path. Section II.J + II.K are post-beta per the spreadsheet's own marking — formal `[DEFER]` to a v2 lane satisfies "no cuts" without violating the promise.
 
 Three multipliers held throughout: (1) batching cross-cutters that unblock multiple Section I items at once (III.B closure unblocked I.D / I.E / I.F / I.G simultaneously), (2) Section VI Jennifer authoring as a parallel non-blocking lane, (3) hour density — single focused 4-5 hour sessions can close multiple items.
 
@@ -349,16 +346,12 @@ Three multipliers held throughout: (1) batching cross-cutters that unblock multi
 
 ## Last session close (Day 35, 2026-05-06)
 
-STATE.md gap audit. Read all 26 migrations in `docs/supabase/` + master plan front-to-back side-by-side with STATE.md to surface load-bearing facts that didn't make the Day 34 cut. Landed inline:
+Two pieces back-to-back: STATE.md gap audit, then III.H Scope B + II.G admin task view modal wiring (carry-forward chase #2 from Day 34).
 
-- **Tables block** expanded from 1 paragraph to 12 per-table entries with constraints/enums/conventions. Added: `tasks` enums (card_type × 8, status × 5, source × 4, priority × 3); `tasks.context` JSONB subkey contract (`incoming_guest` / `current_guest` / `outgoing_guest` / `notes`) + merge-safe write pattern; `reservations` schema details (5-value status lifecycle, source enum needing `cloudbeds` add, generated `nights`, 5 partial indexes); `task_drafts` dry-run staging mechanics; `inbound_events_dedup` constraint; `deep_clean_history` (was completely missing); profile-default-manager gotcha.
-- **Views block** expanded — segment math formula `segment_start = reference_wed + FLOOR((D - reference_wed) / 14) * 14`; `is_current` flag; `effective_end_at = COALESCE(shift_end_at, now())` convention; six FILTER aggregate columns in `shift_summary_v`.
-- **Triggers block** expanded from 3 to 8 — added `task_checklist_staff_guard`, `tasks_seed_default_checklist` (operational gotcha — every housekeeping_turn task auto-gets 3 hard-coded items), `task_checklist_set_done_at`, `handle_new_user_profile`, `reservations_set_updated_at`.
-- **Storage** expanded — `public = true` flag + `auth.uid()::text` upload path convention.
-- **New "Orchestrator dry-run pipeline" subsection** — `AGENT_DRY_RUN` + `AGENT_KILL` operational mechanics, `task_drafts` invisible-to-UI dynamic, `promote_draft_to_task()` SQL helper workflow.
-- **RLS block** corrected (staff CAN update `context` post-`allow_staff_context_update.sql` — STATE.md previously said the opposite); `can_read_task()` localized to `cards_mvp.sql` with full predicate.
-- **Migration files** rewritten — full 26-file enumeration replacing the previous 12-file list, with apply-order notes.
-- **Locked design tokens** new block (sage green admin maintenance lane + 4-name hero gradients).
-- **Architecture rules** added: card_type 8-enum constraint, default-checklist seed gotcha, default-manager-on-signup gotcha, `AGENT_KILL` / `AGENT_DRY_RUN` gate, second corrective patch on staff-cannot-update list (was duplicated).
+**Piece 1 — STATE.md gap audit (commit `41bf4f4`):** read all 26 migrations in `docs/supabase/` + master plan front-to-back side-by-side with STATE.md to surface load-bearing facts that didn't make the Day 34 cut. Landed inline: Tables block expanded from 1 paragraph to 12 per-table entries with full enums + constraints + JSONB context subkey contract; `reservations` / `task_drafts` / `inbound_events` / `deep_clean_history` schema details; Views block adds segment math formula + is_current/effective_end_at; Triggers block expanded 3 → 8 (added `task_checklist_staff_guard`, `tasks_seed_default_checklist` gotcha, `task_checklist_set_done_at`, `handle_new_user_profile`, `reservations_set_updated_at`); new "Orchestrator dry-run pipeline" subsection (`AGENT_DRY_RUN` / `AGENT_KILL` / `promote_draft_to_task()` workflow); RLS block corrected (staff CAN update `context`); migration files list rewritten 12 → 26; Locked design tokens new block; 4 Architecture-rules gotchas added. 325 → 364 lines. Markdown-only.
 
-Markdown-only commit; build verify skipped per convention. No schema change. STATE.md grew from 325 → ~370 lines. Net: substantive product knowledge re-anchored after the Day 34 50K → 15K reduction. The aim is durable bedrock that survives many sessions; future drift gets caught by the "When STATE.md is missing something" rule.
+**Piece 2 — III.H Scope B + II.G ReassignPanel (commit `b1530b2`):** new `components/admin/ReassignPanel.tsx` + `.module.css` — chip-row staff picker + required reason textarea + Reassign button, routes through `reassignTask()` so the staff_id mutation + `reassigned` task_events row stay atomic. Mounted on `/tasks/[id]` (manager card view — replaces the Assign-to-staff dropdown + the inline reassign-on-save flow; both fully removed) and `/admin/tasks/[id]` (II.G admin task view — between Activity panel and CTA pair, backed by a small live `staff_id` + `assignee_name` + embedded staff name fetch). Single component, two surfaces. Closes master plan III.H Scope B end-to-end + Day 28 audit's II.G "Reassign" UNBUILT admin action. Build clean; 4 files changed (2 new, 2 modified), 390 insertions / 59 deletions. No schema change.
+
+Net for Day 35: STATE.md is durable bedrock for substantive product knowledge AND the chase #2 closure trims the queue from 11 items to 10. The "Reassignment as side-effect of Save card" standing-tabled entry retired; "Surface map" entry updated; III.H closure-ledger entry expanded to cover both scopes; chase queue renumbered (II live-data wirings still #1; old #3 V.A BR4 is now #2; etc.).
+
+Followups for next session: pick from the chase queue. Default lean is still chase #1 (Section II live-data wirings cluster, ~2 hours, biggest visible payoff, now also includes II.G's non-Reassign surface). Alternative: chase #2 (V.A BR4 reservation fallback) which unblocks I.E + I.F + I.G Last-Stayover-Status simultaneously.
