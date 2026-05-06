@@ -1,6 +1,8 @@
 # Dispatch — Claude Code operating manual
 
-Read this every session. Re-read `docs/dispatch-audit.md` if you have not in the current session.
+**First action on every new session: read `docs/STATE.md`.** That doc is the canonical product state entry point — what ships today, schema in place, recommended next chases (priority-ordered), open Jennifer questions, standing tabled items. Do NOT read the daily handoff history series — it has been deleted post-Day-34. If you need historical archaeology use `git log` against `docs/`.
+
+After STATE.md, read this file (CLAUDE.md) for operating conventions, then `docs/dispatch-master-plan.md` for the no-cuts inventory (state labels there are stale post-Day-24; STATE.md's closure ledger overrides), then any pertinent files for the chase you're picking up.
 
 ## What this is
 
@@ -31,14 +33,18 @@ Ship these. Nothing else.
 
 **Cut for beta, revisit week 3:** activity feed polish, staff profile pages, reports/metrics, team card, deep-clean table, dynamic daily reassignment, ResNexus, knowledge-base agent.
 
-See `docs/dispatch-audit.md` section 8 for the day-by-day plan and section 9 for the full cut list.
+See `docs/dispatch-master-plan.md` for the no-cuts inventory and `docs/STATE.md` for the current closure ledger + recommended next chases.
 
-## What shipped in Phase 3
+## What ships today (high-level)
 
-- All six X-430 staff task detail cards (D-430, A-430, S-430, Da-430, E-430, SOD-430) under `app/staff/task/[id]/`
-- Day 20 staff home rebuild — bucket card stack on cream surface — at `app/staff/page.tsx`
-- Per-card audit docs at `docs/phase-3-{slug}-mapping.md` document every gap and decision
-- Locked design system tokens in `app/globals.css` (six neon bucket palettes + Day 20 cream tokens)
+- All six X-430 staff task detail cards (D-430, A-430, S-430, Da-430, E-430, SOD-430) under `app/staff/task/[id]/`, each with Notes + Maintenance compose drawers, status pills, checklists, pause/resume.
+- Staff home with Pre-Clock-In screen + six bucket card stack + hard-locked sequential gating.
+- Admin home with live Activity Feed (severity-boost ordering, filters, dismiss persistence).
+- Admin staff profile with 14-day segment block + per-shift summary.
+- AddTaskModal mounted on all admin surfaces.
+- Manager card view (`/tasks/[id]`) with editable assignee + reassignTask helper.
+- Locked design system tokens in `app/globals.css` (six neon bucket palettes + Day 20 cream tokens).
+- See `docs/STATE.md` for the canonical state-of-affairs.
 
 ## Architecture rules (do not violate)
 
@@ -65,7 +71,7 @@ See `docs/dispatch-audit.md` section 8 for the day-by-day plan and section 9 for
 
 - **Boring code wins.** No cleverness. No abstractions we don't need. One-file-per-feature unless clearly beneficial.
 - **Mobile-first CSS.** Assume 390px viewport. Desktop is a bonus, not a priority.
-- **No new dependencies without asking Bryan.** Current deps: `@supabase/supabase-js`, `next`, `react`, `react-dom`. That's it.
+- **No new dependencies without asking Bryan.** Current deps: `@supabase/supabase-js`, `@supabase/ssr`, `next`, `react`, `react-dom`. That's it.
 - **TypeScript strict.** If you're tempted to `any`, stop and solve it.
 - **Client components** for anything interactive (use `"use client"`). Server components for static layouts.
 - **Supabase client** lives at `lib/supabase.ts`. Always import from there, never re-create.
@@ -83,9 +89,10 @@ Bryan is **not a developer.** Never assume he can read diffs or debug a stack tr
 
 When you start work:
 
-1. Read `docs/dispatch-audit.md` if you haven't this session.
-2. Read any new mockups in `/design/` if the task involves UI.
-3. Propose a plan before you cut code if the task touches more than one file.
+1. Read `docs/STATE.md` first — that's the canonical product-state entry point.
+2. Read `docs/dispatch-master-plan.md` for the no-cuts inventory (state labels there are stale post-Day-24; STATE.md's closure ledger overrides).
+3. Read any new mockups in `/design/` if the task involves UI.
+4. Propose a plan before you cut code if the task touches more than one file.
 
 ## Project folder map
 
@@ -108,12 +115,26 @@ lib/
   staff-home-bucket.ts  # Task → bucket partitioning
 
 docs/
-  dispatch-audit.md     # Ruthless audit + 14-day plan (READ THIS)
-  TASK_EVENTS_CONTRACT.md
-  supabase/             # SQL migrations, run in order
+  STATE.md              # Canonical product state — READ FIRST every session
+  dispatch-master-plan.md  # No-cuts inventory ("all of it"); state labels stale post-Day-24
+  TASK_EVENTS_CONTRACT.md  # task_events vocabulary + schema_version contract
+  kb-spreadsheet-index.md  # Navigator for the 25-tab governance spreadsheet
+  kb/                   # Governance + Jennifer's KB authoring lane
+  deployment/
+    vercel-checklist.md # Bryan's deploy lane
+  supabase/             # SQL migrations, applied via Supabase dashboard
     cards_mvp.sql
     milestone1_architecture_lock.sql
     fix_rls_profiles_recursion_manager_path.sql
+    taxonomy_tables.sql
+    notes_table.sql
+    maintenance_issues_table.sql
+    staff_clocked_in_at.sql
+    staff_clock_in_event_trigger.sql
+    staff_shifts_view.sql
+    staff_segments_view.sql
+    shift_summary_view.sql
+    drop_activity_events_table.sql
 
 design/                 # UI mockup PNGs (Bryan adds these)
 
@@ -121,13 +142,9 @@ AGENTS.md               # Older direction doc — superseded by this file
 dispatch-ui-rules.md    # UI conventions — merged into this file
 ```
 
-## Phase 4 in flight
+## Current chase queue
 
-- Wave 4A: shared helpers + cleanup (drop topstrip ＋, drop debug footers, S-430 status pill fix)
-- Wave 4B: KB ingestion — Jennifer's checklist trees into `lib/checklists/variants/{class}.ts`
-- Reservations BR pack: hardcoded staff-home brief counts (3/2/4) stay until BR1-BR5 land
-- Rule engine: `lib/orchestration/rules/*` are scaffolded but `dispatch()` returns `[]` — interpreter not yet built
-- See `docs/phase-3-handoff.md` and `docs/phase-3-{slug}-mapping.md` for current Phase 4 ground truth
+See `docs/STATE.md` "Recommended next chases" section. Priority-ordered. Update inline when items close — do not recreate the daily handoff history.
 
 ## What to never do
 
