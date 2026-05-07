@@ -20,7 +20,7 @@ import styles from "./page.module.css";
 
 type DotColor = "green" | "amber" | "red" | "blue" | "mute";
 
-type LaneItem = { id: string; title: string; body: string; chip: string };
+type LaneItem = { id: string; title: string; body: string; chip: string; href?: string };
 
 type BriefStat = {
   label: string;
@@ -90,6 +90,7 @@ async function fetchWatchlistItems(): Promise<LaneItem[]> {
         .filter(Boolean)
         .join(" · "),
     chip: "MAINTENANCE",
+    href: `/admin/maintenance/${r.id}`,
   }));
 }
 
@@ -374,15 +375,30 @@ export default function AdminHomePage() {
                   <div className={styles.laneItemBody}>No open maintenance issues.</div>
                 </div>
               )}
-              {watchlistItems.slice(0, 5).map((item) => (
-                <div key={item.id} className={styles.laneItem}>
-                  <div className={styles.laneItemHead}>
-                    <div className={styles.laneItemTitle}>{item.title}</div>
-                    <span className={styles.laneItemChip}>{item.chip}</span>
+              {watchlistItems.slice(0, 5).map((item) =>
+                item.href ? (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    className={styles.laneItem}
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className={styles.laneItemHead}>
+                      <div className={styles.laneItemTitle}>{item.title}</div>
+                      <span className={styles.laneItemChip}>{item.chip}</span>
+                    </div>
+                    <div className={styles.laneItemBody}>{item.body}</div>
+                  </Link>
+                ) : (
+                  <div key={item.id} className={styles.laneItem}>
+                    <div className={styles.laneItemHead}>
+                      <div className={styles.laneItemTitle}>{item.title}</div>
+                      <span className={styles.laneItemChip}>{item.chip}</span>
+                    </div>
+                    <div className={styles.laneItemBody}>{item.body}</div>
                   </div>
-                  <div className={styles.laneItemBody}>{item.body}</div>
-                </div>
-              ))}
+                ),
+              )}
               {watchlistItems.length > 5 && (
                 <div className={styles.laneItemMore}>+{watchlistItems.length - 5} more</div>
               )}
