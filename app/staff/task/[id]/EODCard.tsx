@@ -78,6 +78,11 @@ export type EODCardProps = {
   setNoteStatus: (v: string) => void;
   noteAssignedTo: string;
   setNoteAssignedTo: (v: string) => void;
+  // Day 40 III.E + V.G — optional photo on the note compose. EOD has no
+  // Maintenance host per master plan I.I, so only the Notes file pair is
+  // threaded here.
+  noteFile: File | null;
+  setNoteFile: (f: File | null) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -115,6 +120,8 @@ export default function EODCard({
   setNoteStatus,
   noteAssignedTo,
   setNoteAssignedTo,
+  noteFile,
+  setNoteFile,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -258,6 +265,21 @@ export default function EODCard({
                             ) : null}
                           </div>
                         ) : null}
+                        {note.image_url ? (
+                          <a
+                            href={note.image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="staff-photo-thumb-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <img
+                              src={note.image_url}
+                              alt=""
+                              className="staff-photo-thumb"
+                            />
+                          </a>
+                        ) : null}
                       </div>
                       <span className="note__time">
                         {formatCommentTime(note.created_at)}
@@ -278,6 +300,8 @@ export default function EODCard({
                 setNoteStatus={setNoteStatus}
                 noteAssignedTo={noteAssignedTo}
                 setNoteAssignedTo={setNoteAssignedTo}
+                file={noteFile}
+                setFile={setNoteFile}
                 onSubmit={onPostNote}
                 busy={noteBusy}
                 placeholder="Note for the wrap…"

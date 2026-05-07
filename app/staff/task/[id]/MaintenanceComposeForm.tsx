@@ -17,10 +17,14 @@
 //   taxonomy_tables.sql ("sub-location split deferred to post-beta").
 //   Phase 3 ships flat dropdowns; cascade filter is post-beta when
 //   Jennifer authors the tree. [ASK JENNIFER] flag.
-// - Image attachment input (master plan III.E + V.G — Storage RLS still
-//   being finalized; pre-pipeline we pass image_url=null in the insert).
 // - Avatar render (cosmetic; lives at the consumer's discretion).
 // - Resolution / status pill (admin-side only).
+//
+// Day 40 — Image attachment input added (master plan III.E + V.G). File is
+// optional; submit gating unchanged (still gates on the three required
+// taxonomy fields). An issue can now be photo-only, taxonomy-only, or both.
+// Mobile: accept="image/*" + capture="environment" surfaces iOS Safari's
+// "Take Photo / Choose from Library" sheet directly.
 //
 // Body is OPTIONAL — an issue can be photo-only or taxonomy-only. Submit
 // gates on the three required taxonomy fields, not on body. Severity
@@ -50,6 +54,12 @@ export type MaintenanceComposeFormProps = {
   /** Severity — defaults to 'Normal'. */
   severity: string;
   setSeverity: (v: string) => void;
+
+  /** Optional image attachment (master plan III.E + V.G, Day 40). Null when
+   *  no photo is attached. Parent owns the state so it can be cleared on
+   *  successful post and threaded through every X-430 card mount site. */
+  file: File | null;
+  setFile: (f: File | null) => void;
 
   /** Submit handler from the parent. */
   onSubmit: (e: FormEvent) => void;
@@ -82,6 +92,8 @@ export default function MaintenanceComposeForm(
     setType,
     severity,
     setSeverity,
+    file,
+    setFile,
     onSubmit,
     busy,
     disabled = false,
@@ -197,6 +209,36 @@ export default function MaintenanceComposeForm(
         disabled={busy || disabled}
         autoComplete="off"
       />
+
+      <div className="staff-attach-row">
+        <label className="staff-attach-btn">
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            disabled={busy || disabled}
+            className="staff-attach-input"
+          />
+          {file ? "Change photo" : "Add photo"}
+        </label>
+        {file ? (
+          <>
+            <span className="staff-attach-name" title={file.name}>
+              {file.name}
+            </span>
+            <button
+              type="button"
+              className="staff-attach-clear"
+              onClick={() => setFile(null)}
+              disabled={busy || disabled}
+              aria-label="Remove photo"
+            >
+              ×
+            </button>
+          </>
+        ) : null}
+      </div>
 
       <button
         type="submit"

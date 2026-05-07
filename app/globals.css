@@ -6233,6 +6233,99 @@ main.wrap--wide {
 }
 
 /* ----------------------------------------------------------------------------
+ * Day 40 III.E + V.G — Photo attach pipeline.
+ *
+ * .staff-attach-* classes style the file input button inside both
+ * NoteComposeForm and MaintenanceComposeForm. The native <input type="file">
+ * is visually hidden inside a styled <label>, which is the click target.
+ * iOS Safari surfaces the camera/library sheet directly via accept="image/*"
+ * + capture="environment".
+ *
+ * .staff-photo-thumb is the inline image render on note + maintenance rows.
+ * Wrapped in a <a target="_blank"> so tapping opens the full-size image.
+ * Mobile-first: max-width capped so a 4032×3024 phone photo doesn't blow
+ * out the row layout.
+ * ---------------------------------------------------------------------------- */
+
+.staff-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.staff-attach-btn {
+  display: inline-block;
+  padding: 8px 14px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  user-select: none;
+}
+
+.staff-attach-btn:hover {
+  background: #e5e7eb;
+}
+
+.staff-attach-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.staff-attach-name {
+  font-size: 13px;
+  color: #555;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-attach-clear {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0 6px;
+}
+
+.staff-attach-clear:hover:not(:disabled) {
+  color: #374151;
+}
+
+.staff-attach-clear:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.staff-photo-thumb-link {
+  display: inline-block;
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+.staff-photo-thumb {
+  display: block;
+  max-width: 200px;
+  max-height: 200px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  object-fit: cover;
+}
+
+/* ----------------------------------------------------------------------------
  * .maint-list / .maint-row — Maintenance issue list rendered above the
  * compose form inside each X-430 card's Maintenance section. Scoped via
  * .maint-list parent so it works inside any card shell (.preview-d-430,

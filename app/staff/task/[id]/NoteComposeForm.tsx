@@ -13,10 +13,14 @@
 // the user picks one).
 //
 // What's NOT here:
-// - Image attachment input (master plan III.E + V.G — Storage RLS still
-//   being finalized; pre-pipeline we pass image_url=null in the insert).
 // - @mention autocomplete (post-beta).
 // - Avatar render (cosmetic; lives at the consumer's discretion).
+//
+// Day 40 — Image attachment input added (master plan III.E + V.G). File is
+// optional; submit gating unchanged (still gates on body + note type only).
+// Mobile: accept="image/*" + capture="environment" surfaces iOS Safari's
+// "Take Photo / Choose from Library" sheet directly. Native input is
+// visually hidden; the styled <label> is the click target.
 //
 // The component is purely presentational — state lives in the parent
 // (page.tsx) and is threaded down through every X-430 card. That keeps
@@ -42,6 +46,12 @@ export type NoteComposeFormProps = {
   /** Note Assigned-to — defaults to "Employee" for typical case. */
   noteAssignedTo: string;
   setNoteAssignedTo: (v: string) => void;
+
+  /** Optional image attachment (master plan III.E + V.G, Day 40). Null when
+   *  no photo is attached. Parent owns the state so it can be cleared on
+   *  successful post and threaded through every X-430 card mount site. */
+  file: File | null;
+  setFile: (f: File | null) => void;
 
   /** Submit handler from the parent. */
   onSubmit: (e: FormEvent) => void;
@@ -70,6 +80,8 @@ export default function NoteComposeForm(props: NoteComposeFormProps) {
     setNoteStatus,
     noteAssignedTo,
     setNoteAssignedTo,
+    file,
+    setFile,
     onSubmit,
     busy,
     disabled = false,
@@ -156,6 +168,36 @@ export default function NoteComposeForm(props: NoteComposeFormProps) {
         disabled={busy || disabled}
         autoComplete="off"
       />
+
+      <div className="staff-attach-row">
+        <label className="staff-attach-btn">
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            disabled={busy || disabled}
+            className="staff-attach-input"
+          />
+          {file ? "Change photo" : "Add photo"}
+        </label>
+        {file ? (
+          <>
+            <span className="staff-attach-name" title={file.name}>
+              {file.name}
+            </span>
+            <button
+              type="button"
+              className="staff-attach-clear"
+              onClick={() => setFile(null)}
+              disabled={busy || disabled}
+              aria-label="Remove photo"
+            >
+              ×
+            </button>
+          </>
+        ) : null}
+      </div>
 
       <button
         type="submit"

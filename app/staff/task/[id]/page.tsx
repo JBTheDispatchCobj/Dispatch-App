@@ -58,6 +58,17 @@ import { canWrapShift, clockOut } from "@/lib/clock-in";
 import NoteComposeForm from "./NoteComposeForm";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { supabase } from "@/lib/supabase";
+// Day 40 III.E + V.G — photo pipeline. uploadTaskFile uploads into the
+// task-files bucket using the auth.uid()/timestamp-rand.<ext> path
+// convention (see cards_mvp.sql:377-382). On a successful note/maintenance
+// post with a file attached, we also fire taskEventType.imageAttached so
+// the per-task event panel on /admin/tasks/[id] surfaces the attach.
+import {
+  uploadTaskFile,
+  logTaskEvent,
+  taskEventType,
+  withTaskEventSchema,
+} from "@/lib/task-events";
 import {
   checklistCompletionPercent,
   loadStaffExecutionChecklist,
@@ -174,6 +185,9 @@ export default function StaffTaskExecutionPage() {
     NOTE_DEFAULTS.assignedTo,
   );
   const [noteBusy, setNoteBusy] = useState(false);
+  // Day 40 III.E + V.G — optional photo on the note compose. Cleared on
+  // successful post alongside the body (sticky-filters pattern preserved).
+  const [noteFile, setNoteFile] = useState<File | null>(null);
 
   // Maintenance compose state — body is OPTIONAL (the schema allows null
   // body), unlike notes where body is required. Submit gates on the three
@@ -189,6 +203,9 @@ export default function StaffTaskExecutionPage() {
     MAINTENANCE_DEFAULTS.severity,
   );
   const [maintBusy, setMaintBusy] = useState(false);
+  // Day 40 III.E + V.G — optional photo on the maintenance compose. Cleared
+  // on successful post alongside the body.
+  const [maintFile, setMaintFile] = useState<File | null>(null);
   const [helpBusy, setHelpBusy] = useState(false);
   const [doneBusy, setDoneBusy] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
@@ -508,6 +525,23 @@ export default function StaffTaskExecutionPage() {
       }
       setNoteBusy(true);
       setInlineError(null);
+      // Day 40 III.E + V.G — if a photo was attached, upload first.
+      // uploadTaskFile returns null on failure (auth/bucket/storage error).
+      // Fail-loud: if the staff member explicitly attached a photo and the
+      // upload failed, surface the error and abort the post rather than
+      // silently dropping the image and shipping a text-only note.
+      let imageUrl: string | null = null;
+      if (noteFile) {
+        const upload = await uploadTaskFile(userId, noteFile);
+        if (!upload) {
+          setNoteBusy(false);
+          setInlineError(
+            "Photo upload failed. Try again, or remove the photo and post the note without it.",
+          );
+          return;
+        }
+        imageUrl = upload.publicUrl;
+      }
       const r = await addNote(supabase, {
         taskId: task.id,
         authorUserId: userId,
@@ -516,17 +550,29 @@ export default function StaffTaskExecutionPage() {
         noteType,
         noteStatus,
         noteAssignedTo,
-        imageUrl: null,
+        imageUrl,
       });
       setNoteBusy(false);
       if (!r.ok) {
         setInlineError(r.message);
         return;
       }
-      // Sticky filters: clear body but keep type / status / assigned-to so a
-      // housekeeper posting a quick burst of related notes doesn't have to
+      // Day 40 — fire image_attached task_event when a photo was attached so
+      // the admin per-task event panel surfaces it. taskEventType.imageAttached
+      // already exists in the v1 vocabulary; this is the first call site.
+      if (imageUrl) {
+        await logTaskEvent(
+          task.id,
+          taskEventType.imageAttached,
+          withTaskEventSchema({ image_url: imageUrl, source: "note" }),
+          userId,
+        );
+      }
+      // Sticky filters: clear body + photo but keep type / status / assigned-to
+      // so a housekeeper posting a quick burst of related notes doesn't have to
       // re-pick the dropdowns each time.
       setNoteBody("");
+      setNoteFile(null);
       await load();
     },
     [
@@ -537,6 +583,7 @@ export default function StaffTaskExecutionPage() {
       noteType,
       noteStatus,
       noteAssignedTo,
+      noteFile,
       load,
     ],
   );
@@ -560,6 +607,20 @@ export default function StaffTaskExecutionPage() {
       }
       setMaintBusy(true);
       setInlineError(null);
+      // Day 40 III.E + V.G — if a photo was attached, upload first. Same
+      // fail-loud pattern as onPostNote.
+      let imageUrl: string | null = null;
+      if (maintFile) {
+        const upload = await uploadTaskFile(userId, maintFile);
+        if (!upload) {
+          setMaintBusy(false);
+          setInlineError(
+            "Photo upload failed. Try again, or remove the photo and post the issue without it.",
+          );
+          return;
+        }
+        imageUrl = upload.publicUrl;
+      }
       const r = await addMaintenanceIssue(supabase, {
         taskId: task.id,
         authorUserId: userId,
@@ -569,15 +630,25 @@ export default function StaffTaskExecutionPage() {
         item: maintItem,
         type: maintType,
         severity: maintSeverity,
-        imageUrl: null,
+        imageUrl,
       });
       setMaintBusy(false);
       if (!r.ok) {
         setInlineError(r.message);
         return;
       }
-      // Sticky filters: clear body, keep Location/Item/Type/Severity.
+      // Day 40 — fire image_attached task_event when a photo was attached.
+      if (imageUrl) {
+        await logTaskEvent(
+          task.id,
+          taskEventType.imageAttached,
+          withTaskEventSchema({ image_url: imageUrl, source: "maintenance" }),
+          userId,
+        );
+      }
+      // Sticky filters: clear body + photo, keep Location/Item/Type/Severity.
       setMaintBody("");
+      setMaintFile(null);
       await load();
     },
     [
@@ -589,6 +660,7 @@ export default function StaffTaskExecutionPage() {
       maintItem,
       maintType,
       maintSeverity,
+      maintFile,
       load,
     ],
   );
@@ -653,6 +725,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -675,6 +749,8 @@ export default function StaffTaskExecutionPage() {
         setMaintType={setMaintType}
         maintSeverity={maintSeverity}
         setMaintSeverity={setMaintSeverity}
+        maintFile={maintFile}
+        setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
       />
@@ -699,6 +775,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -721,6 +799,8 @@ export default function StaffTaskExecutionPage() {
         setMaintType={setMaintType}
         maintSeverity={maintSeverity}
         setMaintSeverity={setMaintSeverity}
+        maintFile={maintFile}
+        setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
       />
@@ -745,6 +825,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -782,6 +864,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -804,6 +888,8 @@ export default function StaffTaskExecutionPage() {
         setMaintType={setMaintType}
         maintSeverity={maintSeverity}
         setMaintSeverity={setMaintSeverity}
+        maintFile={maintFile}
+        setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
         currentReservation={currentReservation}
@@ -829,6 +915,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -851,6 +939,8 @@ export default function StaffTaskExecutionPage() {
         setMaintType={setMaintType}
         maintSeverity={maintSeverity}
         setMaintSeverity={setMaintSeverity}
+        maintFile={maintFile}
+        setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
         incomingReservation={incomingReservation}
@@ -882,6 +972,8 @@ export default function StaffTaskExecutionPage() {
         setNoteStatus={setNoteStatus}
         noteAssignedTo={noteAssignedTo}
         setNoteAssignedTo={setNoteAssignedTo}
+        noteFile={noteFile}
+        setNoteFile={setNoteFile}
         noteBusy={noteBusy}
         helpBusy={helpBusy}
         doneBusy={doneBusy}
@@ -904,6 +996,8 @@ export default function StaffTaskExecutionPage() {
         setMaintType={setMaintType}
         maintSeverity={maintSeverity}
         setMaintSeverity={setMaintSeverity}
+        maintFile={maintFile}
+        setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
         outgoingReservation={currentReservation}
@@ -1114,6 +1208,20 @@ export default function StaffTaskExecutionPage() {
                     </div>
                   ) : null}
                   <p className="staff-task-exec-note-body">{n.body}</p>
+                  {n.image_url ? (
+                    <a
+                      href={n.image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="staff-photo-thumb-link"
+                    >
+                      <img
+                        src={n.image_url}
+                        alt=""
+                        className="staff-photo-thumb"
+                      />
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -1128,6 +1236,8 @@ export default function StaffTaskExecutionPage() {
               setNoteStatus={setNoteStatus}
               noteAssignedTo={noteAssignedTo}
               setNoteAssignedTo={setNoteAssignedTo}
+              file={noteFile}
+              setFile={setNoteFile}
               onSubmit={onPostNote}
               busy={noteBusy}
               className="note-compose--exec"
@@ -1180,6 +1290,20 @@ export default function StaffTaskExecutionPage() {
                   {m.body ? (
                     <p className="staff-task-exec-note-body">{m.body}</p>
                   ) : null}
+                  {m.image_url ? (
+                    <a
+                      href={m.image_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="staff-photo-thumb-link"
+                    >
+                      <img
+                        src={m.image_url}
+                        alt=""
+                        className="staff-photo-thumb"
+                      />
+                    </a>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -1196,6 +1320,8 @@ export default function StaffTaskExecutionPage() {
               setType={setMaintType}
               severity={maintSeverity}
               setSeverity={setMaintSeverity}
+              file={maintFile}
+              setFile={setMaintFile}
               onSubmit={onPostMaintenance}
               busy={maintBusy}
               className="maint-compose--exec"

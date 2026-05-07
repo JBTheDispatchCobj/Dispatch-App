@@ -50,6 +50,9 @@ export type DailysCardProps = {
   setNoteStatus: (v: string) => void;
   noteAssignedTo: string;
   setNoteAssignedTo: (v: string) => void;
+  // Day 40 III.E + V.G — optional photo on the note compose.
+  noteFile: File | null;
+  setNoteFile: (f: File | null) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -73,6 +76,9 @@ export type DailysCardProps = {
   setMaintType: (v: string) => void;
   maintSeverity: string;
   setMaintSeverity: (v: string) => void;
+  // Day 40 III.E + V.G — optional photo on the maintenance compose.
+  maintFile: File | null;
+  setMaintFile: (f: File | null) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
 };
@@ -96,6 +102,8 @@ export default function DailysCard({
   setNoteStatus,
   noteAssignedTo,
   setNoteAssignedTo,
+  noteFile,
+  setNoteFile,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -118,6 +126,8 @@ export default function DailysCard({
   setMaintType,
   maintSeverity,
   setMaintSeverity,
+  maintFile,
+  setMaintFile,
   maintBusy,
   onPostMaintenance,
 }: DailysCardProps) {
@@ -228,6 +238,21 @@ export default function DailysCard({
                             ) : null}
                           </div>
                         ) : null}
+                        {note.image_url ? (
+                          <a
+                            href={note.image_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="staff-photo-thumb-link"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <img
+                              src={note.image_url}
+                              alt=""
+                              className="staff-photo-thumb"
+                            />
+                          </a>
+                        ) : null}
                       </div>
                       <span className="note__time">{formatCommentTime(note.created_at)}</span>
                     </div>
@@ -246,6 +271,8 @@ export default function DailysCard({
                 setNoteStatus={setNoteStatus}
                 noteAssignedTo={noteAssignedTo}
                 setNoteAssignedTo={setNoteAssignedTo}
+                file={noteFile}
+                setFile={setNoteFile}
                 onSubmit={onPostNote}
                 busy={noteBusy}
                 placeholder="Leave a note for the team…"
@@ -302,6 +329,20 @@ export default function DailysCard({
                     {m.body ? (
                       <p className="maint-row__body">{m.body}</p>
                     ) : null}
+                    {m.image_url ? (
+                      <a
+                        href={m.image_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="staff-photo-thumb-link"
+                      >
+                        <img
+                          src={m.image_url}
+                          alt=""
+                          className="staff-photo-thumb"
+                        />
+                      </a>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -318,6 +359,8 @@ export default function DailysCard({
                 setType={setMaintType}
                 severity={maintSeverity}
                 setSeverity={setMaintSeverity}
+                file={maintFile}
+                setFile={setMaintFile}
                 onSubmit={onPostMaintenance}
                 busy={maintBusy}
                 className="maint-compose--card"

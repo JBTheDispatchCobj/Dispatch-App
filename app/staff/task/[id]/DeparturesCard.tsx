@@ -184,6 +184,9 @@ export type DeparturesCardProps = {
   setNoteStatus: (v: string) => void;
   noteAssignedTo: string;
   setNoteAssignedTo: (v: string) => void;
+  // Day 40 III.E + V.G — optional photo on the note compose.
+  noteFile: File | null;
+  setNoteFile: (f: File | null) => void;
   noteBusy: boolean;
   helpBusy: boolean;
   doneBusy: boolean;
@@ -207,6 +210,9 @@ export type DeparturesCardProps = {
   setMaintType: (v: string) => void;
   maintSeverity: string;
   setMaintSeverity: (v: string) => void;
+  // Day 40 III.E + V.G — optional photo on the maintenance compose.
+  maintFile: File | null;
+  setMaintFile: (f: File | null) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
   // Master plan V.A BR4 — reservation fallback for outgoing/incoming briefs.
@@ -235,6 +241,8 @@ export default function DeparturesCard({
   setNoteStatus,
   noteAssignedTo,
   setNoteAssignedTo,
+  noteFile,
+  setNoteFile,
   noteBusy,
   helpBusy,
   doneBusy,
@@ -257,6 +265,8 @@ export default function DeparturesCard({
   setMaintType,
   maintSeverity,
   setMaintSeverity,
+  maintFile,
+  setMaintFile,
   maintBusy,
   onPostMaintenance,
   outgoingReservation = null,
@@ -420,6 +430,8 @@ export default function DeparturesCard({
                     setNoteStatus={setNoteStatus}
                     noteAssignedTo={noteAssignedTo}
                     setNoteAssignedTo={setNoteAssignedTo}
+                    file={noteFile}
+                    setFile={setNoteFile}
                     onSubmit={onPostNote}
                     busy={noteBusy}
                     disabled={taskDone}
@@ -580,6 +592,20 @@ export default function DeparturesCard({
                     {m.body ? (
                       <p className="maint-row__body">{m.body}</p>
                     ) : null}
+                    {m.image_url ? (
+                      <a
+                        href={m.image_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="staff-photo-thumb-link"
+                      >
+                        <img
+                          src={m.image_url}
+                          alt=""
+                          className="staff-photo-thumb"
+                        />
+                      </a>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -596,6 +622,8 @@ export default function DeparturesCard({
                 setType={setMaintType}
                 severity={maintSeverity}
                 setSeverity={setMaintSeverity}
+                file={maintFile}
+                setFile={setMaintFile}
                 onSubmit={onPostMaintenance}
                 busy={maintBusy}
                 className="maint-compose--card"
