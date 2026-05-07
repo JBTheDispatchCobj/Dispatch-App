@@ -270,10 +270,12 @@ export default function StaffHomePage() {
   }, [loadTasks]);
 
   // Per-bucket derived data: count (incomplete only), nextTask title, nextTaskId for navigation
+  // CHASE #1 PROBE: also expose allCount (total tasks per bucket) for the debug strip below.
   const bucketData = useMemo(() => {
     const partitioned = partitionStaffHomeTasks(tasks);
     const out = {} as Record<BucketKey, {
       count: number;
+      allCount: number;
       nextTask: string;
       nextTaskId: string | null;
     }>;
@@ -283,6 +285,7 @@ export default function StaffHomePage() {
       const first = incomplete[0] ?? null;
       out[key] = {
         count: incomplete.length,
+        allCount: all.length,
         nextTask: first?.title ?? (all.length > 0 ? "All complete" : "No tasks"),
         nextTaskId: first?.id ?? null,
       };
@@ -452,6 +455,25 @@ export default function StaffHomePage() {
         <div className="staff-home__tasksbar">
           <span>Tasks today</span>
           <span>{incompleteTotal} open</span>
+        </div>
+
+        {/* CHASE #1 TEMP PROBE — remove when SOD advancement bug is fixed */}
+        <div style={{
+          background: "#fff8e1",
+          border: "1px solid #f5b400",
+          borderRadius: "8px",
+          padding: "8px 12px",
+          margin: "8px 0",
+          fontFamily: "ui-monospace, monospace",
+          fontSize: "11px",
+          color: "#5a4500",
+          lineHeight: 1.5,
+        }}>
+          <div style={{ fontWeight: 600 }}>DEBUG (chase #1)</div>
+          <div>active = {active}</div>
+          <div>done = [{Array.from(done).sort().join(", ") || "empty"}]</div>
+          <div>tasks total = {tasks.length}</div>
+          <div>per-bucket (incomplete/total): {BUCKET_ORDER.map((k) => `${k}=${bucketData[k].count}/${bucketData[k].allCount}`).join(" · ")}</div>
         </div>
 
         <div className="deck">
