@@ -399,8 +399,16 @@ export default function AdminHomePage() {
                   </div>
                 ),
               )}
-              {watchlistItems.length > 5 && (
-                <div className={styles.laneItemMore}>+{watchlistItems.length - 5} more</div>
+              {watchlistItems.length > 0 && (
+                <Link
+                  href="/admin/maintenance"
+                  className={styles.laneItemMore}
+                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                >
+                  {watchlistItems.length > 5
+                    ? `VIEW ALL · +${watchlistItems.length - 5} MORE`
+                    : "VIEW ALL OPEN ISSUES"}
+                </Link>
               )}
             </div>
           </>
