@@ -238,6 +238,7 @@ export default function ActivityFeed() {
               <option value="all">All</option>
               <option value="task_event">Events</option>
               <option value="note">Notes</option>
+              <option value="maintenance_issue">Maintenance</option>
             </select>
           </label>
 
@@ -292,7 +293,11 @@ export default function ActivityFeed() {
                           {formatTimeAgo(item.created_at)}
                         </time>
                         <span className="af3-kind">
-                          {item.kind === "note" ? "NOTE" : "EVENT"}
+                          {item.kind === "note"
+                            ? "NOTE"
+                            : item.kind === "maintenance_issue"
+                              ? "MAINT"
+                              : "EVENT"}
                         </span>
                       </div>
                     </Link>
