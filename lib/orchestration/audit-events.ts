@@ -34,7 +34,8 @@ const TASK_EVENT_SCHEMA_VERSION = 1 as const;
 export type AuditEventKind =
   | "assignment_cross_hall_override"
   | "assignment_above_standard_load"
-  | "reshuffle_tier_changed";
+  | "reshuffle_tier_changed"
+  | "deep_clean_triggered";
 
 /**
  * Pending audit signal emitted by assignment-policies during a pick. Held

@@ -429,6 +429,10 @@ const WARN_TASK_EVENT_TYPES: ReadonlySet<string> = new Set([
   // Day 34 III.H — admin reassignment is a significant action; surface
   // alongside cross-hall override / above-standard-load on the activity feed.
   taskEventType.reassigned,
+  // Day 43 IV.H — Wed-occupancy Deep Clean trigger. Operationally significant
+  // (changes the work scope on the card) so it surfaces in the default feed
+  // view without a filter flip.
+  taskEventType.deepCleanTriggered,
 ]);
 
 function classifyTaskEventSeverity(
@@ -481,6 +485,7 @@ const TASK_EVENT_VERB: Record<string, string> = {
   [taskEventType.assignmentCrossHallOverride]: "got cross-hall override",
   [taskEventType.assignmentAboveStandardLoad]: "is above standard load",
   [taskEventType.reshuffleTierChanged]: "tier changed",
+  [taskEventType.deepCleanTriggered]: "auto-elevated to Deep",
 };
 
 function composeTaskEventMessage(
@@ -533,6 +538,15 @@ function composeTaskEventMessage(
       ? String(detail.to_staff_name)
       : "Unassigned";
     return `${actorName} reassigned: ${fromName} → ${toName}${titleSuffix}`;
+  }
+
+  // Deep clean trigger (IV.H): elide actorName ("System" service-role) and
+  // surface the trigger context up front. departures_count + recent items
+  // give the admin enough signal to verify the rule fired correctly.
+  if (eventType === taskEventType.deepCleanTriggered && detail) {
+    const departures = detail.departures_count ?? "—";
+    const recentItems = detail.recent_deep_items_count ?? 0;
+    return `Wed deep clean triggered (${departures} dep, ${recentItems} prior items)${titleSuffix}`;
   }
 
   return `${actorName} ${verb}${titleSuffix}`;

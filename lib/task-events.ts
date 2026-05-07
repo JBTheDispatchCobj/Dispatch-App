@@ -21,6 +21,12 @@ export const taskEventType = {
   assignmentCrossHallOverride: "assignment_cross_hall_override",
   assignmentAboveStandardLoad: "assignment_above_standard_load",
   reshuffleTierChanged: "reshuffle_tier_changed",
+  // Day 43 IV.H — Wed-occupancy Deep Clean trigger. Service-role audit
+  // emitted post-insert when the orchestrator auto-elevates a
+  // housekeeping_turn draft from Standard to Deep on a Wednesday. See
+  // docs/TASK_EVENTS_CONTRACT.md for detail-key shapes; constants live
+  // at lib/dispatch-config.ts Section 12 (DEEP_CLEAN_AUTO_TRIGGER).
+  deepCleanTriggered: "deep_clean_triggered",
 } as const;
 
 /** Required on all `task_events.detail` payloads (see docs/TASK_EVENTS_CONTRACT.md). */

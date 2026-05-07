@@ -5,6 +5,7 @@ import { loadRoster } from "./roster.ts";
 import { assignDrafts } from "./assignment-policies.ts";
 import { reshuffle } from "./reshuffle.ts";
 import { writeAuditEvent } from "./audit-events.ts";
+import { elevateDeepClean } from "./deep-clean-elevation.ts";
 
 function makeServiceRoleClient() {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
@@ -120,6 +121,27 @@ export async function run(): Promise<OrchestratorResult> {
     console.log(
       `[orchestrator] After assignment: ${assignedCount} of ${assignedDrafts.length} draft(s) have staff_id populated; ${auditTotal} pending audit event(s) collected.`,
     );
+  }
+
+  // Day 43 IV.H Wed-occupancy Deep Clean trigger — auto-elevate qualifying
+  // housekeeping_turn drafts from Standard to Deep on Wednesdays. The
+  // elevation pass mutates drafts in place and returns a pendingAudits
+  // side-channel aligned by index with assignedDrafts. We merge those audits
+  // into the assignment-policies pendingAudits so the existing post-insert
+  // pairing loop emits all audits with real task_ids.
+  //
+  // Safe to call unconditionally — elevateDeepClean bails immediately on
+  // non-Wednesdays. Runs in both dry-run and live modes; on dry-run the
+  // mutated clean_type lands in task_drafts and the audit emission is
+  // skipped naturally (audits only fire for real tasks rows).
+  if (assignedDrafts.length > 0) {
+    const elevationResult = await elevateDeepClean(assignedDrafts, {
+      client,
+      eventDate: rows[0]?.event_date ?? "",
+    });
+    for (let i = 0; i < pendingAudits.length; i++) {
+      pendingAudits[i].push(...elevationResult.pendingAudits[i]);
+    }
   }
 
   // Persist — single bulk insert into task_drafts (dry-run) or tasks. All-
