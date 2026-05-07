@@ -6436,3 +6436,22 @@ main.wrap--wide {
   align-items: center;
   gap: 4px;
 }
+
+/* === Day 43 hotfix — checklist strike-through ===
+ * The pre-existing .preview-{a,d,s}-430 .brow[data-checked="true"] .brow__label
+ * rules apply text-decoration: line-through to a display:flex container, which
+ * doesn't render reliably across browsers when the line-through is expected
+ * to flow continuously through both flex item children (the number pill +
+ * the bare title text node). This rule targets the inner .brow__num +
+ * .brow__title spans directly (decoupled from the preview prefix) so the
+ * strike-through renders consistently on every staff card that uses the
+ * .brow shape: D-430 Departures, A-430 Arrivals, S-430 Stayovers. The
+ * adjacent JSX in those three cards now wraps {item.displayTitle} in a
+ * <span class="brow__title"> so this rule has a real selector to bite on. */
+.brow[data-checked="true"] .brow__num,
+.brow[data-checked="true"] .brow__title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--accent);
+  color: var(--ink-muted);
+}

@@ -497,7 +497,7 @@ export default function DeparturesCard({
                   <div className="brow__head">
                     <span className="brow__label">
                       <span className="brow__num">{idx + 1}</span>
-                      {item.displayTitle}
+                      <span className="brow__title">{item.displayTitle}</span>
                     </span>
                     <span className="brow__right">
                       <span className="brow__meta">
