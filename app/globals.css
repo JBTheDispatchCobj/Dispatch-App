@@ -5824,12 +5824,25 @@ main.wrap--wide {
 }
 
 /* Day 38 — completed cards stay above the active card, blurred, but
-   are clickable to reopen (Bryan's product rule). handleCardClick in
-   app/staff/page.tsx removes the bucket from `done` and sets it as
-   active; pointer-events: auto here is what lets the click reach the
-   card in the first place (default .bcard sets pointer-events: none
-   for hard-lock sequential gating). */
+   are clickable to view/focus (Bryan's product rule). handleCardClick
+   in app/staff/page.tsx setActive's the clicked card without modifying
+   its done state — checkmark stays. From the focused (active+done)
+   view, the user can click the action button to advance forward.
+   pointer-events: auto here is what lets the click reach the card in
+   the first place (default .bcard sets pointer-events: none for
+   hard-lock sequential gating). */
 .bcard.is-done {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Day 38 — forward-navigation gating. A blurred bucket whose previous
+   buckets in the (dynamic) order are all in `done` becomes clickable
+   so the user can jump directly forward. Per Bryan's product rule
+   "can only move forward if previous completed." Visual stays blurred
+   to match the standard locked appearance; only pointer-events
+   change. */
+.bcard.is-unlockable {
   pointer-events: auto;
   cursor: pointer;
 }

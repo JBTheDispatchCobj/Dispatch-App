@@ -399,11 +399,14 @@ export default function StaffHomePage() {
 
   const handleCardClick = (key: BucketKey) => {
     if (key === active) return;
-    setDone((prev) => {
-      const next = new Set(prev);
-      next.delete(key);
-      return next;
-    });
+    // Day 38 — clicking a non-active card focuses it but does NOT
+    // remove its done state. So clicking a checkmarked SOD navigates
+    // back to view it while keeping the checkmark; user can then click
+    // SOD's still-checkmarked action button to advance forward, OR
+    // click directly on a forward-eligible bucket (is-unlockable, all
+    // previous buckets done) to jump there. Per Bryan's product
+    // clarification — "view" ≠ "re-open." Explicit un-complete
+    // semantics is a separate post-beta enhancement if needed.
     setActive(key);
   };
 
@@ -548,9 +551,20 @@ export default function StaffHomePage() {
             const data = bucketData[key];
             const isActive = active === key;
             const isDone = done.has(key);
+            // Day 38 — forward-unlock gating. A blurred bucket whose
+            // previous buckets in the dynamic order are all in `done`
+            // becomes click-eligible so the user can jump forward
+            // directly. Per Bryan's "can only move forward if previous
+            // completed" rule. CSS gives is-unlockable cards
+            // pointer-events: auto so handleCardClick can fire.
+            const idx = bucketOrder.indexOf(key);
+            const previousAllDone = idx > 0
+              && bucketOrder.slice(0, idx).every((k) => done.has(k));
+            const isUnlockable = previousAllDone && !isActive && !isDone;
             const classes = ["bcard"];
             if (isActive) classes.push("is-active");
             if (isDone) classes.push("is-done");
+            if (isUnlockable) classes.push("is-unlockable");
             const titleColor = stat.titleOnAccent ?? stat.ink;
             return (
               <div
