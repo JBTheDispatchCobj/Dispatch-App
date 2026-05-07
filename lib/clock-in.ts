@@ -49,33 +49,81 @@ export type ClockOutResult =
  * The caller is responsible for ensuring `staffId` matches the live
  * session user's staff record. RLS on public.staff prevents cross-staff
  * writes.
+ *
+ * Day 38: chains `.select()` after the update so we can detect zero-row
+ * writes as a real failure. Without this, supabase-js returns
+ * `error: null` whether the UPDATE matched 0 rows or 1, and we'd silently
+ * flip local React state to "clocked in" while the DB row never changed —
+ * meaning the `staff_clock_in_event_trigger` never fires, no shift_start
+ * lands in inbound_events, the orchestrator never picks up the start,
+ * and no tasks generate. The bucket deck then renders but stays empty.
+ * That was the Day 37 SOD start-shift bug (chase #1).
  */
 export async function clockIn(
   client: SupabaseClient,
   staffId: string,
 ): Promise<ClockInResult> {
   const now = new Date().toISOString();
-  const { error } = await client
+  const { data, error } = await client
     .from("staff")
     .update({ clocked_in_at: now })
-    .eq("id", staffId);
+    .eq("id", staffId)
+    .select("id, clocked_in_at");
   if (error) return { ok: false, message: error.message };
-  return { ok: true, clockedInAt: now };
+  const rows = (data ?? []) as Array<{ id: string; clocked_in_at: string | null }>;
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      message:
+        `Clock-in wrote 0 rows for staff_id ${staffId}. Check that ` +
+        `public.staff has a row with this id and that this user has ` +
+        `permission to update it.`,
+    };
+  }
+  if (rows.length > 1) {
+    return {
+      ok: false,
+      message: `Clock-in wrote ${rows.length} rows for staff_id ${staffId} (expected 1). Aborting.`,
+    };
+  }
+  return { ok: true, clockedInAt: rows[0].clocked_in_at ?? now };
 }
 
 /**
  * Mark the given staff member as clocked out. Nulls clocked_in_at on
  * public.staff. Wrap Shift on E-430 calls this in Phase 2.
+ *
+ * Day 38: same `.select()` zero-row guard as clockIn. Existing call site
+ * at app/staff/task/[id]/page.tsx already treats failure as fire-and-forget
+ * (console.warn), so the new failure case surfaces as a warning rather
+ * than blocking the wrap.
  */
 export async function clockOut(
   client: SupabaseClient,
   staffId: string,
 ): Promise<ClockOutResult> {
-  const { error } = await client
+  const { data, error } = await client
     .from("staff")
     .update({ clocked_in_at: null })
-    .eq("id", staffId);
+    .eq("id", staffId)
+    .select("id");
   if (error) return { ok: false, message: error.message };
+  const rows = (data ?? []) as Array<{ id: string }>;
+  if (rows.length === 0) {
+    return {
+      ok: false,
+      message:
+        `Clock-out wrote 0 rows for staff_id ${staffId}. Check that ` +
+        `public.staff has a row with this id and that this user has ` +
+        `permission to update it.`,
+    };
+  }
+  if (rows.length > 1) {
+    return {
+      ok: false,
+      message: `Clock-out wrote ${rows.length} rows for staff_id ${staffId} (expected 1). Aborting.`,
+    };
+  }
   return { ok: true };
 }
 
