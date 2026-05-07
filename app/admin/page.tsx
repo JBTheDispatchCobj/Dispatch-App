@@ -711,7 +711,7 @@ export default function AdminHomePage() {
           <div className={styles.chev}>&rsaquo;</div>
         </Link>
 
-        <Link href="/admin/tasks#maintenance" className={styles.lane}>
+        <Link href="/admin/maintenance" className={styles.lane}>
           <div className={`${styles.laneIcon} ${styles.laneIconMaint}`}>&#9672;</div>
           <div>
             <div className={styles.laneTitle}>Maintenance</div>
