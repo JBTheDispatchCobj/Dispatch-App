@@ -5823,6 +5823,17 @@ main.wrap--wide {
   margin-top: 0;
 }
 
+/* Day 38 — completed cards stay above the active card, blurred, but
+   are clickable to reopen (Bryan's product rule). handleCardClick in
+   app/staff/page.tsx removes the bucket from `done` and sets it as
+   active; pointer-events: auto here is what lets the click reach the
+   card in the first place (default .bcard sets pointer-events: none
+   for hard-lock sequential gating). */
+.bcard.is-done {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .bcard__head {
   display: flex;
   align-items: center;

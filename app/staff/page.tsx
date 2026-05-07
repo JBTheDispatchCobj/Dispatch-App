@@ -20,6 +20,11 @@ import {
 } from "@/lib/staff-home-bucket";
 import { getTodaysReservationCounts } from "@/lib/reservations";
 import { clockIn, fetchClockedInAt } from "@/lib/clock-in";
+import {
+  PRE_STAYOVER_RESHUFFLE_AT,
+  PROPERTY_TIMEZONE,
+  WEEKEND_DAY_NUMBERS,
+} from "@/lib/dispatch-config";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,7 +46,14 @@ type TaskRow = {
 
 const INCOMPLETE_STATUSES = new Set(["open", "in_progress", "paused", "blocked"]);
 
-const BUCKET_ORDER: BucketKey[] = ["sod", "d", "s", "a", "da", "e"];
+// Standard time-arc order: SOD → Departures → Stayovers → Arrivals → Dailys → EOD.
+// Reshuffled order (Day 38, Bryan's product rule + master plan IV.D / R15):
+// when past PRE_STAYOVER_RESHUFFLE_AT (11 AM weekday / 12 PM weekend) AND
+// Departures still has incomplete tasks, Stayovers/Arrivals move ABOVE
+// Departures so the day's stayover service + check-in window aren't
+// blocked behind a slow turnover.
+const STANDARD_BUCKET_ORDER: BucketKey[] = ["sod", "d", "s", "a", "da", "e"];
+const RESHUFFLED_BUCKET_ORDER: BucketKey[] = ["sod", "s", "a", "d", "da", "e"];
 
 // Type-safe StaffHomeBucket → BucketKey pairs in display order
 const BUCKET_ENTRIES: [StaffHomeBucket, BucketKey][] = [
@@ -90,6 +102,52 @@ function formatShortDate(d: Date): string {
   const weekday = d.toLocaleDateString(undefined, { weekday: "short" });
   const month = d.toLocaleDateString(undefined, { month: "short" });
   return `${weekday} · ${month} ${d.getDate()}`;
+}
+
+// Day 38 — late-Departures reshuffle gate. Returns true when the given
+// timestamp is at or past the PRE_STAYOVER_RESHUFFLE_AT cutoff in the
+// property timezone. Cutoff is 11:00 weekdays / 12:00 weekend per
+// dispatch-config.ts Section 5 (R13–R15). Property timezone (not the
+// staff browser's timezone) so a remote-tested staff still gets
+// Wisconsin semantics; matches the orchestrator's date math everywhere
+// else.
+function isPastReshuffleTime(now: Date): boolean {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: PROPERTY_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    weekday: "short",
+    hour12: false,
+  });
+  const parts = fmt.formatToParts(now);
+  const weekdayShort = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0", 10);
+  const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0", 10);
+  const weekdayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const dayNumber = weekdayMap[weekdayShort] ?? -1;
+  const isWeekend = WEEKEND_DAY_NUMBERS.has(dayNumber);
+  const cutoff = isWeekend
+    ? PRE_STAYOVER_RESHUFFLE_AT.weekend
+    : PRE_STAYOVER_RESHUFFLE_AT.weekday;
+  const [cHourStr, cMinStr] = cutoff.split(":");
+  const cutoffHour = parseInt(cHourStr, 10);
+  const cutoffMin = parseInt(cMinStr, 10);
+  return hour > cutoffHour || (hour === cutoffHour && minute >= cutoffMin);
+}
+
+// Day 38 — pure helper for computing the deck's bucket order at any
+// point in time. Reshuffles when past the cutoff AND Departures has
+// incomplete tasks; otherwise standard order. Used in the render path
+// (bucketOrder useMemo) and in loadTasks's initial-active advancement.
+function computeBucketOrder(
+  now: Date,
+  departuresHasIncomplete: boolean,
+): BucketKey[] {
+  if (!departuresHasIncomplete) return STANDARD_BUCKET_ORDER;
+  if (!isPastReshuffleTime(now)) return STANDARD_BUCKET_ORDER;
+  return RESHUFFLED_BUCKET_ORDER;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +245,23 @@ export default function StaffHomePage() {
       }
     }
     setDone(initialDone);
+
+    // Day 38 chase #1 — advance `active` past initially-done buckets so
+    // the deck doesn't render with a "completed but active" head bucket
+    // (the Day 37 'never unlocks past SOD' symptom). Walks the same
+    // dynamic bucket order the render path uses, so the late-Departures
+    // reshuffle is honored on initial load too.
+    const departuresIncomplete = (partitioned.departures ?? []).some(
+      (t) => INCOMPLETE_STATUSES.has(t.status),
+    );
+    const order = computeBucketOrder(new Date(), departuresIncomplete);
+    for (const k of order) {
+      if (!initialDone.has(k)) {
+        setActive(k);
+        break;
+      }
+    }
+
     setLoadingTasks(false);
   }, []);
 
@@ -270,12 +345,10 @@ export default function StaffHomePage() {
   }, [loadTasks]);
 
   // Per-bucket derived data: count (incomplete only), nextTask title, nextTaskId for navigation
-  // CHASE #1 PROBE: also expose allCount (total tasks per bucket) for the debug strip below.
   const bucketData = useMemo(() => {
     const partitioned = partitionStaffHomeTasks(tasks);
     const out = {} as Record<BucketKey, {
       count: number;
-      allCount: number;
       nextTask: string;
       nextTaskId: string | null;
     }>;
@@ -285,13 +358,23 @@ export default function StaffHomePage() {
       const first = incomplete[0] ?? null;
       out[key] = {
         count: incomplete.length,
-        allCount: all.length,
         nextTask: first?.title ?? (all.length > 0 ? "All complete" : "No tasks"),
         nextTaskId: first?.id ?? null,
       };
     }
     return out;
   }, [tasks]);
+
+  // Day 38 — dynamic bucket order. Re-derived on every render via
+  // computeBucketOrder so the deck reshuffles when the cutoff passes
+  // (subject to `now` being a static state set on mount; deck reflows
+  // when the page reloads or when bucketData.d.count changes via task
+  // updates). Render path + handleActionClick advancement loop both
+  // read from this.
+  const bucketOrder = useMemo<BucketKey[]>(
+    () => computeBucketOrder(now, bucketData.d.count > 0),
+    [now, bucketData],
+  );
 
   const incompleteTotal = useMemo(
     () => tasks.filter((t) => INCOMPLETE_STATUSES.has(t.status)).length,
@@ -346,10 +429,12 @@ export default function StaffHomePage() {
     }
 
     setDone(newDone);
-    const idx = BUCKET_ORDER.indexOf(key);
-    for (let i = idx + 1; i < BUCKET_ORDER.length; i++) {
-      if (!newDone.has(BUCKET_ORDER[i])) {
-        setActive(BUCKET_ORDER[i]);
+    // Day 38 — walk the dynamic bucketOrder so the late-Departures
+    // reshuffle is honored when advancing.
+    const idx = bucketOrder.indexOf(key);
+    for (let i = idx + 1; i < bucketOrder.length; i++) {
+      if (!newDone.has(bucketOrder[i])) {
+        setActive(bucketOrder[i]);
         return;
       }
     }
@@ -457,27 +542,8 @@ export default function StaffHomePage() {
           <span>{incompleteTotal} open</span>
         </div>
 
-        {/* CHASE #1 TEMP PROBE — remove when SOD advancement bug is fixed */}
-        <div style={{
-          background: "#fff8e1",
-          border: "1px solid #f5b400",
-          borderRadius: "8px",
-          padding: "8px 12px",
-          margin: "8px 0",
-          fontFamily: "ui-monospace, monospace",
-          fontSize: "11px",
-          color: "#5a4500",
-          lineHeight: 1.5,
-        }}>
-          <div style={{ fontWeight: 600 }}>DEBUG (chase #1)</div>
-          <div>active = {active}</div>
-          <div>done = [{Array.from(done).sort().join(", ") || "empty"}]</div>
-          <div>tasks total = {tasks.length}</div>
-          <div>per-bucket (incomplete/total): {BUCKET_ORDER.map((k) => `${k}=${bucketData[k].count}/${bucketData[k].allCount}`).join(" · ")}</div>
-        </div>
-
         <div className="deck">
-          {BUCKET_ORDER.map((key) => {
+          {bucketOrder.map((key) => {
             const stat = BUCKET_STATIC[key];
             const data = bucketData[key];
             const isActive = active === key;
