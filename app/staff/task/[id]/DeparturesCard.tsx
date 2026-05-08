@@ -219,6 +219,9 @@ export type DeparturesCardProps = {
   // Used only when task.context.outgoing_guest / incoming_guest is missing.
   outgoingReservation?: Reservation | null;
   incomingReservation?: Reservation | null;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -271,6 +274,7 @@ export default function DeparturesCard({
   onPostMaintenance,
   outgoingReservation = null,
   incomingReservation = null,
+  managerNote = null,
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
 
@@ -365,6 +369,15 @@ export default function DeparturesCard({
             <h1 className="greet__hello">{task.title}</h1>
             <div className="greet__date">{dueTime ? `Due ${dueTime}` : " "}</div>
           </header>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between greeting and Brief so it's first up after the header. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Brief — outgoing / incoming dual column */}
           <section className="brief">

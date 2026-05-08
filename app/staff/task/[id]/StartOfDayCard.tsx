@@ -120,6 +120,9 @@ export type StartOfDayCardProps = {
   setMaintFile: (f: File | null) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -169,6 +172,7 @@ export default function StartOfDayCard({
   setMaintFile,
   maintBusy,
   onPostMaintenance,
+  managerNote = null,
 }: StartOfDayCardProps) {
   const brief = parseSodBrief(task.context);
 
@@ -235,6 +239,16 @@ export default function StartOfDayCard({
                 when schema adds it. Currently locked to artifact example. */}
             <div className="greet__date">1st day of spring</div>
           </header>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between greeting and Daily Brief so it's the first beat after
+              "Hi, <name>" — visible without scrolling on a 390px viewport. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Daily Brief — always render (Gap 9); placeholder cells handle empty state */}
           <section className="brief">

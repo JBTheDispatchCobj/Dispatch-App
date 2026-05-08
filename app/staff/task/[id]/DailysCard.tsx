@@ -81,6 +81,9 @@ export type DailysCardProps = {
   setMaintFile: (f: File | null) => void;
   maintBusy: boolean;
   onPostMaintenance: (e: FormEvent) => void;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -130,6 +133,7 @@ export default function DailysCard({
   setMaintFile,
   maintBusy,
   onPostMaintenance,
+  managerNote = null,
 }: DailysCardProps) {
   const location = parseDailyLocation(task.context) ?? task.location_label;
 
@@ -193,6 +197,15 @@ export default function DailysCard({
             <h1 className="greet__hello">{task.title}</h1>
             <div className="greet__date">{dateLine}</div>
           </header>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between greeting and Team Updates since Da-430 has no brief. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Team Updates — locked placeholder (Gap 2 Option B; no roster data available) */}
           <section className="section">

@@ -6455,3 +6455,38 @@ main.wrap--wide {
   text-decoration-color: var(--accent);
   color: var(--ink-muted);
 }
+
+/* === Day 47 manager note — surfaces task.context.notes (free text from
+ *     AddTaskModal) on every staff bucket card. Bucket-agnostic styling so
+ *     the same block drops into any of the .preview-XXX-430 wrappers.
+ *     Each card picks its own placement (per-card bucket-specific) but
+ *     all share this visual treatment. Rendered only when managerNote
+ *     is non-empty (parent decides via conditional render). === */
+.manager-note {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(31, 26, 18, 0.10);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 0 14px 14px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(20, 10, 5, 0.04);
+}
+.manager-note__label {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: 10px;
+  letter-spacing: 0.20em;
+  color: #6E5F3F;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.manager-note__value {
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: #1F1A12;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

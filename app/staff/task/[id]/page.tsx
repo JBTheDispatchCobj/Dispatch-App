@@ -730,6 +730,14 @@ export default function StaffTaskExecutionPage() {
   const stepsLocked = checklistInteractionDisabled(task.status);
   const checklistTree = resolveChecklist(task.card_type, task.room_number);
 
+  // Free-text task note authored by the manager via AddTaskModal. Stored
+  // top-level at task.context.notes (string). Each bucket card surfaces
+  // this in its own bucket-specific slot per Day 47 ctx.notes display fix.
+  const managerNote = (() => {
+    const v = task.context.notes;
+    return typeof v === "string" && v.trim() ? v.trim() : null;
+  })();
+
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
 
@@ -779,6 +787,7 @@ export default function StaffTaskExecutionPage() {
         setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
+        managerNote={managerNote}
       />
     );
   }
@@ -829,6 +838,7 @@ export default function StaffTaskExecutionPage() {
         setMaintFile={setMaintFile}
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
+        managerNote={managerNote}
       />
     );
   }
@@ -868,6 +878,7 @@ export default function StaffTaskExecutionPage() {
         canWrapKnown={canWrapKnown}
         canWrapBusy={canWrapBusy}
         onRefreshCanWrap={refreshCanWrap}
+        managerNote={managerNote}
       />
     );
   }
@@ -920,6 +931,7 @@ export default function StaffTaskExecutionPage() {
         onPostMaintenance={onPostMaintenance}
         currentReservation={currentReservation}
         lastStayoverStatus={lastStayoverStatus}
+        managerNote={managerNote}
       />
     );
   }
@@ -971,6 +983,7 @@ export default function StaffTaskExecutionPage() {
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
         incomingReservation={incomingReservation}
+        managerNote={managerNote}
       />
     );
   }
@@ -1029,6 +1042,7 @@ export default function StaffTaskExecutionPage() {
         onPostMaintenance={onPostMaintenance}
         outgoingReservation={currentReservation}
         incomingReservation={incomingReservation}
+        managerNote={managerNote}
       />
     );
   }

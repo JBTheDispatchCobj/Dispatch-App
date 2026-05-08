@@ -99,6 +99,9 @@ export type EODCardProps = {
   canWrapKnown: boolean;
   canWrapBusy: boolean;
   onRefreshCanWrap: () => void;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -137,6 +140,7 @@ export default function EODCard({
   canWrapKnown,
   canWrapBusy,
   onRefreshCanWrap,
+  managerNote = null,
 }: EODCardProps) {
   const summary = parseEodSummary(task.context);
 
@@ -218,6 +222,16 @@ export default function EODCard({
             </h1>
             <div className="greet__date">{dateLine}</div>
           </header>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between greeting and Team Updates so it's first up after the
+              "You crushed it" headline. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Team Updates — locked placeholder (Gap 4; no roster data available) */}
           <section className="section">

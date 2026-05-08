@@ -303,6 +303,9 @@ export type StayoversCardProps = {
   // automatically once the orchestrator pre-set + admin override chase
   // ships.
   lastStayoverStatus?: LastStayoverStatus | null;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -355,6 +358,7 @@ export default function StayoversCard({
   onPostMaintenance,
   currentReservation = null,
   lastStayoverStatus = null,
+  managerNote = null,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -539,6 +543,15 @@ export default function StayoversCard({
               })}
             </div>
           </section>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between status panel and Brief so it's first up after status. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Brief — guest / nights / type (—) / admin-set notes */}
           <section className="brief">

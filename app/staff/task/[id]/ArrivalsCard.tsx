@@ -182,6 +182,9 @@ export type ArrivalsCardProps = {
   // Master plan V.A BR4 — reservation fallback for the incoming guest brief.
   // Used only when task.context.incoming_guest is missing.
   incomingReservation?: Reservation | null;
+  // Day 47 — free-text note authored by manager via AddTaskModal,
+  // stored at task.context.notes. Surfaced inline via .manager-note.
+  managerNote?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -232,6 +235,7 @@ export default function ArrivalsCard({
   maintBusy,
   onPostMaintenance,
   incomingReservation = null,
+  managerNote = null,
 }: ArrivalsCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
 
@@ -345,6 +349,15 @@ export default function ArrivalsCard({
             <h1 className="greet__hello">{task.title}</h1>
             <div className="greet__date">{dateLine || " "}</div>
           </header>
+
+          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
+              between greeting and Brief so it's visible without scrolling. */}
+          {managerNote ? (
+            <div className="manager-note">
+              <span className="manager-note__label">Manager note</span>
+              <span className="manager-note__value">{managerNote}</span>
+            </div>
+          ) : null}
 
           {/* Brief — guest / nights / requests / setup (extras omitted: no data source) */}
           <section className="brief">
