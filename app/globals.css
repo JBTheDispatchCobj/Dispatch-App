@@ -2,14 +2,14 @@
   --background: #ffffff;
   --foreground: #171717;
   --link: #2563eb;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --link: #60a5fa;
-  }
+  /* Dispatch is cream-locked light-mode only per Day 20 design tokens.
+     The Next.js scaffold default included a prefers-color-scheme: dark
+     block here that flipped --foreground to #ededed; on the cream
+     surfaces (admin home, activity feed) text inherited that near-white
+     value and went invisible against cream. Removed Day 45 after prod
+     smoke-test surfaced the bug. .error has its own dark-mode override
+     further down (harmless single-color cosmetic). */
+  color-scheme: light;
 }
 
 * {
