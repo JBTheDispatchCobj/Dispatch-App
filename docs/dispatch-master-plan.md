@@ -20,6 +20,150 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 ---
 
+## Current state (Day 49) — what's actually left
+
+*Added 2026-05-08 (Day 49). The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-49)." This section is the live filter on what remains post-beta as of end of Day 49.*
+
+**Headline count: 93 items remaining** = 62 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 93 once dependencies collapse.
+
+**Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
+1. Manager/admin can create + assign tasks with bucket → SHIPPED.
+2. Staff sees 6 buckets in time-arc order → SHIPPED.
+3. Staff can open card, pause, complete checklist, upload note/image, mark done → SHIPPED.
+4. Every state change writes `task_events` (`schema_version: 1`) → SHIPPED.
+5. Vercel deploy at https://dispatch-app-iota.vercel.app/ → SHIPPED.
+
+### Section I — Staff cards (6 items)
+
+- **I.D — SOD-430 Start of Day card data wirings.** Daily Brief notes/at-a-glance/team list/weather/events/guest-context wiring + KB-driven tasks section + compose drawers. Blocked on V.D weather, V.E Google Events.
+- **I.E — D-430 Departures card full data layer.** Outgoing/incoming guest blocks, Departure Status master-table drive, Setup section temp/scent wiring, Arrival Status mirror, clean-type detection, Deep Clean tray with `deep_clean_history` per-task 30-day, I'm Done time matrix. Blocked on II.F admin Departure Status master, VI.F D-430 matrix from Jennifer, V.D weather.
+- **I.F — A-430 Arrivals card full data layer.** Header copy fix (Open Assumption #1), live guest details, Setup section, checklist Type header + sections from Arrival KB doc. Blocked on V.D weather + V.A BR4 downstream wiring.
+- **I.G — S-430 Stayovers full execution.** Status pill time-target display, full guest details wiring, Status-driven auto-complete + auto-archive, Sheet Change skip semantics. Sub-item 1 closed Day 45; sub-items 2/3 blocked on chase #1 (`stayover_status` orchestrator pre-set), sub-item 4 blocked on Jennifer KB.
+- **I.H — Da-430 Dailys card.** Realtime task reassignment, Team Update live, KB-driven tasks, per-task time estimates, distribution rules. Blocked on IV.F `dailys.ts` rule file, VI.G Jennifer's daily-task list, VII.G team roster view.
+- **I.I — E-430 End of Day card.** Day summary computed, incomplete roll-up, Note Review + assignments, Supply Needs sink, What's Next preview, Wrap Shift target/gating. Blocked on IV.F `eod.ts`, VI.C Affirmations, VII.A supply_needs schema, team roster, tomorrow's data joins.
+
+### Section II — Admin surfaces (4 items)
+
+- **II.I — Admin Category Cards (10 of 11 Note Types).** Maintenance built; copy 3-sink pattern for Guest Needs, Guest Profile, Guest Damage, Guest Update, Supply, Admin, Team, Change/Update, Employee, Needed. Post-beta polish, no blocker.
+- **II.J — Admin KB Editing Tool (`/admin/kb/*`).** Tree-view editor with add/remove/relocate/branch operations + Updates panel cascade. XL. Explicitly post-beta; blocked on VII.H KB versioning + KB authoring stability.
+- **II.K — Admin Calendar.** Scheduling, pre-shift assignment, coverage detection, 14-day visualization, payroll, staff-shortage alerts. Explicitly post-beta.
+- **II.L — Admin Weekly Recap.** Cream-inset recap surface. Out of beta scope.
+
+### Section III — Cross-cutters (6 items)
+
+- **III.C — Updates panel** (admin authoring + staff display + KB cascade). Two-path Updates with red/green shift highlighting + 2-shift admin escalation. Blocked on II.J KB Editing Tool.
+- **III.F — Time tracking dual-sink + between-cards.** Card-open dual-sink to staff profile + location table; 1-min standard + 2x5+1x15 break allowance with admin-flag "approved break"; threshold breaches trigger note. Pending III.I repeated-instance trigger.
+- **III.G — Section-level sequential gating.** Bucket-level closed Day 30; within-card section gating still partial.
+- **III.H — Card rotation + pre-stayover reshuffle.** Reassignment dual-logging closed Days 34-35; intra-bucket completed-card rotation + 11am/12pm pre-stayover reshuffle still UNBUILT (IV.D pairs).
+- **III.I — Repeated-instance meta-trigger.** Fires additional admin log + note when per-instance triggers exceed thresholds over windows. Pairs with IV.J.
+- **III.K — Audit / archive closed-card search.** Searchable by date/guest/type/location/user with exceptions filter. Read-only forever; schema strategy unresolved.
+
+### Section IV — Rule engine (10 items)
+
+- **IV.A — Auto-assignment policies.** New `lib/orchestration/assignment-policies.ts` consuming dispatch-config exports; primary/non-primary lanes, departure within-hall priority, cross-cutting bumps. XL, blocking — without it every promoted draft lands `staff_id: null`.
+- **IV.B — Hallway adjacency rule.** Don't move housekeeper between halls before starting hall complete; admin-overridable.
+- **IV.C — No-orphan-cards rule.** Every card always assigned to someone on shift; 0-housekeepers escalation.
+- **IV.D — Pre-stayover reshuffle phase.** 11am weekday / 12pm weekend reshuffle (in-flight cards not interrupted).
+- **IV.E — `assignment.specific_member_id` per Jennifer's policy.** Fill `[ASK JENNIFER]` markers in arrivals/departures/stayovers rule files. Blocked on Jennifer's standing assignment policy.
+- **IV.F — `dailys.ts` + `eod.ts` rule files.** Currently empty arrays. Blocks I.H + I.I.
+- **IV.G — D-430 time-target matrix fill.** 18 null cells in dispatch-config. AUTHORING; blocked on Jennifer's Rules for HouseKeeping doc. Pairs with VI.F.
+- **IV.H Phase B — Wed-occupancy Deep Clean cond 3 occupancy gate.** Phase A closed Day 43; Phase B blocked on Open Jennifer question (data source for occupied-room-nights + total-rooms denominator).
+- **IV.I — Realtime task reassignment for Dailys.** Unassigned dailys redistribute as staff complete cards.
+- **IV.J — Repeated-instance meta-trigger interpreter.** Engine-side detection logic. Pairs with III.I.
+
+### Section V — Data layer + integrations (6 items)
+
+- **V.B — BR5 reservations cancellation/modification edge cases.** Webhook idempotency, modification cascades, soft-delete filtering edges.
+- **V.C — Channel manager Cloudbeds (or fallback).** XL post-quote. Blocked on Bryan's Cloudbeds sales quote. Chase queue #3.
+- **V.D — Weather API integration (D-430 Temperature).** 1pm-6pm avg, fallback to last known + flag.
+- **V.E — Google Events / Holidays integration (SOD-430).** Admin events + Google holidays merged.
+- **V.F — Holiday calendar (R13 weekend rule extension).** Saturday/Sunday/Holidays. Bryan leans toward deferring to admin override pre-beta.
+- **V.H — ResNexus replacement payload mapping.** One-word `cloudbeds` source enum extension. Pairs with V.C.
+
+### Section VI — Jennifer's KB authoring lane (8 items, parallel non-blocking)
+
+- **VI.A — Detail prose for "Text to come" placeholders** in `lib/checklists/variants/*.ts`.
+- **VI.B — Welcome-specific checklist forks (A-430, S-430).** Currently aliased to D-430 canonical 7-item.
+- **VI.C — Affirmations preset list (E-430 Status section).**
+- **VI.D — Rotating phrases libraries** (E-430 wrap headlines, SOD-430 date-context).
+- **VI.E — Variant lists spec** (Sheet Change, Pet, Deep, *** guest, Long-term). Decision pending: separate sub-trees with `applies_when` vs full alternate trees.
+- **VI.F — D-430 time-target matrix** (18 null cells). Cross-references IV.G.
+- **VI.G — Per-Daily/Weekly/Monthly task time estimates (Da-430).**
+- **VI.H — Note Type writing examples / templates per category.**
+
+### Section VII — Schema + RLS (8 items)
+
+- **VII.A — Supply needs table** (or derived view from `notes` where `note_type='Supply'`). Decision before adding.
+- **VII.B — Maintenance issues table verification + extension.** Verify severity column + location/type FK relationships against Day 24 schema.
+- **VII.C — Audit / archive search index strategy.** Index existing tables + `archived_at` flag, vs dedicated audit_log.
+- **VII.E — Activity feed events table-or-view decision.** View probably wins for beta; decision pending formalization.
+- **VII.F — Photo storage RLS policies tighten path.** Audited Day 40, kept as-is for beta. Tighten requires switching to signed-URL async fetch with token rotation. Revisit when tenancy boundaries get real.
+- **VII.G — Team roster derived view.** From `staff` + clock-in events. Blocks I.H + I.I team displays.
+- **VII.H — KB versioning + change history.** Affects Updates panel highlighting, audit trail, rollback. Tied to II.J.
+- **VII.I — Weather + holiday calendar tables.** Optional caching; can defer to live API calls pre-beta.
+
+### Section VIII — Deploy + ops (3 items)
+
+- **VIII.F — pg_cron / Vercel cron migration.** Currently GitHub Actions; move post-beta.
+- **VIII.G — Backup / restore strategy documentation.** Supabase auto-backup sufficient for beta; document restore.
+- **Vercel checklist update** to lead with web UI flow (CLI tripped on CC OAuth boundary). Small post-beta follow-up Bryan can request.
+
+### Section IX — Quality / non-functional (5 items)
+
+- **IX.A — RLS hardening as new tables land.** Ongoing per table.
+- **IX.B — Performance / index tuning as data scales.** Currently sized 21-room; multi-property requires re-tuning.
+- **IX.C — Multi-property timezone support.** `PROPERTY_TIMEZONE` hardcoded `America/Chicago`; needs per-property column.
+- **IX.D — Error reporting / monitoring SDK.** Currently disallowed per CLAUDE.md; post-beta reconsideration.
+- **IX.E — Idempotency on all external integrations.** Reservations webhook idempotency keys, photo upload retries, cron retry semantics.
+
+### Section X — Explicit post-beta deferred (master plan footer, 6 items)
+
+- A. In-app KB-driven card generation agent.
+- B. Multi-property support.
+- F. Advanced photo pipeline (compression, multiple per note, captions).
+- G. @mention autocomplete in notes.
+- H. Multi-tenant / SaaS-mode.
+- I. ResNexus integration (dead — Cloudbeds replaces; tracked under V.C/V.H).
+
+### STATE.md standing-tabled (22 items, not tied to a master plan letter)
+
+- `MODULE_TYPELESS_PACKAGE_JSON` Node warning (one-line follow-up).
+- Re-key `dispatch-config.ts` Section 14 maps from full names to UUIDs.
+- Legacy `task_comments` table cleanup (pre-beta dev data only).
+- `lib/task-event-types.ts` extraction (post-beta polish — Day 29 Phase 7 duplicated 4 string literals + `TASK_EVENT_SCHEMA_VERSION` across 3 orchestration files).
+- v1 → v2 `task_events` vocabulary widening (admin Save & Deploy `priority`/`admin_notes` edits surface in activity feed).
+- II.G dulled-color tokens (`--sod-dull-*`, `--maintenance-dull-*`).
+- Same-day re-clock loses pair accuracy in `staff_clock_in_event_trigger`.
+- 24h `created_at` window for cross-staff EOD activation gate (multi-shift / overnight scenarios).
+- `onImDone` `clockOut` is fire-and-forget on failure (admin SQL recovery only).
+- High-severity push notification for maintenance issues (true live push deferred — beta uses sort-boost only).
+- E-430 not a Maintenance host (defensive prop block stays).
+- No automatic `tasks` row on maintenance issue insert (KISS — `maintenance_issues` row IS the third sink).
+- No same-day-shift dedup on maintenance.
+- Per-target-staff activity feed query (filter on `detail->>from_staff_id` / `to_staff_id` for III.H reassign rows).
+- Verification kit data persistence (Lizzie test tasks left from Day 31/34).
+- `/staff` page `now` set once at mount; late-Departures reshuffle won't fire mid-session without refresh.
+- Explicit "re-open" / "un-complete" semantics post-Day-38 — `done` state is one-way; long-press undo post-beta.
+- `/admin/maintenance/[id]` back-arrow always points to `/admin` (no context-aware return-to-list).
+- Severity chip `severityBusy` indicator on `/admin/maintenance/[id]` invisible — no "Saving…" feedback.
+- No "recently resolved" maintenance index (`/admin/maintenance/resolved` view).
+- Admin-side photo thumbnail render not wired on `/admin/tasks/[id]` activity panel (audit trail only).
+- Legacy 3-item checklist seed rows on pre-Day-49-hotfix `housekeeping_turn` tasks (cleanup SQL queued, destructive).
+
+### STATE.md Open Jennifer questions (9 items)
+
+- Six `[ASSUMED]` ADA cells in Section 9 D-430 matrix.
+- D-430 tolerance convention — strict-bounds vs implicit ~20%?
+- `AddTaskModal` maintenance-routing — confirm `staff_home_bucket: "start_of_day"` or surface as own bucket.
+- Maintenance compose drawer cascading filter logic — swap flat dropdowns for runtime Location → Item → Type tree once authored.
+- Reference Wednesday `2026-01-07` for `staff_segments_v`.
+- "Courtney Manager" name format — surname or role marker leak?
+- Stray `Lizzie` orphan row (id `fc2c4280-...`).
+- Two `[ASK JENNIFER]` flags in `dispatch-config.ts` Section 14 (primary-staff identity + role-vs-spec drift).
+- IV.H Phase B occupancy gate data source + total-room-count denominator.
+
+---
+
 # I. Staff execution surfaces
 
 ## I.A. Staff home — final polish
