@@ -79,6 +79,10 @@ import {
   getNextIncomingReservationForRoom,
   type Reservation,
 } from "@/lib/reservations";
+import {
+  getLastStayoverStatusForRoom,
+  type LastStayoverStatus,
+} from "@/lib/stayover-history";
 
 function roomFromTitle(title: string | null): string | null {
   if (!title) return null;
@@ -169,6 +173,15 @@ export default function StaffTaskExecutionPage() {
     useState<Reservation | null>(null);
   const [incomingReservation, setIncomingReservation] =
     useState<Reservation | null>(null);
+
+  // Master plan I.G sub-item 1 — Last Stayover Status lookup. Loaded in
+  // parallel alongside the V.A BR4 reservation fetches when the task is a
+  // stayover with a room_number. Defensive: returns null today (no setter
+  // writes context.stayover_status — that's the deferred orchestrator
+  // pre-set + admin override chase). When that lands, this populates
+  // automatically with no further code changes here.
+  const [lastStayoverStatus, setLastStayoverStatus] =
+    useState<LastStayoverStatus | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -314,33 +327,46 @@ export default function StaffTaskExecutionPage() {
     const needsCurrent = !!room && (isDeparture || isStayover);
     const needsIncoming = !!room && (isDeparture || isArrival);
 
-    const [noteRows, maintRows, chItems, currentRes, incomingRes] =
-      await Promise.all([
-        listNotesForTask(supabase, id),
-        listMaintenanceIssuesForTask(supabase, id),
-        loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
-          console.warn("[staff-task-exec checklist]", e.message);
-          return [] as ExecutionChecklistItem[];
-        }),
-        needsCurrent && room
-          ? getCurrentReservationForRoom(room).catch((e: Error) => {
-              console.warn("[staff-task-exec reservation:current]", e.message);
-              return null;
-            })
-          : Promise.resolve(null),
-        needsIncoming && room
-          ? getNextIncomingReservationForRoom(room).catch((e: Error) => {
-              console.warn("[staff-task-exec reservation:incoming]", e.message);
-              return null;
-            })
-          : Promise.resolve(null),
-      ]);
+    const [
+      noteRows,
+      maintRows,
+      chItems,
+      currentRes,
+      incomingRes,
+      lastStayoverStat,
+    ] = await Promise.all([
+      listNotesForTask(supabase, id),
+      listMaintenanceIssuesForTask(supabase, id),
+      loadStaffExecutionChecklist(supabase, id).catch((e: Error) => {
+        console.warn("[staff-task-exec checklist]", e.message);
+        return [] as ExecutionChecklistItem[];
+      }),
+      needsCurrent && room
+        ? getCurrentReservationForRoom(room).catch((e: Error) => {
+            console.warn("[staff-task-exec reservation:current]", e.message);
+            return null;
+          })
+        : Promise.resolve(null),
+      needsIncoming && room
+        ? getNextIncomingReservationForRoom(room).catch((e: Error) => {
+            console.warn("[staff-task-exec reservation:incoming]", e.message);
+            return null;
+          })
+        : Promise.resolve(null),
+      isStayover && room
+        ? getLastStayoverStatusForRoom(room, id).catch((e: Error) => {
+            console.warn("[staff-task-exec last-stayover-status]", e.message);
+            return null;
+          })
+        : Promise.resolve(null),
+    ]);
 
     setNotes(noteRows);
     setMaintenanceItems(maintRows);
     setChecklist(chItems);
     setCurrentReservation(currentRes);
     setIncomingReservation(incomingRes);
+    setLastStayoverStatus(lastStayoverStat);
 
     setReady(true);
   }, [id]);
@@ -893,6 +919,7 @@ export default function StaffTaskExecutionPage() {
         maintBusy={maintBusy}
         onPostMaintenance={onPostMaintenance}
         currentReservation={currentReservation}
+        lastStayoverStatus={lastStayoverStatus}
       />
     );
   }

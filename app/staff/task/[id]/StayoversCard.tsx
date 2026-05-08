@@ -9,6 +9,7 @@ import {
   todayInPropertyTz,
   type Reservation,
 } from "@/lib/reservations";
+import { type LastStayoverStatus } from "@/lib/stayover-history";
 import NoteComposeForm from "./NoteComposeForm";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
@@ -203,6 +204,46 @@ function checklistInteractionDisabled(status: string): boolean {
   return status === "done" || status === "blocked" || status === "paused";
 }
 
+// Master plan I.G sub-item 1 — Last Stayover Status brief display.
+// Maps a stayover_status key to the short label used in the brief row
+// (kept short for the value column on a 390px viewport). Unknown legacy
+// keys pass through unchanged.
+function statusBriefLabel(key: string): string {
+  switch (key) {
+    case "dnd":          return "DND";
+    case "guest_ok":     return "Guest OK";
+    case "desk_ok":      return "Desk OK";
+    case "sheet_change": return "Sheet Change";
+    case "done":         return "Done";
+    default:             return key;
+  }
+}
+
+function formatRelativeDate(iso: string): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "";
+  const now = new Date();
+  const sameYMD = (a: Date, b: Date): boolean =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  if (sameYMD(then, now)) return "today";
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameYMD(then, yesterday)) return "yesterday";
+  const ms = now.getTime() - then.getTime();
+  const days = Math.max(1, Math.floor(ms / 86_400_000));
+  return `${days} days ago`;
+}
+
+function formatLastStatus(s: LastStayoverStatus | null | undefined): string {
+  if (!s || s.statuses.length === 0) return "—";
+  const first = s.statuses[0];
+  const label = statusBriefLabel(first);
+  const when = formatRelativeDate(s.recorded_at);
+  return when ? `${label} · ${when}` : label;
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -257,6 +298,11 @@ export type StayoversCardProps = {
   // Master plan V.A BR4 — reservation fallback for the current guest brief.
   // Used only when task.context.current_guest is missing.
   currentReservation?: Reservation | null;
+  // Master plan I.G sub-item 1 — most recent prior stayover/turn status
+  // for this room. null today (no setter writes status yet); will populate
+  // automatically once the orchestrator pre-set + admin override chase
+  // ships.
+  lastStayoverStatus?: LastStayoverStatus | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -308,6 +354,7 @@ export default function StayoversCard({
   maintBusy,
   onPostMaintenance,
   currentReservation = null,
+  lastStayoverStatus = null,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -504,8 +551,8 @@ export default function StayoversCard({
               <span className="briefrow__value">{nightsDisplay}</span>
             </div>
             <div className="briefrow">
-              <span className="briefrow__label">Type</span>
-              <span className="briefrow__value">—</span>
+              <span className="briefrow__label">Last status</span>
+              <span className="briefrow__value">{formatLastStatus(lastStayoverStatus)}</span>
             </div>
             <div className="briefrow">
               <span className="briefrow__label">Notes</span>
