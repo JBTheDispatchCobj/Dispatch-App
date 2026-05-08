@@ -20,11 +20,11 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 ---
 
-## Current state (Day 49) — what's actually left
+## Current state (Day 50) — what's actually left
 
-*Added 2026-05-08 (Day 49). The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-49)." This section is the live filter on what remains post-beta as of end of Day 49.*
+*Added 2026-05-08 (Day 49); refreshed end of Day 50. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-50)." This section is the live filter on what remains post-beta as of end of Day 50.*
 
-**Headline count: 93 items remaining** = 62 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 93 once dependencies collapse.
+**Headline count: 92 items remaining** = 61 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 92 once dependencies collapse.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
@@ -102,11 +102,10 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 - **VII.H — KB versioning + change history.** Affects Updates panel highlighting, audit trail, rollback. Tied to II.J.
 - **VII.I — Weather + holiday calendar tables.** Optional caching; can defer to live API calls pre-beta.
 
-### Section VIII — Deploy + ops (3 items)
+### Section VIII — Deploy + ops (2 items)
 
 - **VIII.F — pg_cron / Vercel cron migration.** Currently GitHub Actions; move post-beta.
 - **VIII.G — Backup / restore strategy documentation.** Supabase auto-backup sufficient for beta; document restore.
-- **Vercel checklist update** to lead with web UI flow (CLI tripped on CC OAuth boundary). Small post-beta follow-up Bryan can request.
 
 ### Section IX — Quality / non-functional (5 items)
 
