@@ -11,6 +11,7 @@ import {
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../../../profile-load-error";
 import ReassignPanel from "@/components/admin/ReassignPanel";
+import StayoverStatusPanel from "@/components/admin/StayoverStatusPanel";
 import { taskEventType } from "@/lib/task-events";
 import styles from "./page.module.css";
 
@@ -269,6 +270,7 @@ function readAdminNotes(context: Record<string, unknown> | null): string {
 export default function AdminTaskViewPage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Live task + auxiliary state.
   const [task, setTask] = useState<LiveTask | null>(null);
@@ -453,7 +455,11 @@ export default function AdminTaskViewPage() {
         window.location.replace("/");
         return;
       }
-      if (!cancelled) setReady(true);
+      if (!cancelled) {
+        // Day 46 — hydrate userId for StayoverStatusPanel audit-event author.
+        setUserId(user.id);
+        setReady(true);
+      }
     })();
     return () => {
       cancelled = true;
@@ -688,6 +694,23 @@ export default function AdminTaskViewPage() {
               )}
             </div>
           </div>
+
+          {/* Stayover status panel — Day 46 master plan I.G prerequisite.
+              Mounts only on stayover cards. Mirrors ReassignPanel placement
+              on manager-card-detail.tsx (above ReassignPanel) and the Day 35
+              "discrete admin panels mount on both /tasks/[id] AND
+              /admin/tasks/[id]" precedent. */}
+          {id && id !== "unknown" && task.card_type === "stayover" ? (
+            <StayoverStatusPanel
+              taskId={id}
+              userId={userId}
+              context={task.context}
+              onSuccess={async () => {
+                await loadTask();
+                await loadActivity();
+              }}
+            />
+          ) : null}
 
           {/* Reassign panel — live, plumbed to reassignTask helper. */}
           {id && id !== "unknown" ? (

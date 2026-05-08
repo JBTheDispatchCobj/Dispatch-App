@@ -59,7 +59,11 @@ function arraysEqual(a: string[], b: string[]): boolean {
 type Props = {
   taskId: string;
   userId: string | null;
-  context: Record<string, unknown>;
+  // Nullable to match the admin task view's LiveTask.context shape
+  // (set to null when the row's context column is missing or non-object).
+  // Internal logic already handles null defensively via context?.stayover_status
+  // and { ...(context ?? {}), ... } merge spread.
+  context: Record<string, unknown> | null;
   onSuccess?: () => void | Promise<void>;
 };
 
