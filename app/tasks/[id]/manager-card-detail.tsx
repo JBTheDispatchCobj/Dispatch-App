@@ -15,6 +15,7 @@ import {
 } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
 import ReassignPanel from "@/components/admin/ReassignPanel";
+import StayoverStatusPanel from "@/components/admin/StayoverStatusPanel";
 import {
   checklistProgress,
   displayAssignee,
@@ -603,6 +604,18 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
           router.refresh();
         }}
       />
+
+      {task.card_type === "stayover" ? (
+        <StayoverStatusPanel
+          taskId={task.id}
+          userId={userId}
+          context={task.context}
+          onSuccess={async () => {
+            await load();
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       <section className="card-panel">
         <form className="card-form" onSubmit={onManagerSave}>

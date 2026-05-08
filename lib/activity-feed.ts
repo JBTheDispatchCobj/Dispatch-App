@@ -486,6 +486,7 @@ const TASK_EVENT_VERB: Record<string, string> = {
   [taskEventType.assignmentAboveStandardLoad]: "is above standard load",
   [taskEventType.reshuffleTierChanged]: "tier changed",
   [taskEventType.deepCleanTriggered]: "auto-elevated to Deep",
+  [taskEventType.stayoverStatusOverridden]: "set stayover status",
 };
 
 function composeTaskEventMessage(

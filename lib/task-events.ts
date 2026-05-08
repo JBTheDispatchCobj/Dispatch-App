@@ -27,6 +27,13 @@ export const taskEventType = {
   // docs/TASK_EVENTS_CONTRACT.md for detail-key shapes; constants live
   // at lib/dispatch-config.ts Section 12 (DEEP_CLEAN_AUTO_TRIGGER).
   deepCleanTriggered: "deep_clean_triggered",
+  // Day 46 — admin override of context.stayover_status from
+  // /tasks/[id] via <StayoverStatusPanel/>. Master plan I.G prerequisite
+  // for sub-items 2/3/4 (status-driven auto-complete + Sheet Change
+  // skip semantics). Today the only writer of stayover_status; staff
+  // toggle was locked display-only Day 21 and orchestrator pre-set is
+  // deferred. detail keys per docs/TASK_EVENTS_CONTRACT.md.
+  stayoverStatusOverridden: "stayover_status_overridden",
 } as const;
 
 /** Required on all `task_events.detail` payloads (see docs/TASK_EVENTS_CONTRACT.md). */
