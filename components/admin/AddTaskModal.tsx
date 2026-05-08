@@ -19,6 +19,7 @@ import styles from "./AddTaskModal.module.css";
 /* ------------------------------------------------------------------ */
 
 type ModalBucket =
+  | "start_of_day"
   | "arrivals"
   | "departures"
   | "stayovers"
@@ -50,6 +51,7 @@ type BucketConfig = {
 };
 
 const BUCKET_CONFIG: Record<ModalBucket, BucketConfig> = {
+  start_of_day:{ label: "Start of Day",shortLabel: "SOD",      body: "var(--sod-accent)",       header: "var(--sod-accent-ink)",     text: "var(--sod-accent-ink)"   },
   arrivals:    { label: "Arrivals",    shortLabel: "Arrival",  body: "var(--arrivals-body)",    header: "var(--arrivals-header)",    text: "var(--arrivals-text)"    },
   departures:  { label: "Departures",  shortLabel: "Depart",   body: "var(--departures-body)",  header: "var(--departures-header)",  text: "var(--departures-text)"  },
   stayovers:   { label: "Stayovers",   shortLabel: "Stay",     body: "var(--stayovers-body)",   header: "var(--stayovers-header)",   text: "var(--stayovers-text)"   },
@@ -59,6 +61,7 @@ const BUCKET_CONFIG: Record<ModalBucket, BucketConfig> = {
 };
 
 const BUCKET_ORDER: ModalBucket[] = [
+  "start_of_day",
   "arrivals",
   "departures",
   "stayovers",
@@ -93,6 +96,7 @@ function staffInitials(name: string): string {
 }
 
 function bucketToCardType(bucket: ModalBucket): string {
+  if (bucket === "start_of_day") return "start_of_day";
   if (bucket === "maintenance") return "maintenance";
   if (bucket === "departures") return "housekeeping_turn";
   if (bucket === "arrivals") return "arrival";

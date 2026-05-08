@@ -28,7 +28,6 @@ const CARD_TITLE_VERB: Record<string, string> = {
   dailys: "Property round",
   eod: "End of day",
   maintenance: "Maintenance",
-  general_report: "Report",
 };
 
 // card_type → staff_home_bucket (the JSONB key staff home reads from to bucket
@@ -40,7 +39,6 @@ const CARD_TYPE_TO_BUCKET: Record<string, string> = {
   dailys: "dailys",
   eod: "eod",
   maintenance: "departures", // maintenance lives in the departures bucket pre-beta
-  general_report: "start_of_day",
 };
 
 // =============================================================================
