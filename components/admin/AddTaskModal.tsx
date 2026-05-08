@@ -48,10 +48,16 @@ type BucketConfig = {
   body: string;
   header: string;
   text: string;
+  // Optional override for the Dispatch button text color. SOD's `header`
+  // and `text` both resolve to --sod-accent-ink (dark brown), which
+  // would render the Dispatch button dark-on-dark / invisible. Other
+  // buckets have naturally distinct header vs text so they don't need
+  // this override.
+  buttonText?: string;
 };
 
 const BUCKET_CONFIG: Record<ModalBucket, BucketConfig> = {
-  start_of_day:{ label: "Start of Day",shortLabel: "SOD",      body: "var(--sod-accent)",       header: "var(--sod-accent-ink)",     text: "var(--sod-accent-ink)"   },
+  start_of_day:{ label: "Start of Day",shortLabel: "SOD",      body: "var(--sod-accent)",       header: "var(--sod-accent-ink)",     text: "var(--sod-accent-ink)",   buttonText: "var(--shell-cream)" },
   arrivals:    { label: "Arrivals",    shortLabel: "Arrival",  body: "var(--arrivals-body)",    header: "var(--arrivals-header)",    text: "var(--arrivals-text)"    },
   departures:  { label: "Departures",  shortLabel: "Depart",   body: "var(--departures-body)",  header: "var(--departures-header)",  text: "var(--departures-text)"  },
   stayovers:   { label: "Stayovers",   shortLabel: "Stay",     body: "var(--stayovers-body)",   header: "var(--stayovers-header)",   text: "var(--stayovers-text)"   },
@@ -221,7 +227,8 @@ export default function AddTaskModal({
   const dispatchBtnVars = bucket
     ? ({
         "--dispatch-bg": BUCKET_CONFIG[bucket].header,
-        "--dispatch-color": BUCKET_CONFIG[bucket].text,
+        "--dispatch-color":
+          BUCKET_CONFIG[bucket].buttonText ?? BUCKET_CONFIG[bucket].text,
       } as React.CSSProperties)
     : ({} as React.CSSProperties);
 
