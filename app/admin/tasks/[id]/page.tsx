@@ -85,7 +85,7 @@ type BucketTheme = {
 const BUCKET_THEME: Record<TaskBucket, BucketTheme> = {
   arrivals:     { body: "var(--arrivals-dull-body)",   header: "var(--arrivals-dull-header)",   text: "#5C3A00",            textOn: "var(--shell-cream)" },
   departures:   { body: "var(--departures-dull-body)", header: "var(--departures-dull-header)", text: "var(--shell-cream)",  textOn: "#1A3A30"            },
-  stayovers:    { body: "var(--stayovers-dull-body)",  header: "var(--stayovers-dull-header)",  text: "var(--shell-cream)",  textOn: "var(--shell-cream)" },
+  stayovers:    { body: "var(--stayovers-dull-body)",  header: "var(--stayovers-dull-header)",  text: "var(--shell-cream)",  textOn: "#2C1608"            },
   dailys:       { body: "var(--dailys-dull-body)",     header: "var(--dailys-dull-header)",     text: "#2C2040",             textOn: "var(--shell-cream)" },
   eod:          { body: "var(--eod-dull-body)",        header: "var(--eod-dull-header)",        text: "#5C2020",             textOn: "var(--shell-cream)" },
   // SOD + maintenance dull tokens are not in globals.css yet (master plan
@@ -502,7 +502,7 @@ export default function AdminTaskViewPage() {
       return;
     }
     setSaveSuccess(true);
-    await loadTask();
+    router.push("/admin/tasks");
   }
 
   if (profileFailure) return <ProfileLoadError failure={profileFailure} />;
