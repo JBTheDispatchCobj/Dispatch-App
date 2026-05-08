@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
-import NoteComposeForm from "./NoteComposeForm";
+import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 import { formatCommentTime, formatTodayDate } from "@/lib/staff-card-formatters";
@@ -135,6 +135,11 @@ export default function DailysCard({
   onPostMaintenance,
   managerNote = null,
 }: DailysCardProps) {
+  // Day 48 — Notes compose moved into a popout modal triggered by the
+  // topstrip-right + button; replaces the inline NoteComposeForm under
+  // the Notes feed. Notes feed itself stays inline.
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+
   const location = parseDailyLocation(task.context) ?? task.location_label;
 
   const taskDone   = task.status === "done";
@@ -151,6 +156,27 @@ export default function DailysCard({
 
   return (
     <div className="preview-da-430">
+      {/* Day 48 — Note compose modal. Triggered by topstrip-right + button. */}
+      <NoteComposeModal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        body={noteBody}
+        setBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
+        file={noteFile}
+        setFile={setNoteFile}
+        onSubmit={(e) => {
+          onPostNote(e);
+          setNoteModalOpen(false);
+        }}
+        busy={noteBusy}
+        disabled={taskDone}
+      />
       <div className="page">
 
         {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
@@ -183,9 +209,19 @@ export default function DailysCard({
 
         <div className="shell">
 
-          {/* Topstrip — back nav only; ＋ dropped (Gap 6) */}
+          {/* Topstrip — back nav left, + note trigger right (Day 48). */}
           <div className="topstrip">
             <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
+            {!taskDone ? (
+              <button
+                type="button"
+                className="icon-circle"
+                aria-label="Add note"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                +
+              </button>
+            ) : null}
           </div>
 
           {/* Greeting block */}
@@ -273,26 +309,8 @@ export default function DailysCard({
                 ))}
               </div>
             ) : null}
-            {/* Inline compose — ＋ topstrip dropped, form is the compose UI */}
-            {!taskDone ? (
-              <NoteComposeForm
-                body={noteBody}
-                setBody={setNoteBody}
-                noteType={noteType}
-                setNoteType={setNoteType}
-                noteStatus={noteStatus}
-                setNoteStatus={setNoteStatus}
-                noteAssignedTo={noteAssignedTo}
-                setNoteAssignedTo={setNoteAssignedTo}
-                file={noteFile}
-                setFile={setNoteFile}
-                onSubmit={onPostNote}
-                busy={noteBusy}
-                placeholder="Leave a note for the team…"
-                rows={2}
-                className="note-compose--section"
-              />
-            ) : null}
+            {/* Day 48 — inline NoteComposeForm removed; compose moved into
+                NoteComposeModal (topstrip-right + button trigger). */}
           </section>
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). */}

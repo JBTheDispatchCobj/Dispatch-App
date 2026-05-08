@@ -6,7 +6,7 @@ import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
 import { type Reservation } from "@/lib/reservations";
-import NoteComposeForm from "./NoteComposeForm";
+import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
   type ExecutionChecklistItem,
@@ -238,6 +238,10 @@ export default function ArrivalsCard({
   managerNote = null,
 }: ArrivalsCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
+  // Day 48 — Notes compose moved into a popout modal triggered by the
+  // topstrip-right + button; replaces the inline NoteComposeForm under
+  // the Notes feed. Notes feed itself stays inline.
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
 
   const checklistTree = resolveChecklist("arrival", task.room_number);
   const parsedGuest = parseIncomingGuest(task.context);
@@ -303,6 +307,28 @@ export default function ArrivalsCard({
         />
       ) : null}
 
+      {/* Day 48 — Note compose modal. Triggered by topstrip-right + button. */}
+      <NoteComposeModal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        body={noteBody}
+        setBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
+        file={noteFile}
+        setFile={setNoteFile}
+        onSubmit={(e) => {
+          onPostNote(e);
+          setNoteModalOpen(false);
+        }}
+        busy={noteBusy}
+        disabled={taskDone}
+      />
+
       <div className="page">
 
         {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
@@ -335,9 +361,19 @@ export default function ArrivalsCard({
 
         <div className="shell">
 
-          {/* Topstrip — back nav only; ＋ dropped (no compose drawer) */}
+          {/* Topstrip — back nav left, + note trigger right (Day 48). */}
           <div className="topstrip">
             <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
+            {!taskDone ? (
+              <button
+                type="button"
+                className="icon-circle"
+                aria-label="Add note"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                +
+              </button>
+            ) : null}
           </div>
 
           {/* Greeting block */}
@@ -440,26 +476,9 @@ export default function ArrivalsCard({
                 ))}
               </div>
             ) : null}
-            {/* Inline compose — below feed; ＋ topstrip dropped, form is the compose UI */}
-            {!taskDone ? (
-              <NoteComposeForm
-                body={noteBody}
-                setBody={setNoteBody}
-                noteType={noteType}
-                setNoteType={setNoteType}
-                noteStatus={noteStatus}
-                setNoteStatus={setNoteStatus}
-                noteAssignedTo={noteAssignedTo}
-                setNoteAssignedTo={setNoteAssignedTo}
-                file={noteFile}
-                setFile={setNoteFile}
-                onSubmit={onPostNote}
-                busy={noteBusy}
-                placeholder="Leave a note for the team…"
-                rows={2}
-                className="note-compose--section"
-              />
-            ) : null}
+            {/* Day 48 — inline NoteComposeForm removed; compose moved into
+                NoteComposeModal (topstrip-right + button trigger). Notes
+                feed above stays inline as informational read-only display. */}
           </section>
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). */}

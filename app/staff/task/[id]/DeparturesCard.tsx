@@ -6,7 +6,7 @@ import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
 import { type Reservation } from "@/lib/reservations";
-import NoteComposeForm from "./NoteComposeForm";
+import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
   type ExecutionChecklistItem,
@@ -277,6 +277,10 @@ export default function DeparturesCard({
   managerNote = null,
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
+  // Day 48 — Notes compose moved into a popout modal triggered by the
+  // topstrip-right + button; replaces the previous inline NoteComposeForm
+  // mount inside .setstat. State scoped to this card; opens/closes locally.
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
 
   const departureStatus = parseDepartureStatus(task.context.departure_status);
 
@@ -322,6 +326,30 @@ export default function DeparturesCard({
         />
       ) : null}
 
+      {/* Day 48 — Note compose modal. Triggered by topstrip-right + button. */}
+      <NoteComposeModal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        body={noteBody}
+        setBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
+        file={noteFile}
+        setFile={setNoteFile}
+        onSubmit={(e) => {
+          onPostNote(e);
+          // Close optimistically; parent clears state on success and shows
+          // inlineError on failure (visible on the card after re-open).
+          setNoteModalOpen(false);
+        }}
+        busy={noteBusy}
+        disabled={taskDone}
+      />
+
       <div className="page">
 
         {/* Pause/Resume toolbar — above shell, only when task is active or paused.
@@ -355,9 +383,20 @@ export default function DeparturesCard({
 
         <div className="shell">
 
-          {/* Topstrip — back nav only; ＋ button dropped (no compose drawer, gap 5) */}
+          {/* Topstrip — back nav left, + note trigger right (Day 48). The +
+              button opens NoteComposeModal in a cream-themed popout. */}
           <div className="topstrip">
             <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
+            {!taskDone ? (
+              <button
+                type="button"
+                className="icon-circle"
+                aria-label="Add note"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                +
+              </button>
+            ) : null}
           </div>
 
           {/* Greeting block */}
@@ -370,14 +409,10 @@ export default function DeparturesCard({
             <div className="greet__date">{dueTime ? `Due ${dueTime}` : " "}</div>
           </header>
 
-          {/* Day 47 — manager note (task.context.notes from AddTaskModal). Sits
-              between greeting and Brief so it's first up after the header. */}
-          {managerNote ? (
-            <div className="manager-note">
-              <span className="manager-note__label">Manager note</span>
-              <span className="manager-note__value">{managerNote}</span>
-            </div>
-          ) : null}
+          {/* Day 48 — manager note moved out of above-brief and into the
+              setstat container below as a setstat__row, between Room Spray
+              and Status (Bryan's spec). The standalone .manager-note block
+              is unused on this card. */}
 
           {/* Brief — outgoing / incoming dual column */}
           <section className="brief">
@@ -425,36 +460,21 @@ export default function DeparturesCard({
               <div className="setstat__label">Room Spray</div>
               <div className="setstat__input">{seasonalScent}</div>
             </div>
-            <div className="setstat__row">
-              <div className="setstat__label">Notes</div>
-              <div className="setstat__notes">
-                {notes.length > 0 ? (
-                  <p className="setstat__note-count">
-                    {notes.length} note{notes.length !== 1 ? "s" : ""}
-                  </p>
-                ) : null}
-                {!taskDone ? (
-                  <NoteComposeForm
-                    body={noteBody}
-                    setBody={setNoteBody}
-                    noteType={noteType}
-                    setNoteType={setNoteType}
-                    noteStatus={noteStatus}
-                    setNoteStatus={setNoteStatus}
-                    noteAssignedTo={noteAssignedTo}
-                    setNoteAssignedTo={setNoteAssignedTo}
-                    file={noteFile}
-                    setFile={setNoteFile}
-                    onSubmit={onPostNote}
-                    busy={noteBusy}
-                    disabled={taskDone}
-                    placeholder="Add notes for this turnover…"
-                    rows={3}
-                    className="note-compose--setstat"
-                  />
-                ) : null}
+            {/* Day 48 — Manager Note row. Renders only when AddTaskModal
+                wrote a non-empty task.context.notes string. Placed between
+                Room Spray and Status per Bryan's spec. Inline whitespace
+                styles preserve any line breaks in the note body. */}
+            {managerNote ? (
+              <div className="setstat__row">
+                <div className="setstat__label">Manager Note</div>
+                <div
+                  className="setstat__input"
+                  style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                >
+                  {managerNote}
+                </div>
               </div>
-            </div>
+            ) : null}
             <div className="setstat__row setstat__row--status">
               <div className="setstat__label">Status</div>
               <div className="setstat__pills" role="group" aria-label="Room turnover status">

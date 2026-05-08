@@ -6462,31 +6462,147 @@ main.wrap--wide {
  *     Each card picks its own placement (per-card bucket-specific) but
  *     all share this visual treatment. Rendered only when managerNote
  *     is non-empty (parent decides via conditional render). === */
+/*
+ * Day 48 restyle — `.manager-note` now matches the setstat-row aesthetic
+ * Bryan referenced (Setup / Room Spray rows on Departures). White
+ * container card, mono uppercase label on the left, mint-pill value
+ * on the right. Bucket-agnostic: `var(--accent-soft)` resolves to the
+ * surrounding `.preview-XXX-430` scope's accent-soft, so each bucket
+ * shows its own mint/cream pill tone (mint on departures, cream on
+ * arrivals, etc). Used as a STANDALONE block on Arrivals/Stayovers/
+ * Dailys/EOD/SOD; on Departures the manager-note is rendered as a
+ * `setstat__row` instead and this class is unused on that card.
+ */
 .manager-note {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(31, 26, 18, 0.10);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin: 0 14px 14px;
+  background: #FFFFFF;
+  border-radius: 14px;
+  box-shadow: var(--shadow-raised, 0 2px 6px rgba(20, 10, 5, 0.06));
+  margin: 0 0 14px;
+  padding: 14px 16px;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 4px;
-  box-shadow: 0 1px 2px rgba(20, 10, 5, 0.04);
+  grid-template-columns: 90px 1fr;
+  gap: 12px;
+  align-items: flex-start;
 }
 .manager-note__label {
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
   font-size: 10px;
   letter-spacing: 0.20em;
-  color: #6E5F3F;
+  color: var(--ink-muted, #6E5F3F);
   font-weight: 600;
   text-transform: uppercase;
+  padding-top: 8px;
 }
 .manager-note__value {
+  background: var(--accent-soft, #EFF7F2);
+  border: 1px solid var(--hairline, rgba(31, 26, 18, 0.10));
+  border-radius: 10px;
+  padding: 10px 12px;
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
-  color: #1F1A12;
-  line-height: 1.35;
+  color: var(--shell-ink, #1F1A12);
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* === Day 48 — Note compose modal ===========================================
+ * Cream-themed dialog that wraps NoteComposeForm. Triggered by the +
+ * icon-circle button in the topstrip-right of every staff X-430 card.
+ * Replaces the inline NoteComposeForm mounts that used to live in the
+ * Notes section / setstat row. Bucket-agnostic styling so the same
+ * modal chrome appears regardless of which card opened it. Form inside
+ * keeps its existing .note-compose__* classes; modal just supplies
+ * the overlay + dialog + title + close button + scroll container.
+ * ========================================================================= */
+.note-modal__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(20, 10, 5, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  animation: note-modal-overlay-in 0.16s ease-out;
+}
+@keyframes note-modal-overlay-in {
+  from { background: rgba(20, 10, 5, 0); }
+  to   { background: rgba(20, 10, 5, 0.45); }
+}
+.note-modal__dialog {
+  background: var(--shell-cream, #F5F0E6);
+  width: 100%;
+  max-width: 460px;
+  max-height: 92vh;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 32px rgba(20, 10, 5, 0.30);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: note-modal-dialog-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (min-width: 480px) {
+  .note-modal__overlay { align-items: center; padding: 24px; }
+  .note-modal__dialog {
+    border-radius: 18px;
+    max-width: 440px;
+  }
+}
+@keyframes note-modal-dialog-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.note-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(31, 26, 18, 0.08);
+}
+.note-modal__title {
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #2C1608;
+  margin: 0;
+}
+.note-modal__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(31, 26, 18, 0.15);
+  background: rgba(255, 255, 255, 0.7);
+  color: #2C1608;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transition: background 0.12s, transform 0.12s;
+}
+.note-modal__close:hover:not(:disabled) {
+  background: #FFFFFF;
+  transform: translateY(-1px);
+}
+.note-modal__close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.note-modal__body {
+  padding: 16px 18px 20px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+/* Modal-context tweaks for the form inside. The form keeps its own
+ * .note-compose styles; we only adjust margins + ensure the submit
+ * button reads as a primary cream-on-dark CTA in this surface. */
+.note-compose--modal { margin: 0; }
+.note-compose--modal .note-compose__submit {
+  width: 100%;
+  margin-top: 14px;
 }

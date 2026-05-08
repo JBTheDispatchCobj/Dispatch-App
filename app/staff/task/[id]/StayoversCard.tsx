@@ -10,7 +10,7 @@ import {
   type Reservation,
 } from "@/lib/reservations";
 import { type LastStayoverStatus } from "@/lib/stayover-history";
-import NoteComposeForm from "./NoteComposeForm";
+import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
 import { supabase } from "@/lib/supabase";
@@ -365,6 +365,10 @@ export default function StayoversCard({
   );
   const [statusBusy, setStatusBusy] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  // Day 48 — Notes compose moved into a popout modal triggered by the
+  // topstrip-right + button; replaces the inline NoteComposeForm under
+  // the Notes feed. Notes feed itself stays inline.
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
 
   // onToggleStayoverStatus: handler is preserved but not wired to any UI in
   // S-430 — status is system/admin-set; staff don't change it from this card.
@@ -468,6 +472,28 @@ export default function StayoversCard({
         />
       ) : null}
 
+      {/* Day 48 — Note compose modal. Triggered by topstrip-right + button. */}
+      <NoteComposeModal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        body={noteBody}
+        setBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
+        file={noteFile}
+        setFile={setNoteFile}
+        onSubmit={(e) => {
+          onPostNote(e);
+          setNoteModalOpen(false);
+        }}
+        busy={noteBusy}
+        disabled={taskDone}
+      />
+
       <div className="page">
 
         {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
@@ -500,9 +526,19 @@ export default function StayoversCard({
 
         <div className="shell">
 
-          {/* Topstrip — back nav only; ＋ dropped (Gap 5) */}
+          {/* Topstrip — back nav left, + note trigger right (Day 48). */}
           <div className="topstrip">
             <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
+            {!taskDone ? (
+              <button
+                type="button"
+                className="icon-circle"
+                aria-label="Add note"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                +
+              </button>
+            ) : null}
           </div>
 
           {/* Greeting block */}
@@ -693,25 +729,8 @@ export default function StayoversCard({
                 ))}
               </div>
             ) : null}
-            {!taskDone ? (
-              <NoteComposeForm
-                body={noteBody}
-                setBody={setNoteBody}
-                noteType={noteType}
-                setNoteType={setNoteType}
-                noteStatus={noteStatus}
-                setNoteStatus={setNoteStatus}
-                noteAssignedTo={noteAssignedTo}
-                setNoteAssignedTo={setNoteAssignedTo}
-                file={noteFile}
-                setFile={setNoteFile}
-                onSubmit={onPostNote}
-                busy={noteBusy}
-                placeholder="Leave a note for the team…"
-                rows={2}
-                className="note-compose--section"
-              />
-            ) : null}
+            {/* Day 48 — inline NoteComposeForm removed; compose moved into
+                NoteComposeModal (topstrip-right + button trigger). */}
           </section>
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). Replaces

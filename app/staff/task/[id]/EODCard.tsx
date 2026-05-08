@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
-import NoteComposeForm from "./NoteComposeForm";
+import NoteComposeModal from "./NoteComposeModal";
 import { type ExecutionChecklistItem } from "@/lib/staff-task-execution-checklist";
 import { formatCommentTime, formatTodayDate, firstNameFromDisplayName } from "@/lib/staff-card-formatters";
 
@@ -142,6 +142,11 @@ export default function EODCard({
   onRefreshCanWrap,
   managerNote = null,
 }: EODCardProps) {
+  // Day 48 — Notes compose moved into a popout modal triggered by the
+  // topstrip-right + button; replaces the inline NoteComposeForm under
+  // the Review feed. Review feed itself stays inline.
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+
   const summary = parseEodSummary(task.context);
 
   const taskDone = task.status === "done";
@@ -172,6 +177,27 @@ export default function EODCard({
 
   return (
     <div className="preview-e-430">
+      {/* Day 48 — Note compose modal. Triggered by topstrip-right + button. */}
+      <NoteComposeModal
+        open={noteModalOpen}
+        onClose={() => setNoteModalOpen(false)}
+        body={noteBody}
+        setBody={setNoteBody}
+        noteType={noteType}
+        setNoteType={setNoteType}
+        noteStatus={noteStatus}
+        setNoteStatus={setNoteStatus}
+        noteAssignedTo={noteAssignedTo}
+        setNoteAssignedTo={setNoteAssignedTo}
+        file={noteFile}
+        setFile={setNoteFile}
+        onSubmit={(e) => {
+          onPostNote(e);
+          setNoteModalOpen(false);
+        }}
+        busy={noteBusy}
+        disabled={taskDone}
+      />
       <div className="page">
 
         {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
@@ -204,9 +230,19 @@ export default function EODCard({
 
         <div className="shell">
 
-          {/* Topstrip — back nav only; ＋ dropped (no compose drawer) */}
+          {/* Topstrip — back nav left, + note trigger right (Day 48). */}
           <div className="topstrip">
             <Link href="/staff" className="icon-circle" aria-label="Back to tasks">←</Link>
+            {!taskDone ? (
+              <button
+                type="button"
+                className="icon-circle"
+                aria-label="Add note"
+                onClick={() => setNoteModalOpen(true)}
+              >
+                +
+              </button>
+            ) : null}
           </div>
 
           {/* Greeting block */}
@@ -303,26 +339,8 @@ export default function EODCard({
                 ))}
               </div>
             ) : null}
-            {/* Inline compose — drop ＋ topstrip, form is the compose UI */}
-            {!taskDone ? (
-              <NoteComposeForm
-                body={noteBody}
-                setBody={setNoteBody}
-                noteType={noteType}
-                setNoteType={setNoteType}
-                noteStatus={noteStatus}
-                setNoteStatus={setNoteStatus}
-                noteAssignedTo={noteAssignedTo}
-                setNoteAssignedTo={setNoteAssignedTo}
-                file={noteFile}
-                setFile={setNoteFile}
-                onSubmit={onPostNote}
-                busy={noteBusy}
-                placeholder="Note for the wrap…"
-                rows={2}
-                className="note-compose--section"
-              />
-            ) : null}
+            {/* Day 48 — inline NoteComposeForm removed; compose moved into
+                NoteComposeModal (topstrip-right + button trigger). */}
           </section>
 
           {/* What's Next — locked placeholder (Gap 6; ResNexus data, out of Phase 3 scope) */}
