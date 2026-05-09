@@ -24,7 +24,7 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 *Added 2026-05-08 (Day 49); refreshed end of Day 51. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-51)." This section is the live filter on what remains post-beta as of end of Day 51.*
 
-**Headline count: 91 items remaining** = 60 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 91 once dependencies collapse.
+**Headline count: 89 items remaining** = 58 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 89 once dependencies collapse.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
@@ -91,15 +91,17 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 - **VI.G — Per-Daily/Weekly/Monthly task time estimates (Da-430).**
 - **VI.H — Note Type writing examples / templates per category.**
 
-### Section VII — Schema + RLS (7 items)
+### Section VII — Schema + RLS (5 items)
 
 - **VII.A — Supply needs table** (or derived view from `notes` where `note_type='Supply'`). Decision before adding.
-- **VII.B — Maintenance issues table verification + extension.** Verify severity column + location/type FK relationships against Day 24 schema.
 - **VII.C — Audit / archive search index strategy.** Index existing tables + `archived_at` flag, vs dedicated audit_log.
-- **VII.E — Activity feed events table-or-view decision.** View probably wins for beta; decision pending formalization.
 - **VII.F — Photo storage RLS policies tighten path.** Audited Day 40, kept as-is for beta. Tighten requires switching to signed-URL async fetch with token rotation. Revisit when tenancy boundaries get real.
 - **VII.H — KB versioning + change history.** Affects Updates panel highlighting, audit trail, rollback. Tied to II.J.
 - **VII.I — Weather + holiday calendar tables.** Optional caching; can defer to live API calls pre-beta.
+
+*VII.B CLOSED Day 51 — schema audit pass against Day 24 baseline; verified `docs/supabase/maintenance_issues_table.sql` complete and well-aligned with III.B + Global Rules R12-R17 (severity column FK to maintenance_severities, location/item/type FKs intact, 7 indexes including partial severity_high + open, denormalize trigger pulling room_number+card_type from parent task, 4 RLS policies mirroring notes). Day 33 + 39 + 41 + 42 consumers all shipped against this schema with zero friction. "+ extension" half deferred to post-beta (assignee column, parts table). See STATE.md closure ledger for detail.*
+
+*VII.E CLOSED Day 51 — runtime fan-out helper at `lib/activity-feed.ts` formalized as the answer (neither table nor DB view). Reasons documented in STATE.md closure ledger: severity is DERIVED in TS per the contract, not a stored column; profile-name resolution joins through profiles RLS; three sources have asymmetric shapes; no profiling hot spot at beta scale. activity_events table dropped Day 29.*
 
 *VII.G CLOSED Day 51 — `docs/supabase/team_roster_view.sql` defines `public.team_roster_v` (per-staff current-state snapshot: on-shift flag + current `in_progress` task via LATERAL + `is_in_eod` boolean matching `canWrapShift` definition). Pre-positions I.H Da-430 + I.I E-430 team displays + I.I cross-staff EOD activation gate. See STATE.md closure ledger for detail.*
 
