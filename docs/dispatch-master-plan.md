@@ -24,7 +24,7 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 *Added 2026-05-08 (Day 49); refreshed end of Day 51. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-51)." This section is the live filter on what remains post-beta as of end of Day 51.*
 
-**Headline count: 87 items remaining** = 56 master plan items across Sections I–X + 22 STATE.md standing-tabled items + 9 STATE.md Open Jennifer questions. Many cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 87 once dependencies collapse.
+**Headline count: 71 items remaining** = 56 master plan items across Sections I–X + 6 STATE.md standing-tabled SHIP-NOW items (chase #5 queue) + 9 STATE.md Open Jennifer questions. *Standing-tabled count dropped 22 → 6 via Day 51 chase #4 triage: 15 items formally deferred for beta with documented rationale + revisit triggers, 1 item dropped as already-accepted production data.* Many remaining items cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 71 once dependencies collapse.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
