@@ -29,11 +29,23 @@ export const taskEventType = {
   deepCleanTriggered: "deep_clean_triggered",
   // Day 46 — admin override of context.stayover_status from
   // /tasks/[id] via <StayoverStatusPanel/>. Master plan I.G prerequisite
-  // for sub-items 2/3/4 (status-driven auto-complete + Sheet Change
-  // skip semantics). Today the only writer of stayover_status; staff
-  // toggle was locked display-only Day 21 and orchestrator pre-set is
-  // deferred. detail keys per docs/TASK_EVENTS_CONTRACT.md.
+  // for sub-items 2/3 (status-driven auto-complete + Sheet Change
+  // skip semantics). Day 52 chase #2 reversed the Day 21 staff lock;
+  // staff-set toggles now emit stayoverStatusChanged. Admin pre-set
+  // events stay as stayoverStatusOverridden for the source distinction.
+  // Per rules table line 88: staff-tracked percentages key off staff
+  // selections only — admin pre-selections do NOT count. Future
+  // percentages tracking filters by event_type to honor that contract.
+  // detail keys per docs/TASK_EVENTS_CONTRACT.md.
   stayoverStatusOverridden: "stayover_status_overridden",
+  // Day 52 chase #2 — staff-side toggle on S-430 status pills
+  // restored after Day-21 lock reversal (Jennifer Q18 + rules table
+  // line 88). Pills are now <button>s; this event fires from the
+  // onToggleStayoverStatus handler in StayoversCard.tsx. Staff selections
+  // are post-facto records of "what happened in the room" (DND signal
+  // observed, Guest OK confirmed, etc.) and key the percentages tracking
+  // surface that's still post-beta.
+  stayoverStatusChanged: "stayover_status_changed",
 } as const;
 
 /** Required on all `task_events.detail` payloads (see docs/TASK_EVENTS_CONTRACT.md). */

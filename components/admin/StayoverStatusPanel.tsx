@@ -2,21 +2,35 @@
 
 /**
  * StayoverStatusPanel — discrete admin override for context.stayover_status
- * on a stayover card. Master plan I.G prerequisite for sub-items 2/3/4
- * (Day 46 chase). Drops onto /tasks/[id] between ReassignPanel and the big
- * card-edit form when card_type === "stayover".
+ * on a stayover card. Master plan I.G prerequisite for sub-items 2/3
+ * (Day 46 admin override leg + Day 52 chase #2 staff lock reversal +
+ * auto-complete behavior wired). Drops onto /tasks/[id] AND
+ * /admin/tasks/[id] between ReassignPanel and the big card-edit form
+ * when card_type === "stayover".
  *
  * Multi-select chip array of: DND, Guest OK, Desk OK, Sheet Change, Done.
  * Save persists context.stayover_status as a string[] of KEYS (not labels)
  * and emits one stayover_status_overridden task_events row with from/to
  * arrays. Merge-safe context spread — preserves every other key.
  *
- * Today no orchestrator code writes context.stayover_status, and staff
- * side was locked display-only Day 21 — so this panel is the single
- * source of status writes. The S-430 brief (lib/stayover-history.ts →
- * StayoversCard "Last status" row) populates from past stayover task
- * rows that have non-empty stayover_status arrays, so writing here lights
- * up the brief on subsequent stayover cards for the same room.
+ * Day 52 chase #2 — auto-complete behavior per rules table line 88:
+ * if the saved `to` array intersects {dnd, desk_ok, guest_ok} (any of
+ * those keys present, even when co-selected with sheet_change/done),
+ * the panel additionally flips tasks.status → "done" and writes
+ * completed_at = now() so the card auto-archives off the staff queue.
+ * Pre-selection of sheet_change or done WITHOUT any auto-complete key
+ * is admin-tag only — staff still executes the card.
+ *
+ * Day 52 chase #2 — staff-side toggle restored on S-430 (Day 21 lock
+ * reversed per Jennifer Q18). Staff toggles emit
+ * stayover_status_changed; admin toggles emit stayover_status_overridden.
+ * The source distinction lets future percentages tracking filter
+ * staff-set events only per "staff-tracked percentages key off staff
+ * selections only — admin pre-selections do NOT count" (rules table
+ * line 88). The lib/stayover-history.ts lookup helper reads
+ * context.stayover_status arrays from past stayover/housekeeping_turn
+ * rows for the same room, so writing here also lights up the S-430
+ * brief "Last status" row on subsequent stayover cards for that room.
  */
 
 import { type FormEvent, useEffect, useState } from "react";
@@ -41,6 +55,16 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
 ];
 
 const VALID_KEYS = new Set(STATUS_OPTIONS.map((o) => o.value));
+
+// Day 52 chase #2 — auto-complete trigger keys per rules table line 88.
+// Pre-selection of any of these auto-completes + auto-archives the card
+// off the staff queue. Sheet Change and Done co-selected do NOT block
+// the auto-complete (admin error case wins per Bryan's chase #2 ratify).
+const AUTO_COMPLETE_KEYS = new Set(["dnd", "desk_ok", "guest_ok"]);
+
+function intersectsAutoComplete(keys: string[]): boolean {
+  return keys.some((k) => AUTO_COMPLETE_KEYS.has(k));
+}
 
 function parseStatuses(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -106,11 +130,20 @@ export default function StayoverStatusPanel({
     setError(null);
 
     // Merge-safe context save (master plan §I.M) — preserve every other key.
+    // Day 52 chase #2 — if pending intersects {dnd, desk_ok, guest_ok}, also
+    // flip status → done + write completed_at = now() so the card
+    // auto-archives off the staff queue per rules table line 88.
+    const autoComplete = intersectsAutoComplete(pending);
     const nextContext = { ...(context ?? {}), stayover_status: pending };
+    const updatePayload: Record<string, unknown> = { context: nextContext };
+    if (autoComplete) {
+      updatePayload.status = "done";
+      updatePayload.completed_at = new Date().toISOString();
+    }
 
     const { error: upErr } = await supabase
       .from("tasks")
-      .update({ context: nextContext })
+      .update(updatePayload)
       .eq("id", taskId);
 
     if (upErr) {
@@ -122,7 +155,11 @@ export default function StayoverStatusPanel({
     await logTaskEvent(
       taskId,
       taskEventType.stayoverStatusOverridden,
-      withTaskEventSchema({ from: initial, to: pending }),
+      withTaskEventSchema({
+        from: initial,
+        to: pending,
+        auto_completed: autoComplete,
+      }),
       userId,
     );
 

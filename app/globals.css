@@ -4479,7 +4479,17 @@ main.wrap--wide {
 
 .preview-s-430 .statcard__pills { display: flex; gap: 6px; flex-wrap: wrap; }
 
-.preview-s-430 .status-pill { border: 1.5px solid var(--ink-faint); background: transparent; color: var(--ink-soft); padding: 7px 12px; border-radius: 999px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; cursor: default; pointer-events: none; white-space: nowrap; flex-shrink: 0; }
+/* Day 52 chase #2 — pills are <button>s now (Day 21 lock reversed per
+   Jennifer Q18 + rules table line 88). Removed cursor:default + pointer-events:none.
+   Added hover/focus/disabled affordances + a `appearance: none` + transparent
+   background reset so native button chrome doesn't bleed through. */
+.preview-s-430 .status-pill { appearance: none; -webkit-appearance: none; border: 1.5px solid var(--ink-faint); background: transparent; color: var(--ink-soft); padding: 7px 12px; border-radius: 999px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; font-weight: 700; text-transform: uppercase; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease; }
+
+.preview-s-430 .status-pill:hover:not(:disabled) { border-color: var(--ink-soft); color: var(--ink); }
+
+.preview-s-430 .status-pill:focus-visible { outline: 2px solid var(--status-on); outline-offset: 2px; }
+
+.preview-s-430 .status-pill:disabled { cursor: not-allowed; opacity: 0.55; }
 
 .preview-s-430 .status-pill--active { background: var(--status-on); border-color: var(--status-on); color: #FFFFFF; text-shadow: 0 1px 0 rgba(0,0,0,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 16px var(--status-on-tint); }
 

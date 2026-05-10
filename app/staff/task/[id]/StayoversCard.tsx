@@ -12,7 +12,7 @@ import {
 import { type LastStayoverStatus } from "@/lib/stayover-history";
 import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
-import { logTaskEvent, withTaskEventSchema } from "@/lib/task-events";
+import { logTaskEvent, taskEventType, withTaskEventSchema } from "@/lib/task-events";
 import { supabase } from "@/lib/supabase";
 import {
   type ExecutionChecklistItem,
@@ -370,8 +370,12 @@ export default function StayoversCard({
   // the Notes feed. Notes feed itself stays inline.
   const [noteModalOpen, setNoteModalOpen] = useState(false);
 
-  // onToggleStayoverStatus: handler is preserved but not wired to any UI in
-  // S-430 — status is system/admin-set; staff don't change it from this card.
+  // onToggleStayoverStatus — staff-side pill toggle restored Day 52 chase #2
+  // (Day 21 lock reversed per Jennifer Q18 + rules table line 88). Pills are
+  // <button>s and emit the new stayoverStatusChanged event so future
+  // percentages tracking can filter staff-set vs admin-set per the contract.
+  // Disabled while a save is in flight, after the task is done, or before
+  // the user is signed in.
   const onToggleStayoverStatus = useCallback(
     async (key: StayoverStatusKey) => {
       if (!userId || statusBusy) return;
@@ -396,7 +400,7 @@ export default function StayoversCard({
 
       await logTaskEvent(
         task.id,
-        "stayover_status_changed",
+        taskEventType.stayoverStatusChanged,
         withTaskEventSchema({ from: prev, to: next }),
         userId,
       );
@@ -406,10 +410,6 @@ export default function StayoversCard({
     },
     [userId, statusBusy, selectedStatuses, task, setInlineError],
   );
-
-  // Suppress "defined but never used" for the above handler — it is
-  // intentionally preserved but not called from S-430 UI.
-  void onToggleStayoverStatus;
 
   const parsedGuest = parseCurrentGuest(task.context);
   // Reservation fallback (master plan V.A BR4) — only kicks in when context
@@ -551,30 +551,43 @@ export default function StayoversCard({
             <div className="greet__date">{dateLine || " "}</div>
           </header>
 
-          {/* Statcard — display-only status pills (Gap 2: spans, no onClick, pointer-events preserved) */}
+          {/* Statcard — staff-set status pills (Day 52 chase #2: Day 21 lock
+              reversed per Jennifer Q18 + rules table line 88; pills are
+              now <button>s, default unselected, staff toggles to record
+              what happened in the room). Disabled while a save is in
+              flight, after the task is done, or before sign-in. */}
           <section className="statcard">
             <div className="statcard__head">
               <span>Status</span>
               <span className="statcard__sub">
-                {activeCount > 0 ? `${activeCount} active` : "None active"}
+                {statusBusy
+                  ? "Saving…"
+                  : activeCount > 0
+                  ? `${activeCount} active`
+                  : "None active"}
               </span>
             </div>
             <div className="statcard__pills">
               {STAYOVER_STATUS_OPTIONS.map((opt) => {
                 const target = STAYOVER_STATUS_TIME_TARGETS[STATUS_KEY_TO_CONFIG[opt.value]];
                 const targetLabel = formatTimeTarget(target);
+                const isActive = selectedStatuses.includes(opt.value);
                 return (
-                  <span
+                  <button
                     key={opt.value}
+                    type="button"
+                    onClick={() => onToggleStayoverStatus(opt.value)}
+                    disabled={!userId || statusBusy || taskDone}
+                    aria-pressed={isActive}
                     className={
-                      selectedStatuses.includes(opt.value)
+                      isActive
                         ? "status-pill status-pill--active"
                         : "status-pill"
                     }
                   >
                     {opt.label}
                     {targetLabel ? ` · ${targetLabel}` : null}
-                  </span>
+                  </button>
                 );
               })}
             </div>
