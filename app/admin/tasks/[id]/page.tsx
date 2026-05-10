@@ -61,12 +61,16 @@ type LiveTask = {
 
 /** Activity panel row — inline lighter shape than the unified
  *  ActivityFeedItem in lib/activity-feed.ts. We already know the task from
- *  context, so we drop the task join + severity classification. */
+ *  context, so we drop the task join + severity classification.
+ *  Day 51 chase #6: imageUrl carries `detail.image_url` for image_attached
+ *  events so the activity panel can render an inline thumbnail (parity with
+ *  the staff-side note/maintenance row thumbnail Day 40 III.E shipped). */
 type ActivityPanelRow = {
   id: string;
   actor: string;
   text: string;
   timestamp: string;
+  imageUrl: string | null;
 };
 
 /* ------------------------------------------------------------------ */
@@ -423,12 +427,24 @@ export default function AdminTaskViewPage() {
     }
 
     setActivity(
-      rows.map((r) => ({
-        id: r.id,
-        actor: r.user_id ? (nameMap[r.user_id] ?? "Staff") : "System",
-        text: describeEvent(r.event_type, r.detail),
-        timestamp: r.created_at ? formatTimeOfDay(r.created_at) : "",
-      })),
+      rows.map((r) => {
+        // Day 51 chase #6 — extract image_url for imageAttached events.
+        // detail shape per Day 40 III.E pipeline: { image_url, source }.
+        let imageUrl: string | null = null;
+        if (r.event_type === taskEventType.imageAttached && r.detail) {
+          const candidate = (r.detail as Record<string, unknown>).image_url;
+          if (typeof candidate === "string" && candidate.length > 0) {
+            imageUrl = candidate;
+          }
+        }
+        return {
+          id: r.id,
+          actor: r.user_id ? (nameMap[r.user_id] ?? "Staff") : "System",
+          text: describeEvent(r.event_type, r.detail),
+          timestamp: r.created_at ? formatTimeOfDay(r.created_at) : "",
+          imageUrl,
+        };
+      }),
     );
   }, [id]);
 
@@ -687,6 +703,21 @@ export default function AdminTaskViewPage() {
                     <span className={styles.logDot} />
                     <div className={styles.logText}>
                       <b>{event.actor}</b> {event.text}
+                      {event.imageUrl ? (
+                        <a
+                          href={event.imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={styles.logImageLink}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            className={styles.logImageThumb}
+                            src={event.imageUrl}
+                            alt="Attached photo"
+                          />
+                        </a>
+                      ) : null}
                     </div>
                     <div className={styles.logTime}>{event.timestamp}</div>
                   </div>

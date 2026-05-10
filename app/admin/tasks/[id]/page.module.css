@@ -326,6 +326,27 @@
   white-space: nowrap;
 }
 
+/* ——— Inline photo thumbnail (Day 51 chase #6) ———
+   Surfaces image_url from imageAttached event detail JSON. Parity with
+   the staff-side note/maintenance row thumbnail Day 40 III.E shipped:
+   max-width 180px so a 4032×3024 phone photo doesn't blow out the
+   activity-row layout, anchored block-level link so tapping opens
+   full-size in a new tab. */
+.logImageLink {
+  display: block;
+  margin-top: 6px;
+  width: fit-content;
+}
+
+.logImageThumb {
+  display: block;
+  max-width: 180px;
+  max-height: 140px;
+  border-radius: 6px;
+  border: 1px solid rgba(44,22,8,0.12);
+  object-fit: cover;
+}
+
 /* ——— CTA pair ——— */
 .ctaPair {
   display: grid;

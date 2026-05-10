@@ -420,7 +420,7 @@ export default function AdminMaintenanceDetailPage() {
           <div className={styles.panelHead}>
             <span>SEVERITY</span>
             {severityBusy && (
-              <span className={styles.panelHeadRight}>SAVING…</span>
+              <span className={styles.panelHeadSaving}>SAVING…</span>
             )}
           </div>
           <div className={styles.panelBody}>
@@ -435,6 +435,7 @@ export default function AdminMaintenanceDetailPage() {
                       styles.chip,
                       isActive ? styles.chipActive : null,
                       isAlert  ? styles.chipAlert  : null,
+                      isActive && severityBusy ? styles.chipBusy : null,
                     ]
                       .filter(Boolean)
                       .join(" ")}

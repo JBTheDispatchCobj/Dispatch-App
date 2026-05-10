@@ -12,19 +12,17 @@ import {
   MAINTENANCE_LOCATIONS,
   MAINTENANCE_TYPES,
 } from "@/lib/maintenance";
-import ProfileLoadError from "../../profile-load-error";
-import styles from "./page.module.css";
+import ProfileLoadError from "../../../profile-load-error";
+// Import parent's CSS module — Day 51 chase #6 design choice. Resolved view
+// mirrors the master-table look exactly; sharing the module keeps the two
+// surfaces visually identical without duplication. CSS Modules support
+// cross-file imports via relative path under Next.js.
+import styles from "../page.module.css";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
 
-/**
- * Severity values mirror public.maintenance_severities seed in
- * docs/supabase/taxonomy_tables.sql. Day 41's Day-1 reconciliation
- * dropped the legacy 4-value priority — Low / Normal / High is the
- * live ladder.
- */
 type MaintSeverity = "Low" | "Normal" | "High";
 
 type MaintIssueLite = {
@@ -35,13 +33,11 @@ type MaintIssueLite = {
   severity: string;
   body: string | null;
   room_number: string | null;
-  created_at: string;
+  resolved_at: string;
 };
 
-/** Severity desc sort keys (mirrors Watchlist convention at app/admin/page.tsx). */
 const SEV_RANK: Record<string, number> = { High: 0, Normal: 1, Low: 2 };
 
-/** Sentinel value for "no filter applied." Distinct from the taxonomy values. */
 const ALL_FILTER = "All" as const;
 
 /* ------------------------------------------------------------------ */
@@ -59,7 +55,6 @@ function normalizeSeverity(s: string): MaintSeverity {
   return "Normal";
 }
 
-/** "MAR 18" — short date for the row meta line. */
 function formatRowDate(iso: string): string {
   return new Date(iso)
     .toLocaleDateString("en-US", {
@@ -71,10 +66,13 @@ function formatRowDate(iso: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Page                                                                */
+/* Page — /admin/maintenance/resolved                                  */
+/* Mirrors /admin/maintenance master-table shape with resolved_at      */
+/* IS NOT NULL filter and resolved_at desc ordering. Day 51 chase #6   */
+/* closes the standing-tabled "no recently-resolved index" item.       */
 /* ------------------------------------------------------------------ */
 
-export default function AdminMaintenanceMasterPage() {
+export default function AdminMaintenanceResolvedPage() {
   const [ready, setReady] = useState(false);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
 
@@ -85,8 +83,7 @@ export default function AdminMaintenanceMasterPage() {
   const [loaded, setLoaded] = useState(false);
   const [error, setError]   = useState<string | null>(null);
 
-  // Auth gate — clones the [id]/page.tsx pattern (admin-only, redirects
-  // non-admin to "/").
+  // Auth gate — clones the [id]/page.tsx + page.tsx pattern.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -117,15 +114,13 @@ export default function AdminMaintenanceMasterPage() {
   }, []);
 
   /**
-   * Load (or reload) open issues filtered by location/type. Always
-   * `.is("resolved_at", null)` per master plan §II.H spec ("master tables:
-   * open issues by location, by type"). Index alignment:
-   *   - unfiltered → maintenance_issues_open_idx (partial, where resolved_at is null)
-   *   - location set → maintenance_issues_location_idx
-   *   - type set → maintenance_issues_type_idx
-   * Both filtered indexes carry created_at desc as second key, so DB-side
-   * sort stays cheap; severity desc is applied client-side same as the
-   * Watchlist lane on /admin.
+   * Load (or reload) RESOLVED issues filtered by location/type. Always
+   * `.not("resolved_at", "is", null)` per Day 51 chase #6 spec — flip of
+   * the master-table page's open-only filter. Order desc by resolved_at
+   * so the most-recently-resolved surface first. No index alignment for
+   * resolved_at desc today (the existing partial open_idx is for the
+   * inverse case); for beta scale this is fine since the resolved set
+   * is naturally bounded.
    */
   const loadRows = useCallback(async () => {
     setLoaded(false);
@@ -134,10 +129,10 @@ export default function AdminMaintenanceMasterPage() {
     let query = supabase
       .from("maintenance_issues")
       .select(
-        "id, location, item, type, severity, body, room_number, created_at, resolved_at",
+        "id, location, item, type, severity, body, room_number, resolved_at",
       )
-      .is("resolved_at", null)
-      .order("created_at", { ascending: false })
+      .not("resolved_at", "is", null)
+      .order("resolved_at", { ascending: false })
       .limit(100);
 
     if (locationFilter !== ALL_FILTER) {
@@ -154,11 +149,8 @@ export default function AdminMaintenanceMasterPage() {
       setLoaded(true);
       return;
     }
-    // supabase-js GenericStringError cast pattern — same workaround documented
-    // in lib/maintenance.ts:138 and Day 41's [id]/page.tsx:179.
     const live = (data ?? []) as unknown as MaintIssueLite[];
-    // Severity desc client-side; created_at desc tiebreak preserved by the
-    // stable sort against the DB-ordered list.
+    // Severity desc client-side; resolved_at desc tiebreak preserved.
     const sorted = [...live].sort(
       (a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9),
     );
@@ -177,39 +169,29 @@ export default function AdminMaintenanceMasterPage() {
   const filtered =
     locationFilter !== ALL_FILTER || typeFilter !== ALL_FILTER;
   const emptyMsg = filtered
-    ? "No open issues match this filter."
-    : "No open maintenance issues.";
+    ? "No resolved issues match this filter."
+    : "No resolved maintenance issues yet.";
 
   return (
     <div className={styles.page}>
       <div className={styles.shell}>
-        {/* Top bar */}
+        {/* Top bar — back arrow returns to /admin/maintenance (open list) */}
         <div className={styles.topbar}>
-          <Link href="/admin" className={styles.navBtn} aria-label="Back">
+          <Link href="/admin/maintenance" className={styles.navBtn} aria-label="Back to open issues">
             &lsaquo;
           </Link>
           <div className={styles.pageHead}>
             <div className={styles.pageTitle}>Maintenance</div>
-            <div className={styles.pageSub}>MASTER TABLES</div>
+            <div className={styles.pageSub}>RESOLVED ISSUES</div>
           </div>
-          {/* Day 51 chase #6 — cross-nav to /admin/maintenance/resolved.
-              Symmetrical with back arrow on left; checkmark glyph signals
-              "completed items" without requiring a label. */}
-          <Link
-            href="/admin/maintenance/resolved"
-            className={styles.navBtn}
-            aria-label="View resolved issues"
-            title="View resolved issues"
-          >
-            &#10003;
-          </Link>
+          <span className={styles.navBtnSpacer} aria-hidden="true" />
         </div>
 
         {/* Hero strip — sage, count + dimensions */}
         <div className={styles.heroCard}>
           <div className={styles.heroStrip}>
             <span>
-              <span className={styles.heroBadge}>OPEN ISSUES</span>
+              <span className={styles.heroBadge}>RESOLVED</span>
               {" "}
               {loaded ? rows.length : "—"}
             </span>
@@ -217,7 +199,7 @@ export default function AdminMaintenanceMasterPage() {
           </div>
         </div>
 
-        {/* Filter panel */}
+        {/* Filter panel — same shape as open-list page */}
         <div className={styles.panel}>
           <div className={styles.panelHead}>
             <span>FILTERS</span>
@@ -270,7 +252,7 @@ export default function AdminMaintenanceMasterPage() {
         {/* Row list */}
         <div className={styles.panel}>
           <div className={styles.panelHead}>
-            <span>OPEN ISSUES</span>
+            <span>RESOLVED ISSUES</span>
             <span className={styles.panelHeadRight}>
               {loaded ? `${rows.length} SHOWN` : "LOADING…"}
             </span>
@@ -288,7 +270,7 @@ export default function AdminMaintenanceMasterPage() {
                 const meta = [
                   r.type,
                   r.room_number ? `RM ${r.room_number}` : null,
-                  formatRowDate(r.created_at),
+                  `RESOLVED ${formatRowDate(r.resolved_at)}`,
                 ]
                   .filter(Boolean)
                   .join(" · ");
@@ -329,7 +311,7 @@ export default function AdminMaintenanceMasterPage() {
         </div>
 
         <div className={styles.footnote}>
-          THE DISPATCH CO &middot; ADMIN &middot; MAINTENANCE
+          THE DISPATCH CO &middot; ADMIN &middot; MAINTENANCE &middot; RESOLVED
         </div>
       </div>
     </div>
