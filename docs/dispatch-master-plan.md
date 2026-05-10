@@ -20,11 +20,11 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 ---
 
-## Current state (Day 51) — what's actually left
+## Current state (Day 52) — what's actually left
 
-*Added 2026-05-08 (Day 49); refreshed end of Day 51. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-51)." This section is the live filter on what remains post-beta as of end of Day 51.*
+*Added 2026-05-08 (Day 49); refreshed end of Day 52 chase #1. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-52)." This section is the live filter on what remains post-beta as of end of Day 52 chase #1.*
 
-**Headline count: 22 items remaining** = 13 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 9 STATE.md Open Jennifer questions. *Day 51 chase #9 closed VIII.G (backup/restore docs shipped at `docs/deployment/backup-restore.md`) + IX.E (idempotency audit closed as AUDIT-COMPLETE-PENDING-CLOUDBEDS — existing footprint surveyed; new Cloudbeds webhook idempotency-key work pairs with V.C chase queue). Inventory dropped 67 items today (89 → 22 = 67-item drop) — the 13 remaining master plan items: I.G (chase queue #1/#2 sub-items), V.C (chase queue #3), VI.A-H Jennifer's authoring lane (8 items), VII.F/H/I post-beta residue (3 items).* The 9 Open Jennifer questions remain Jennifer's responsibility. Engineering work surface remaining tonight: ZERO non-external-blocked items. All forward motion now waits on Jennifer's KB authoring lane OR Cloudbeds sales quote.
+**Headline count: 15 items remaining** = 9 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 6 STATE.md Open Jennifer questions. *Day 52 chase #1 closed 7 items via Jennifer's "To Do List answers" delivery (markdown-only inventory accounting commit, no code touched): VI.A (Q1 placeholder accepted) + VI.C (Q8 placeholder accepted) + VI.D (Q9 + Q10 placeholders accepted) + VI.H (Q11 formally declined) + Open Jennifer #13 reference Wednesday (Q24 — anchor confirmed via payroll-cadence pattern walked backward to Wed Jan 7, 2026 exactly) + #14 Courtney Manager (Q23 — N/A test-user) + #15 Stray Lizzie (Q22 — N/A test-user). Inventory drops 22 → 15.* The 9 remaining master plan items: I.G (chase queue #1/#2 sub-items, Day 21 lock UNBLOCKED via Q18 + rules table line 88; Day 52 chase #2 ships the reversal), V.C (chase queue #3), VI.B/E/F/G Jennifer's authoring lane (4 remaining; B unblocks via Day 52 chase #3, E partial via Day 52 chase #4, F + G Jennifer-pending), VII.F/H/I post-beta residue. The 6 remaining Open Jennifer questions break down: 3 ANSWERED-engineering-actionable (Q5 ADA cells + Q20 maintenance bucket + Q25 Section 14 role flags — all close via Day 52 chase #4), 3 REFERRED-to-rules-document (Q6 tolerance + Q17 IV.H Phase B + Q21 maintenance cascade — extract via Day 52 chase #5 xlsx mine). Engineering work surface lit up tonight: 4 engineering chases (#2/#3/#4/#5) sequenced for end-to-end execution.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
@@ -92,16 +92,22 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 - *V.F Holiday calendar (R13 weekend rule extension) DEFERRED — Bryan-stated lean toward admin-override pre-beta. R13 weekend rule is the existing path. Revisit if admin override becomes operationally costly or holiday-specific scheduling becomes a real need.*
 - *V.H ResNexus replacement payload mapping (one-word `cloudbeds` source enum) DEFERRED — pairs V.C. One-word change but pointless until V.C lands. Revisit with V.C.*
 
-### Section VI — Jennifer's KB authoring lane (8 items, parallel non-blocking)
+### Section VI — Jennifer's KB authoring lane (4 items remaining, parallel non-blocking)
 
-- **VI.A — Detail prose for "Text to come" placeholders** in `lib/checklists/variants/*.ts`.
-- **VI.B — Welcome-specific checklist forks (A-430, S-430).** Currently aliased to D-430 canonical 7-item.
-- **VI.C — Affirmations preset list (E-430 Status section).**
-- **VI.D — Rotating phrases libraries** (E-430 wrap headlines, SOD-430 date-context).
-- **VI.E — Variant lists spec** (Sheet Change, Pet, Deep, *** guest, Long-term). Decision pending: separate sub-trees with `applies_when` vs full alternate trees.
-- **VI.F — D-430 time-target matrix** (18 null cells). Cross-references IV.G.
-- **VI.G — Per-Daily/Weekly/Monthly task time estimates (Da-430).**
-- **VI.H — Note Type writing examples / templates per category.**
+*Day 52 chase #1 closed 4 items via Jennifer's "To Do List answers" delivery — placeholders formally accepted (VI.A / VI.C / VI.D) and Note Type examples formally declined (VI.H). Inventory drops VI 8 → 4. The four below remain active.*
+
+- **VI.B — Welcome-specific checklist forks (A-430, S-430).** Jennifer Q3 PROVIDED actual canonical lists: Arrival = `[Open Room, Arrival Notes (Check), Prep]` (3 items); Stayover Standard = `[Status (DND / Guest Notes / What Each Status Means), Open Room, Remove, Replace, Bed, Clean, Close, Card in App]` (8 items including Status sub-items). Day-49 hotfix `checklist_seed_canonical_alignment.sql` aliased both to D-430 7-item canonical incorrectly per Jennifer's clarification. Engineering replacement in Day 52 chase #3.
+- **VI.E — Variant lists spec** (Sheet Change, Pet, Deep, *** guest, Long-term). Jennifer Q2 PARTIAL: Deep Clean adds 1 item ("Deep Clean") to standard departure linking to existing Deep Clean section + VIP guests get prominent banner at top of A-430/S-430 (no specific elevated treatment beyond the banner) — both engineering-actionable in Day 52 chase #4. Sheet Change + Pet keep standard checklists for now until Jennifer's KB delivers the variant additions ("for now, things can be marked as a sheet change when the rules call for it, but you can fill with the standard checklist until the knowledge base is complete"). Long-term needs Bryan-action: clarify context to Jennifer ("for this, I need more context as to what you are looking for to properly provide an answer").
+- **VI.F — D-430 time-target matrix** (18 null cells). Jennifer Q4 BLOCKED on Bryan-action: Jennifer requested "Please provide the grid for me to fill" — extract grid format from `lib/dispatch-config.ts` Section 9 and forward to Jennifer for fill. Cross-references IV.G + I.E. ADA-cell question (Q5 / Open Jennifer #9) ANSWERED separately and closes via Day 52 chase #4.
+- **VI.G — Per-Daily/Weekly/Monthly task time estimates (Da-430).** Jennifer Q7 ETA "within the week" — pairs with Q12 + Q13 daily/weekly/monthly recurring task list deliverable. Pairs IV.F `dailys.ts` rule file when Jennifer's KB lands.
+
+*VI.A CLOSED Day 52 chase #1 — Jennifer Q1: "That is the appropriate placeholder. This is not relevant to the product working." Existing "Text to come" placeholders in `lib/checklists/variants/*.ts` formally accepted as final for beta.*
+
+*VI.C CLOSED Day 52 chase #1 — Jennifer Q8: "I will work on a list. This is not a high priority, for now use the existing placeholder." Affirmations placeholder accepted; Jennifer may deliver post-beta.*
+
+*VI.D CLOSED Day 52 chase #1 — Jennifer Q9 + Q10: same pattern as VI.C, placeholder accepted for both SOD greetings + EOD wrap headlines.*
+
+*VI.H CLOSED Day 52 chase #1 — Jennifer Q11: "No. Staff knows what content goes in each bucket based on the category title alone." Note Type writing examples formally declined as unnecessary.*
 
 ### Section VII — Schema + RLS (3 items, post-beta-only residue)
 
