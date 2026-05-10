@@ -306,6 +306,12 @@ export type StayoversCardProps = {
   // Day 47 — free-text note authored by manager via AddTaskModal,
   // stored at task.context.notes. Surfaced inline via .manager-note.
   managerNote?: string | null;
+  // Day 52 chase #4 (Q2) — VIP guest flag from task.context.vip. Renders a
+  // prominent banner at the top of S-430 per Jennifer Q2: "VIP guests do
+  // not have specific elevated treatment, but should just be notated
+  // prominently at the top of any Arrival or Stayover cards associated
+  // with this guest."
+  vipGuest?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -359,6 +365,7 @@ export default function StayoversCard({
   currentReservation = null,
   lastStayoverStatus = null,
   managerNote = null,
+  vipGuest = false,
 }: StayoversCardProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<StayoverStatusKey[]>(
     parseStayoverStatuses(task.context.stayover_status),
@@ -540,6 +547,18 @@ export default function StayoversCard({
               </button>
             ) : null}
           </div>
+
+          {/* Day 52 chase #4 (Q2) — VIP guest banner. Sits ABOVE the
+              greeting block so it's the first visual cue staff sees on
+              the card. Per Jennifer: "VIP guests do not have specific
+              elevated treatment, but should just be notated prominently
+              at the top of any Arrival or Stayover cards." */}
+          {vipGuest ? (
+            <div className="vip-banner" role="note" aria-label="VIP guest">
+              <span className="vip-banner__chip">VIP</span>
+              <span className="vip-banner__text">VIP Guest — extra attention</span>
+            </div>
+          ) : null}
 
           {/* Greeting block */}
           <header className="greet">

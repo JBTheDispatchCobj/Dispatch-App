@@ -112,10 +112,27 @@ function bucketToCardType(bucket: ModalBucket): string {
   return "generic";
 }
 
-function buildContext(bucket: ModalBucket, notes: string): Record<string, unknown> {
-  const staffHomeBucket = bucket === "maintenance" ? "start_of_day" : bucket;
+function buildContext(
+  bucket: ModalBucket,
+  notes: string,
+  vip: boolean,
+): Record<string, unknown> {
+  // Day 52 chase #4 (Q20) — maintenance routes to "dailys" for beta per
+  // Jennifer's interim ("if you want to assign these to Daily Tasks until
+  // then, that will work"). Phase 2 = own Maintenance section + room-located
+  // maintenance attaches to that room's departure card. The maintenance
+  // card_type itself is preserved (bucketToCardType maps maintenance →
+  // 'maintenance'); only the staff-home-bucket placement changes.
+  const staffHomeBucket = bucket === "maintenance" ? "dailys" : bucket;
   const ctx: Record<string, unknown> = { staff_home_bucket: staffHomeBucket };
   if (notes.trim()) ctx.notes = notes.trim();
+  // Day 52 chase #4 (Q2) — VIP flag for arrivals + stayovers per Jennifer:
+  // "VIP guests do not have specific elevated treatment, but should just be
+  // notated prominently at the top of any Arrival or Stayover cards
+  // associated with this guest." Banner renders at top of A-430/S-430 only.
+  if (vip && (bucket === "arrivals" || bucket === "stayovers")) {
+    ctx.vip = true;
+  }
   return ctx;
 }
 
@@ -149,6 +166,9 @@ export default function AddTaskModal({
   const [assigneeId, setAssigneeId] = useState<string | null>(null);
   const [roomNumber, setRoomNumber] = useState("");
   const [notes, setNotes] = useState("");
+  // Day 52 chase #4 (Q2) — VIP flag, only meaningful for arrivals + stayovers.
+  // Renders a "VIP guest" banner at the top of the staff card.
+  const [vip, setVip] = useState(false);
   const [isPreselectedLocked, setIsPreselectedLocked] = useState(false);
 
   const [countdown, setCountdown] = useState(3);
@@ -164,6 +184,7 @@ export default function AddTaskModal({
     setIsPreselectedLocked(!!preselectedStaffId);
     setRoomNumber("");
     setNotes("");
+    setVip(false);
     setCountdown(3);
   }
 
@@ -280,7 +301,7 @@ export default function AddTaskModal({
         created_by_user_id: user?.id ?? null,
         card_type: bucketToCardType(bucket),
         source: "manual",
-        context: buildContext(bucket, notes),
+        context: buildContext(bucket, notes, vip),
         room_number: roomNumber.trim() || null,
       });
 
@@ -603,6 +624,34 @@ export default function AddTaskModal({
                   />
                 </div>
               </div>
+
+              {/* VIP panel (Day 52 chase #4, Q2) — only shows for arrivals
+                  + stayovers per Jennifer: "VIP guests do not have specific
+                  elevated treatment, but should just be notated prominently
+                  at the top of any Arrival or Stayover cards associated
+                  with this guest." Renders a "VIP guest" banner at the top
+                  of the staff card when checked. */}
+              {(bucket === "arrivals" || bucket === "stayovers") ? (
+                <div className={styles.panel}>
+                  <div className={styles.panelHead}>
+                    <span>VIP GUEST</span>
+                    <span className={styles.panelHeadSub}>
+                      {vip ? "FLAGGED" : "OPTIONAL"}
+                    </span>
+                  </div>
+                  <div className={styles.panelBody}>
+                    <label className={styles.vipRow}>
+                      <input
+                        type="checkbox"
+                        checked={vip}
+                        onChange={(e) => setVip(e.target.checked)}
+                        disabled={isSubmitting}
+                      />
+                      <span>Mark as VIP — banner shows on staff card</span>
+                    </label>
+                  </div>
+                </div>
+              ) : null}
 
               {/* CTA */}
               <div className={styles.ctaPair}>

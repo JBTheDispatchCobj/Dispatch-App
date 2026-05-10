@@ -738,6 +738,13 @@ export default function StaffTaskExecutionPage() {
     return typeof v === "string" && v.trim() ? v.trim() : null;
   })();
 
+  // Day 52 chase #4 (Q2) — VIP flag for arrivals + stayovers per Jennifer:
+  // "VIP guests do not have specific elevated treatment, but should just
+  // be notated prominently at the top of any Arrival or Stayover cards
+  // associated with this guest." Set via AddTaskModal checkbox; only
+  // surfaces on A-430 + S-430 (other 4 cards ignore the flag).
+  const vipGuest = task.context.vip === true;
+
   // Route to card-type-specific views before falling back to generic.
   const ct = task.card_type.toLowerCase();
 
@@ -932,6 +939,7 @@ export default function StaffTaskExecutionPage() {
         currentReservation={currentReservation}
         lastStayoverStatus={lastStayoverStatus}
         managerNote={managerNote}
+        vipGuest={vipGuest}
       />
     );
   }
@@ -984,6 +992,7 @@ export default function StaffTaskExecutionPage() {
         onPostMaintenance={onPostMaintenance}
         incomingReservation={incomingReservation}
         managerNote={managerNote}
+        vipGuest={vipGuest}
       />
     );
   }

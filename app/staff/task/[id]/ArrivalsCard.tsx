@@ -185,6 +185,12 @@ export type ArrivalsCardProps = {
   // Day 47 — free-text note authored by manager via AddTaskModal,
   // stored at task.context.notes. Surfaced inline via .manager-note.
   managerNote?: string | null;
+  // Day 52 chase #4 (Q2) — VIP guest flag from task.context.vip. Renders a
+  // prominent banner at the top of A-430 per Jennifer Q2: "VIP guests do
+  // not have specific elevated treatment, but should just be notated
+  // prominently at the top of any Arrival or Stayover cards associated
+  // with this guest."
+  vipGuest?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -236,6 +242,7 @@ export default function ArrivalsCard({
   onPostMaintenance,
   incomingReservation = null,
   managerNote = null,
+  vipGuest = false,
 }: ArrivalsCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   // Day 48 — Notes compose moved into a popout modal triggered by the
@@ -375,6 +382,17 @@ export default function ArrivalsCard({
               </button>
             ) : null}
           </div>
+
+          {/* Day 52 chase #4 (Q2) — VIP guest banner. Sits ABOVE the
+              greeting block per Jennifer Q2: "VIP guests do not have
+              specific elevated treatment, but should just be notated
+              prominently at the top of any Arrival or Stayover cards." */}
+          {vipGuest ? (
+            <div className="vip-banner" role="note" aria-label="VIP guest">
+              <span className="vip-banner__chip">VIP</span>
+              <span className="vip-banner__text">VIP Guest — extra attention</span>
+            </div>
+          ) : null}
 
           {/* Greeting block */}
           <header className="greet">

@@ -343,12 +343,13 @@ export type DepartureTimeTargetCell =
  * percentage buffer (unlike Arrivals at 20% or EOD at 15%, where Jennifer
  * specified a tolerance explicitly). Strict bounds.
  *
- * ADA variants (ada_double for Room 26, ada_jacuzzi for Room 42) are NOT
- * in Jennifer's matrix. Treated as a [ASSUMED] mirror of their non-ADA
- * equivalent here — Room 26 uses Double's targets, Room 42 uses King
- * Jacuzzi's. Reasoning: cleaning duration tracks room geometry, and ADA
- * accommodations don't change the work materially. Bryan to confirm with
- * Jennifer; reversible one-line edits per cell when she does.
+ * ADA variants (ada_double for Room 26, ada_jacuzzi for Room 42) mirror
+ * their non-ADA equivalents — Room 26 uses Double's targets, Room 42 uses
+ * King Jacuzzi's. **CONFIRMED Day 52 chase #4 per Jennifer Q5**: "ADA
+ * rooms do not take longer than their counterparts, they just have some
+ * different placement of items that need to be understood by the staff."
+ * The 6 ADA cells previously marked [ASSUMED] are now confirmed equal to
+ * non-ADA across Standard / Deep / Pet clean tiers.
  *
  * `unknown` stays null — fallback for unmapped rooms means "no admin-note
  * threshold fires," which is correct since we have no spec for it.
@@ -364,27 +365,27 @@ export const DEPARTURE_TIME_TARGET_MATRIX: Readonly<
   Standard: {
     single_queen: { min: 30, max: 45, tolerance: 0, unit: "min" },
     double:       { min: 35, max: 50, tolerance: 0, unit: "min" },
-    ada_double:   { min: 35, max: 50, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    ada_double:   { min: 35, max: 50, tolerance: 0, unit: "min" }, // ADA equal to double per Jennifer Q5 (Day 52 chase #4)
     jacuzzi:      { min: 45, max: 60, tolerance: 0, unit: "min" },
-    ada_jacuzzi:  { min: 45, max: 60, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    ada_jacuzzi:  { min: 45, max: 60, tolerance: 0, unit: "min" }, // ADA equal to jacuzzi per Jennifer Q5 (Day 52 chase #4)
     suite:        { min: 45, max: 65, tolerance: 0, unit: "min" },
     unknown:      null, // never authored — fallback only
   },
   Deep: {
     single_queen: { min: 60,  max: 120, tolerance: 0, unit: "min" },
     double:       { min: 70,  max: 130, tolerance: 0, unit: "min" },
-    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // ADA equal to double per Jennifer Q5 (Day 52 chase #4)
     jacuzzi:      { min: 75,  max: 150, tolerance: 0, unit: "min" },
-    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // ADA equal to jacuzzi per Jennifer Q5 (Day 52 chase #4)
     suite:        { min: 75,  max: 150, tolerance: 0, unit: "min" },
     unknown:      null,
   },
   Pet: {
     single_queen: { min: 60,  max: 120, tolerance: 0, unit: "min" },
     double:       { min: 70,  max: 130, tolerance: 0, unit: "min" },
-    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors double
+    ada_double:   { min: 70,  max: 130, tolerance: 0, unit: "min" }, // ADA equal to double per Jennifer Q5 (Day 52 chase #4)
     jacuzzi:      { min: 75,  max: 150, tolerance: 0, unit: "min" },
-    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // [ASSUMED] mirrors jacuzzi
+    ada_jacuzzi:  { min: 75,  max: 150, tolerance: 0, unit: "min" }, // ADA equal to jacuzzi per Jennifer Q5 (Day 52 chase #4)
     suite:        { min: 75,  max: 150, tolerance: 0, unit: "min" },
     unknown:      null,
   },
@@ -482,28 +483,30 @@ export const PROPERTY_TIMEZONE = "America/Chicago";
 // drafts — useful for testing the staff portal — but is never flagged
 // primary or hall-pinned).
 //
-// [ASK JENNIFER] — which two staff are primaries today, and which primary
-// takes 30s vs. 20s. Defaults below are placeholders matching the four-
-// staff Courtney/Lizzie/Angie/Mark model from the governance spreadsheet,
-// keyed against the actual full names in public.staff. Reversible one-line
-// edits when Jennifer confirms.
-//
-// [ASK JENNIFER 2] — the staff table currently has 5 active rows
-// (Angie Lopez, Courtney Manager, Lizzie [dev], Lizzie Larson, Mark Parry).
-// Roles are Housekeeping (Angie), Manager (Courtney), Ops (dev Lizzie),
-// Front of House (Lizzie Larson), GC/Maintenance (Mark). The four-staff
-// housekeeping model from the governance spreadsheet may not match the
-// actual hotel roster — Courtney is a Manager, Mark is GC/Maintenance.
-// Confirm with Jennifer before treating this map as load-bearing.
+// **CONFIRMED Day 52 chase #4 per Jennifer Q22 + Q23 + Q25**: "Currently
+// none of the real employees are in your system, these are all test users."
+// All current rows in public.staff are test data — the maps below operate
+// as scaffolding against test names without any production-load implication.
+// Phase 2 ships a 7-role profile system (Admin / Management / Shift Lead /
+// Front Desk / Housekeeping Manager / Housekeeper / Housekeeping Trainee).
+// For beta, only Admin + Housekeeping bilateral; "Housekeeping Manager
+// for now will operate the same as housekeeping other than the few and
+// occasional adjustments outlined in the rules document" (Jennifer Q25).
+// Primary-staff identity for production hotel staff lands when Jennifer
+// reseats real employees in the system (post-test-data swap-in).
 // =============================================================================
 
 /**
  * Lowercased FULL names of staff members designated as primaries. Up to 2
  * entries per Hallway + Assignment R06. Primaries handle stayovers + arrivals.
+ *
+ * **Day 52 chase #4 — CONFIRMED test-data scaffolding per Jennifer Q22+Q23.**
+ * Production primary-staff identity reseats when Jennifer swaps in real
+ * employees (Phase 2 will route this through the 7-role system per Q25).
  */
 export const STAFF_PRIMARY_NAMES: ReadonlySet<string> = new Set([
-  "courtney manager", // [ASK JENNIFER]
-  "lizzie larson",    // [ASK JENNIFER] — distinct from dev "Lizzie" Ops account
+  "courtney manager", // test-data, Phase 2 → real Housekeeping Manager identity
+  "lizzie larson",    // test-data, Phase 2 → real Housekeeper identity
 ]);
 
 /**
@@ -511,10 +514,13 @@ export const STAFF_PRIMARY_NAMES: ReadonlySet<string> = new Set([
  * Used by the primary-housekeeper lane (Hallway + Assignment R07) to seat
  * each primary in their default hall before fan-out. Non-primaries can be
  * left absent — they pick up overflow regardless of preferred hall.
+ *
+ * **Day 52 chase #4 — CONFIRMED test-data scaffolding per Jennifer Q22+Q23.**
+ * Hall assignments reseat when Jennifer swaps in real employees.
  */
 export const STAFF_PREFERRED_HALL: Readonly<Record<string, HallId>> = {
-  "courtney manager": "30s", // [ASK JENNIFER]
-  "lizzie larson":    "20s", // [ASK JENNIFER]
+  "courtney manager": "30s", // test-data; Phase 2 reseats per real-staff hall
+  "lizzie larson":    "20s", // test-data; Phase 2 reseats per real-staff hall
   "angie lopez":      "20s", // non-primary; overflow
   "mark parry":       "30s", // non-primary; overflow
 };
