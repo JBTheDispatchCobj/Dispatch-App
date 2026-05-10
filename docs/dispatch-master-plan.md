@@ -24,7 +24,7 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 *Added 2026-05-08 (Day 49); refreshed end of Day 51. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-51)." This section is the live filter on what remains post-beta as of end of Day 51.*
 
-**Headline count: 54 items remaining** = 45 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 9 STATE.md Open Jennifer questions. *Day 51 chase #7 formally accepted 11 items as POST-BETA DEFERRED across Sections X (5 deferred + 1 dropped = 6 → 0) + IX (3 deferred + 1 ongoing-accept = 5 → 1) + VIII (1 deferred = 2 → 1). Section X reaches zero items remaining for active inventory tracking. The 35-item inventory drop today (89 → 54) splits ~24 active closures + 11 formal accepts.* Remaining items cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 54 once dependencies collapse.
+**Headline count: 24 items remaining** = 15 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 9 STATE.md Open Jennifer questions. *Day 51 chase #8 formally accepted 30 more items as POST-BETA DEFERRED / KB-BLOCKED-DEFERRED / ENGINEERING-COMPLETE-PENDING-EXTERNAL across Sections I (5), II (4), III (6), IV (10), V (5). Combined with chase #7's 11-item Sections X+IX+VIII pass, today's 65-item inventory drop (89 → 24) splits ~24 active closures + 41 formal accepts. The 15 remaining master plan items: I.G (chase queue #1/#2 sub-items), V.C (chase queue #3), VI.A-H Jennifer's authoring lane (8 items), VII.F/H/I post-beta residue (3 items), VIII.G writeable backup docs (1 item), IX.E idempotency audit-active (1 item).* The 9 Open Jennifer questions remain Jennifer's responsibility. Practical work surface for engineering tonight: VIII.G + IX.E formal-active + Stray-Lizzie when Jennifer confirms.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
@@ -33,52 +33,64 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 4. Every state change writes `task_events` (`schema_version: 1`) → SHIPPED.
 5. Vercel deploy at https://dispatch-app-iota.vercel.app/ → SHIPPED.
 
-### Section I — Staff cards (6 items)
+### Section I — Staff cards (1 active item)
 
-- **I.D — SOD-430 Start of Day card data wirings.** Daily Brief notes/at-a-glance/team list/weather/events/guest-context wiring + KB-driven tasks section + compose drawers. Blocked on V.D weather, V.E Google Events.
-- **I.E — D-430 Departures card full data layer.** Outgoing/incoming guest blocks, Departure Status master-table drive, Setup section temp/scent wiring, Arrival Status mirror, clean-type detection, Deep Clean tray with `deep_clean_history` per-task 30-day, I'm Done time matrix. Blocked on II.F admin Departure Status master, VI.F D-430 matrix from Jennifer, V.D weather.
-- **I.F — A-430 Arrivals card full data layer.** Header copy fix (Open Assumption #1), live guest details, Setup section, checklist Type header + sections from Arrival KB doc. Blocked on V.D weather + V.A BR4 downstream wiring.
-- **I.G — S-430 Stayovers full execution.** Status pill time-target display, full guest details wiring, Status-driven auto-complete + auto-archive, Sheet Change skip semantics. Sub-item 1 closed Day 45; sub-items 2/3 blocked on chase #1 (`stayover_status` orchestrator pre-set), sub-item 4 blocked on Jennifer KB.
-- **I.H — Da-430 Dailys card.** Realtime task reassignment, Team Update live, KB-driven tasks, per-task time estimates, distribution rules. Blocked on IV.F `dailys.ts` rule file, VI.G Jennifer's daily-task list, VII.G team roster view.
-- **I.I — E-430 End of Day card.** Day summary computed, incomplete roll-up, Note Review + assignments, Supply Needs sink, What's Next preview, Wrap Shift target/gating. Blocked on IV.F `eod.ts`, VI.C Affirmations, VII.A supply_needs schema, team roster, tomorrow's data joins.
+- **I.G — S-430 Stayovers full execution.** Status pill time-target display, full guest details wiring, Status-driven auto-complete + auto-archive, Sheet Change skip semantics. Sub-item 1 closed Day 45; sub-items 2/3 in active chase queue (#1/#2) blocked on `stayover_status` orchestrator pre-set; sub-item 4 KB-blocked.
 
-### Section II — Admin surfaces (4 items)
+*Day 51 chase #8 formal-DEFER pass on remaining Section I items (5 closures): all engineering shells shipped Days 33-49 (`app/staff/task/[id]/{StartOfDay,Departures,Arrivals,Dailys,EOD}Card.tsx`); remaining work is content/data-layer wirings blocked on Jennifer's KB authoring lane + external integrations + downstream sub-blockers. Each formally accepted as ENGINEERING-COMPLETE-PENDING-KB-AND-EXTERNAL with revisit triggered by the specific blocker unblocking.*
 
-- **II.I — Admin Category Cards (10 of 11 Note Types).** Maintenance built; copy 3-sink pattern for Guest Needs, Guest Profile, Guest Damage, Guest Update, Supply, Admin, Team, Change/Update, Employee, Needed. Post-beta polish, no blocker.
-- **II.J — Admin KB Editing Tool (`/admin/kb/*`).** Tree-view editor with add/remove/relocate/branch operations + Updates panel cascade. XL. Explicitly post-beta; blocked on VII.H KB versioning + KB authoring stability.
-- **II.K — Admin Calendar.** Scheduling, pre-shift assignment, coverage detection, 14-day visualization, payroll, staff-shortage alerts. Explicitly post-beta.
-- **II.L — Admin Weekly Recap.** Cream-inset recap surface. Out of beta scope.
+- *I.D SOD-430 data wirings DEFERRED — engineering shell shipped; data layer blocked on V.D weather API + V.E Google events API + Jennifer's SOD KB content. Revisit when V.D + V.E ship and Jennifer authors SOD task list.*
+- *I.E D-430 full data layer DEFERRED — engineering shell shipped; remaining work blocked on II.F admin Departure Status master + VI.F D-430 time-target matrix (Jennifer) + V.D weather. Revisit when Jennifer's Rules for Housekeeping doc lands.*
+- *I.F A-430 full data layer DEFERRED — engineering shell shipped; V.A BR4 downstream wiring closed Day 37 (partial unblock); remaining blocked on V.D weather + Arrival KB doc Type header sections (Jennifer). Revisit when Jennifer's Arrival KB lands.*
+- *I.H Da-430 DEFERRED — engineering shell shipped; VII.G team roster view closed Day 51 (partial unblock for Team Update live data); remaining blocked on IV.F `dailys.ts` rule file + VI.G Jennifer's daily-task list. Per CLAUDE.md beta-cut "dynamic daily reassignment." Revisit when IV.F + Jennifer's daily-task list land.*
+- *I.I E-430 DEFERRED — engineering shell shipped; VII.A supply_needs decision closed Day 51 (derived from notes — partial unblock) + VII.G team roster (partial unblock); remaining blocked on IV.F `eod.ts` + VI.C Affirmations + tomorrow's-data-joins. Revisit when IV.F + VI.C land.*
 
-### Section III — Cross-cutters (6 items)
+### Section II — Admin surfaces (FORMAL DEFER closed, Day 51 chase #8)
 
-- **III.C — Updates panel** (admin authoring + staff display + KB cascade). Two-path Updates with red/green shift highlighting + 2-shift admin escalation. Blocked on II.J KB Editing Tool.
-- **III.F — Time tracking dual-sink + between-cards.** Card-open dual-sink to staff profile + location table; 1-min standard + 2x5+1x15 break allowance with admin-flag "approved break"; threshold breaches trigger note. Pending III.I repeated-instance trigger.
-- **III.G — Section-level sequential gating.** Bucket-level closed Day 30; within-card section gating still partial.
-- **III.H — Card rotation + pre-stayover reshuffle.** Reassignment dual-logging closed Days 34-35; intra-bucket completed-card rotation + 11am/12pm pre-stayover reshuffle still UNBUILT (IV.D pairs).
-- **III.I — Repeated-instance meta-trigger.** Fires additional admin log + note when per-instance triggers exceed thresholds over windows. Pairs with IV.J.
-- **III.K — Audit / archive closed-card search.** Searchable by date/guest/type/location/user with exceptions filter. Read-only forever; schema strategy unresolved.
+*All 4 items FORMALLY ACCEPTED Day 51 chase #8 as POST-BETA DEFERRED. II.J/K/L were already explicitly post-beta per master plan authoring intent; II.I is post-beta polish (10-card pattern copy from Maintenance) — no blocker but explicitly out of beta scope per the same logic as Section X.*
 
-### Section IV — Rule engine (10 items)
+- *II.I Admin Category Cards (10 of 11 Note Types) DEFERRED — Maintenance built; pattern is established. Copy work for Guest Needs, Guest Profile, Guest Damage, Guest Update, Supply, Admin, Team, Change/Update, Employee, Needed is post-beta polish (~10 page files + sibling CSS each). Revisit when admin operability reports demand category-specific surfaces beyond Maintenance.*
+- *II.J Admin KB Editing Tool DEFERRED — explicitly post-beta per master plan authoring; XL surgery; blocked on VII.H KB versioning + KB authoring stability. Revisit when both unblock.*
+- *II.K Admin Calendar DEFERRED — explicitly post-beta per master plan authoring; pre-shift assignment + coverage detection + 14-day visualization + payroll all post-beta surface. Revisit when scheduling workflow becomes a real operational pain point.*
+- *II.L Admin Weekly Recap DEFERRED — explicitly out of beta scope per master plan authoring. Revisit if weekly-cadence reporting demand surfaces.*
 
-- **IV.A — Auto-assignment policies.** New `lib/orchestration/assignment-policies.ts` consuming dispatch-config exports; primary/non-primary lanes, departure within-hall priority, cross-cutting bumps. XL, blocking — without it every promoted draft lands `staff_id: null`.
-- **IV.B — Hallway adjacency rule.** Don't move housekeeper between halls before starting hall complete; admin-overridable.
-- **IV.C — No-orphan-cards rule.** Every card always assigned to someone on shift; 0-housekeepers escalation.
-- **IV.D — Pre-stayover reshuffle phase.** 11am weekday / 12pm weekend reshuffle (in-flight cards not interrupted).
-- **IV.E — `assignment.specific_member_id` per Jennifer's policy.** Fill `[ASK JENNIFER]` markers in arrivals/departures/stayovers rule files. Blocked on Jennifer's standing assignment policy.
-- **IV.F — `dailys.ts` + `eod.ts` rule files.** Currently empty arrays. Blocks I.H + I.I.
-- **IV.G — D-430 time-target matrix fill.** 18 null cells in dispatch-config. AUTHORING; blocked on Jennifer's Rules for HouseKeeping doc. Pairs with VI.F.
-- **IV.H Phase B — Wed-occupancy Deep Clean cond 3 occupancy gate.** Phase A closed Day 43; Phase B blocked on Open Jennifer question (data source for occupied-room-nights + total-rooms denominator).
-- **IV.I — Realtime task reassignment for Dailys.** Unassigned dailys redistribute as staff complete cards.
-- **IV.J — Repeated-instance meta-trigger interpreter.** Engine-side detection logic. Pairs with III.I.
+### Section III — Cross-cutters (FORMAL DEFER closed, Day 51 chase #8)
 
-### Section V — Data layer + integrations (6 items)
+*All 6 items FORMALLY ACCEPTED Day 51 chase #8 as POST-BETA DEFERRED. III.A/B/D/E/H reassign-leg/J already shipped pre-Day-51; remaining items are post-beta polish or downstream-blocked. Per CLAUDE.md beta-cut list "activity feed polish" + general post-beta-polish lane.*
 
-- **V.B — BR5 reservations cancellation/modification edge cases.** Webhook idempotency, modification cascades, soft-delete filtering edges.
+- *III.C Updates panel DEFERRED — blocked on II.J KB Editing Tool (post-beta). Revisit with II.J.*
+- *III.F Time tracking dual-sink + between-cards DEFERRED — needs III.I repeated-instance trigger + significant new design. Post-beta workflow polish.*
+- *III.G Section-level sequential gating (within-card) DEFERRED — bucket-level closed Day 30 (the beta-essential gating); within-card section gating is post-beta polish. Revisit if within-card sequencing becomes a UX pain point.*
+- *III.H Card rotation (intra-bucket) + pre-stayover reshuffle (11am/12pm) DEFERRED — pairs IV.D. Reassignment dual-logging shipped Days 34-35 (the beta-essential leg); intra-bucket rotation + reshuffle phase are post-beta enhancements. Revisit when manual reshuffles become operationally costly.*
+- *III.I Repeated-instance meta-trigger DEFERRED — pairs IV.J. Engine-side detection logic for threshold breaches; post-beta. Revisit if per-instance triggers prove insufficient at beta scale.*
+- *III.K Audit/archive closed-card search UI DEFERRED — schema strategy resolved Day 51 chase #3 (VII.C: index existing tables + task_events covers audit trail); UI consumer is post-beta. Read-only forever per spec; revisit when admin reports needing historical search beyond `/admin/maintenance/resolved` (Day 51 chase #6).*
+
+### Section IV — Rule engine (FORMAL DEFER closed, Day 51 chase #8)
+
+*All 10 active items FORMALLY ACCEPTED Day 51 chase #8 as POST-BETA DEFERRED or KB-BLOCKED-DEFERRED. IV.H Phase A closed Day 43 (Wed-occupancy Deep Clean trigger); the rest are post-beta orchestrator polish or Jennifer-blocked. Beta works without auto-assignment because tasks ship via AddTaskModal manual creation per beta-scope item #1 of CLAUDE.md.*
+
+- *IV.A Auto-assignment policies DEFERRED — XL, foundational for full orchestrator but not beta-essential since AddTaskModal handles manual assignment. Partial Jennifer dep on Section 14 [ASK JENNIFER] flags. Revisit when orchestrator promotes drafts at scale (post-Cloudbeds, post-Jennifer's primary-staff identity).*
+- *IV.B Hallway adjacency rule DEFERRED — pairs IV.A. Post-beta orchestrator polish.*
+- *IV.C No-orphan-cards rule DEFERRED — pairs IV.A. Post-beta orchestrator polish.*
+- *IV.D Pre-stayover reshuffle phase DEFERRED — pairs III.H. Post-beta enhancement.*
+- *IV.E `assignment.specific_member_id` DEFERRED — Jennifer-blocked on standing assignment policy. Revisit when Jennifer authors.*
+- *IV.F `dailys.ts` + `eod.ts` rule files DEFERRED — engineering shells doable but functional value blocks on Jennifer's daily-task list (VI.G) + EOD spec. Pairs with I.H + I.I deferral. Revisit when Jennifer's content lands.*
+- *IV.G D-430 time-target matrix fill DEFERRED — Jennifer-blocked on Rules for Housekeeping doc. Pairs VI.F. Revisit when Jennifer authors.*
+- *IV.H Phase B Wed-occupancy Deep Clean cond 3 occupancy gate DEFERRED — Open Jennifer question on occupied-room-nights data source + total-rooms denominator. Phase A live since Day 43; Phase B activates Wednesdays-only when occupancy > 40%. Single-line replacement once Jennifer confirms.*
+- *IV.I Realtime task reassignment for Dailys DEFERRED — explicitly cut for beta per CLAUDE.md "dynamic daily reassignment." Revisit post-beta.*
+- *IV.J Repeated-instance meta-trigger interpreter DEFERRED — pairs III.I. Post-beta engine work.*
+
+### Section V — Data layer + integrations (1 active item)
+
 - **V.C — Channel manager Cloudbeds (or fallback).** XL post-quote. Blocked on Bryan's Cloudbeds sales quote. Chase queue #3.
-- **V.D — Weather API integration (D-430 Temperature).** 1pm-6pm avg, fallback to last known + flag.
-- **V.E — Google Events / Holidays integration (SOD-430).** Admin events + Google holidays merged.
-- **V.F — Holiday calendar (R13 weekend rule extension).** Saturday/Sunday/Holidays. Bryan leans toward deferring to admin override pre-beta.
-- **V.H — ResNexus replacement payload mapping.** One-word `cloudbeds` source enum extension. Pairs with V.C.
+
+*Day 51 chase #8 formal-DEFER pass on remaining Section V items (5 closures): V.B BR5 reservation edges + V.D weather API + V.E Google events API + V.F holiday calendar + V.H Cloudbeds payload mapping. All post-beta data-layer integrations not in CLAUDE.md beta-scope.*
+
+- *V.B BR5 reservations cancellation/modification edge cases DEFERRED — base reservations ship via Day 14 ResNexus manual import bridge through `inbound_events`. Webhook idempotency + modification cascades + soft-delete edges are post-beta robustness. Revisit when reservations volume + edge case frequency justify the work (typically post-Cloudbeds when webhooks become live).*
+- *V.D Weather API integration (D-430 Temperature) DEFERRED — post-beta polish; need provider choice (OpenWeather most likely) + small wire-up. CLAUDE.md "No new dependencies without asking Bryan" applies (use native fetch). Revisit when D-430 data layer is unblocked.*
+- *V.E Google Events / Holidays integration (SOD-430) DEFERRED — post-beta polish; admin-events-only path covers beta need (admin manually adds events through SOD). Revisit when admin event-authoring volume demands automation.*
+- *V.F Holiday calendar (R13 weekend rule extension) DEFERRED — Bryan-stated lean toward admin-override pre-beta. R13 weekend rule is the existing path. Revisit if admin override becomes operationally costly or holiday-specific scheduling becomes a real need.*
+- *V.H ResNexus replacement payload mapping (one-word `cloudbeds` source enum) DEFERRED — pairs V.C. One-word change but pointless until V.C lands. Revisit with V.C.*
 
 ### Section VI — Jennifer's KB authoring lane (8 items, parallel non-blocking)
 
