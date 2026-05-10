@@ -24,7 +24,7 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 *Added 2026-05-08 (Day 49); refreshed end of Day 51. The Day 24 inline State labels in this doc are the baseline at master plan authorship time and are STALE. Canonical override for closure status: `docs/STATE.md` "Closure ledger — master plan items closed (Days 27-51)." This section is the live filter on what remains post-beta as of end of Day 51.*
 
-**Headline count: 65 items remaining** = 56 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 9 STATE.md Open Jennifer questions. *Standing-tabled completely cleared via Day 51 chases #4 + #5 + #6: chase #4 triage moved 22 → 6 (15 deferred + 1 dropped), chase #5 shipped 3 quick wins (MODULE warning + task_comments cleanup + legacy checklist seeds cleanup), chase #6 shipped 3 UI polish items (severity chip indicator + /admin/maintenance/resolved view + admin photo thumbnail). Standing-tabled count: 0.* Remaining items cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 65 once dependencies collapse.
+**Headline count: 54 items remaining** = 45 master plan items across Sections I–X + 0 STATE.md standing-tabled SHIP-NOW items + 9 STATE.md Open Jennifer questions. *Day 51 chase #7 formally accepted 11 items as POST-BETA DEFERRED across Sections X (5 deferred + 1 dropped = 6 → 0) + IX (3 deferred + 1 ongoing-accept = 5 → 1) + VIII (1 deferred = 2 → 1). Section X reaches zero items remaining for active inventory tracking. The 35-item inventory drop today (89 → 54) splits ~24 active closures + 11 formal accepts.* Remaining items cluster under shared blockers (Jennifer's KB authoring lane + Cloudbeds sales quote + v2 task_events vocabulary widening), so the practical ship-ordering surface is smaller than 54 once dependencies collapse.
 
 **Beta-scope boundary** (per CLAUDE.md — these 5 are IN beta and excluded from the inventory below):
 1. Manager/admin can create + assign tasks with bucket → SHIPPED.
@@ -107,27 +107,34 @@ If Jennifer cuts an item, mark `[CUT]` next to it. If we deviate, mark `[DEFER]`
 
 *VII.G CLOSED Day 51 — `docs/supabase/team_roster_view.sql` defines `public.team_roster_v` (per-staff current-state snapshot: on-shift flag + current `in_progress` task via LATERAL + `is_in_eod` boolean matching `canWrapShift` definition). Pre-positions I.H Da-430 + I.I E-430 team displays + I.I cross-staff EOD activation gate. See STATE.md closure ledger for detail.*
 
-### Section VIII — Deploy + ops (2 items)
+### Section VIII — Deploy + ops (1 item)
 
-- **VIII.F — pg_cron / Vercel cron migration.** Currently GitHub Actions; move post-beta.
-- **VIII.G — Backup / restore strategy documentation.** Supabase auto-backup sufficient for beta; document restore.
+- **VIII.G — Backup / restore strategy documentation.** Supabase auto-backup sufficient for beta; document restore. Engineering-actionable now (small markdown deliverable).
 
-### Section IX — Quality / non-functional (5 items)
+*VIII.F CLOSED Day 51 chase #7 — formally accepted as POST-BETA DEFERRED. GitHub Actions cron works for beta single-property scale. Revisit when (a) Vercel cron quotas fit the workload OR (b) pg_cron benefits become evident at multi-property scale OR (c) GitHub Actions cron exhibits drift/missed-run problems.*
 
-- **IX.A — RLS hardening as new tables land.** Ongoing per table.
-- **IX.B — Performance / index tuning as data scales.** Currently sized 21-room; multi-property requires re-tuning.
-- **IX.C — Multi-property timezone support.** `PROPERTY_TIMEZONE` hardcoded `America/Chicago`; needs per-property column.
-- **IX.D — Error reporting / monitoring SDK.** Currently disallowed per CLAUDE.md; post-beta reconsideration.
-- **IX.E — Idempotency on all external integrations.** Reservations webhook idempotency keys, photo upload retries, cron retry semantics.
+### Section IX — Quality / non-functional (1 item)
 
-### Section X — Explicit post-beta deferred (master plan footer, 6 items)
+- **IX.E — Idempotency on all external integrations.** Reservations webhook idempotency keys, photo upload retries, cron retry semantics. Engineering-actionable as audit pass; effective post-Cloudbeds-integration so closely tied to V.C.
 
-- A. In-app KB-driven card generation agent.
-- B. Multi-property support.
-- F. Advanced photo pipeline (compression, multiple per note, captions).
-- G. @mention autocomplete in notes.
-- H. Multi-tenant / SaaS-mode.
-- I. ResNexus integration (dead — Cloudbeds replaces; tracked under V.C/V.H).
+*IX.A CLOSED Day 51 chase #7 — formally accepted as ONGOING OPERATIONAL PRACTICE, not a discrete closeable item. RLS hardening happens per table-add (already enforced by the dispatch operating convention "If you add a field that only managers should edit, update both policies and the trigger" per CLAUDE.md). New `team_roster_v` view (Day 51 VII.G) is the latest example — already RLS-inherits from `staff` + `tasks` underlying tables.*
+
+*IX.B CLOSED Day 51 chase #7 — formally accepted as POST-BETA DEFERRED. Currently sized 21-room single-property; multi-property re-tuning is post-beta (master plan IX.C-tied). Revisit when scale crosses ~10 staff or multi-property lands.*
+
+*IX.C CLOSED Day 51 chase #7 — formally accepted as POST-BETA DEFERRED. `PROPERTY_TIMEZONE` hardcoded `'America/Chicago'` is correct for the beta hotel; multi-property requires per-property column + migration. Revisit when second property comes online.*
+
+*IX.D CLOSED Day 51 chase #7 — formally accepted as POST-BETA DEFERRED. CLAUDE.md explicitly disallows error reporting/analytics SDKs for beta ("Do not add analytics, feature flags, or error reporting SDKs"). Revisit post-beta when this constraint relaxes.*
+
+### Section X — Explicit post-beta deferred (FORMAL DEFER closed, Day 51 chase #7)
+
+*All 6 items below FORMALLY ACCEPTED Day 51 chase #7 as POST-BETA DEFERRED with documented revisit triggers. They were already explicitly post-beta per master plan footer authoring intent; chase #7 makes the deferred state inventory-explicit so they no longer count as "open." Section X reaches zero items remaining for active inventory tracking.*
+
+- *A. In-app KB-driven card generation agent. POST-BETA DEFERRED — gated on Jennifer's KB authoring lane reaching stability + II.J Admin KB Editing Tool. Revisit when both unblock.*
+- *B. Multi-property support. POST-BETA DEFERRED — beta is explicitly single-property at the Wisconsin boutique hotel. Revisit when Bryan onboards a second property.*
+- *F. Advanced photo pipeline (compression, multiple per note, captions). POST-BETA DEFERRED — beta supports single-photo per note via Day 40 III.E pipeline. Revisit when staff feedback or storage-cost pressure demands compression / multi-photo workflows.*
+- *G. @mention autocomplete in notes. POST-BETA DEFERRED — beta uses note_assigned_to taxonomy (5 values) + assigned_user_id FK for staff pinning. Revisit when free-text @mention demand surfaces.*
+- *H. Multi-tenant / SaaS-mode. POST-BETA DEFERRED — beta is single-property single-tenant. Revisit when Bryan moves toward SaaS distribution model.*
+- *I. ResNexus integration. DROPPED — dead path; ResNexus replaced by Cloudbeds. Tracked under V.C (channel manager) + V.H (payload mapping enum).*
 
 ### STATE.md standing-tabled (22 items, not tied to a master plan letter)
 
