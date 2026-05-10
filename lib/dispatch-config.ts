@@ -279,7 +279,8 @@ export function lookupSeasonalScent(date?: Date): string {
 // Wrap Shift / Start Shift rows. The D-430 matrix (Standard/Deep/Pet ×
 // six room classes = 18 cells) lives in Jennifer's Rules for
 // HouseKeeping.docx.md and is NOT in the spreadsheet — cells below
-// are placeholders pending her authoring pass. See [ASK JENNIFER].
+// are CONFIRMED Day 52 chase #6 per Jennifer's "Rules for Housekeeping"
+// doc line 106 (archived at docs/kb/Rules for HouseKeeping.docx.md).
 // =============================================================================
 
 /** Tolerance assumed when Rules.md doesn't pin the value. */
@@ -350,6 +351,23 @@ export type DepartureTimeTargetCell =
  * different placement of items that need to be understood by the staff."
  * The 6 ADA cells previously marked [ASSUMED] are now confirmed equal to
  * non-ADA across Standard / Deep / Pet clean tiers.
+ *
+ * **CONFIRMED Day 52 chase #6 per Jennifer's "Rules for Housekeeping" doc
+ * line 106** (archived at `docs/kb/Rules for HouseKeeping.docx.md`): the
+ * 12 non-ADA cells below match Jennifer's authored values exactly:
+ *   "Standard Queen - 30 to 45 minutes, Standard Double - 35 to 50 minutes,
+ *   Standard King Jacuzzi - 45 to 60 minutes, Standard Suite - 45 to 65
+ *   minutes. Deep Queen - 60 to 120 minutes, Deep Double - 70 to 130
+ *   minutes, Deep King Jacuzzi - 75 to 150 minutes, Deep Suite - 75 to
+ *   150 minutes. Pet Queen - 60 to 120 minutes, Pet Double - 70 to 130
+ *   minutes, Pet King Jacuzzi - 75 to 150 minutes, Pet Suite - 75 to 150
+ *   minutes."
+ * Combined with the Q5 ADA confirmation, all 18 cells (3 clean × 6 room)
+ * are now authoritatively confirmed against Jennifer's source doc — NOT
+ * placeholders. The earlier "placeholders pending her authoring pass"
+ * framing in the prior comment block was stale (the values were always
+ * Jennifer's authored numbers, just nobody connected the dots back to
+ * Rules for Housekeeping until Day 52 chase #6). Closes master plan VI.F.
  *
  * `unknown` stays null — fallback for unmapped rooms means "no admin-note
  * threshold fires," which is correct since we have no spec for it.
