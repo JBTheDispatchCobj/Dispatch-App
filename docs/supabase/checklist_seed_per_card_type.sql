@@ -1,3 +1,9 @@
+-- *** SUPERSEDED Day 53 chase #2 ***
+-- *** This file is preserved for history but should NOT be applied. ***
+-- *** Apply `docs/supabase/checklist_seed_per_card_type_with_deep.sql` instead. ***
+-- *** That file includes everything below PLUS the Day 53 chase #2 (Chase E) ***
+-- *** Deep Clean +1 conditional clause and backfill. ***
+--
 -- Day 52 chase #3 (VI.B) — per-card_type checklist seed alignment
 --
 -- Replaces the Day-49 hotfix `tasks_seed_default_checklist()` trigger

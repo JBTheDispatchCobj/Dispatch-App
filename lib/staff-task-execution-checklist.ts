@@ -28,9 +28,10 @@ export function checklistCompletionPercent(
  *
  * IMPORTANT: this list MUST stay in lockstep with the per-card_type seed
  * arm in `tasks_seed_default_checklist()` at
- * `docs/supabase/checklist_seed_per_card_type.sql` (housekeeping_turn arm).
- * Day 49 codification: DB-trigger-vs-UI-canonical-list drift audit — any
- * change to one MUST update the other in the same commit.
+ * `docs/supabase/checklist_seed_per_card_type_with_deep.sql` (housekeeping_turn
+ * arm; supersedes Day 52 chase #3 SQL per Day 53 chase #2). Day 49 codification:
+ * DB-trigger-vs-UI-canonical-list drift audit — any change to one MUST update
+ * the other in the same commit.
  */
 export const DEPARTURES_CANONICAL_CHECKLIST: ReadonlyArray<string> = [
   "Open/Strip",
@@ -40,6 +41,32 @@ export const DEPARTURES_CANONICAL_CHECKLIST: ReadonlyArray<string> = [
   "Clean",
   "Close Out",
   "Restock",
+];
+
+/**
+ * Departures execution checklist for Deep Clean variant — standard 7 + "Deep Clean" 8th.
+ * Used when task.context.outgoing_guest.clean_type === 'Deep'. The "Deep Clean" line
+ * links (via the existing Detail pattern) to the per-item Deep Clean detail sub-tree
+ * (AC Unit, Bedding, Bed, Walls, Bathroom, Shower/Sink, Defrost Freezer) per Jennifer
+ * Q2 + the substrate at `docs/kb/Departure_DeepClean_variant.md` (Day 53 chase #1).
+ *
+ * Day 53 chase #2 (Chase E) — variant shape per Jennifer Q2: +1 parent line on the
+ * standard 7. Sub-tree content lives in the Deep Clean detail section per Rules.md
+ * line 100-101 (admin per-room tracking via the planned `deep_clean_history` table).
+ *
+ * IMPORTANT: must stay in lockstep with the housekeeping_turn arm of
+ * `tasks_seed_default_checklist()` at
+ * `docs/supabase/checklist_seed_per_card_type_with_deep.sql`. Day 49 codification.
+ */
+export const DEPARTURES_DEEP_CANONICAL_CHECKLIST: ReadonlyArray<string> = [
+  "Open/Strip",
+  "Bed",
+  "Report/Doc",
+  "Prep",
+  "Clean",
+  "Close Out",
+  "Restock",
+  "Deep Clean",
 ];
 
 /**

@@ -11,6 +11,7 @@ import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
   type ExecutionChecklistItem,
   DEPARTURES_CANONICAL_CHECKLIST,
+  DEPARTURES_DEEP_CANONICAL_CHECKLIST,
 } from "@/lib/staff-task-execution-checklist";
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
@@ -128,8 +129,19 @@ type DisplayChecklistItem = {
   dbItem: ExecutionChecklistItem | null;
 };
 
-function buildDisplayChecklist(dbItems: ExecutionChecklistItem[]): DisplayChecklistItem[] {
-  return DEPARTURES_CANONICAL_CHECKLIST.map((title) => ({
+function buildDisplayChecklist(
+  dbItems: ExecutionChecklistItem[],
+  cleanType: string | null,
+): DisplayChecklistItem[] {
+  // Day 53 chase #2 (Chase E): Deep Clean variant adds an 8th "Deep Clean" line per
+  // Jennifer Q2 + docs/kb/Departure_DeepClean_variant.md. Selection keyed on
+  // task.context.outgoing_guest.clean_type === 'Deep'. Standard / Pet / null fall
+  // through to the 7-item standard canonical list.
+  const canonical =
+    cleanType === "Deep"
+      ? DEPARTURES_DEEP_CANONICAL_CHECKLIST
+      : DEPARTURES_CANONICAL_CHECKLIST;
+  return canonical.map((title) => ({
     displayTitle: title,
     dbItem: dbItems.find((i) => i.title.toLowerCase() === title.toLowerCase()) ?? null,
   }));
@@ -312,7 +324,7 @@ export default function DeparturesCard({
   const dueTime = formatDueTime(task.due_time);
   const seasonalScent = lookupSeasonalScent();
 
-  const displayChecklist = buildDisplayChecklist(checklist);
+  const displayChecklist = buildDisplayChecklist(checklist, outgoing.clean_type);
   const doneCount = displayChecklist.filter((i) => i.dbItem?.done).length;
 
   return (
