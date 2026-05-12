@@ -6716,6 +6716,16 @@ main.wrap--wide {
   text-align: left;
   font-family: inherit;
   padding: 0;
+  /* When the header is an <a> (Day 54 chase #2 direct-link buckets), strip
+     the underline + inherit text color so it reads identical to the <button>
+     variant used by expandable buckets. */
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Inert variant — direct-link bucket with zero tasks. Not clickable. */
+.bucket__header--inert {
+  cursor: default;
 }
 
 .bucket__stripe {

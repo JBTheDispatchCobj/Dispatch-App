@@ -56,6 +56,17 @@ const INCOMPLETE_STATUSES = new Set(["open", "in_progress", "paused", "blocked"]
 const STANDARD_BUCKET_ORDER: BucketKey[] = ["sod", "d", "s", "a", "da", "e"];
 const RESHUFFLED_BUCKET_ORDER: BucketKey[] = ["sod", "s", "a", "d", "da", "e"];
 
+// Day 54 chase #2 — single-task buckets. SOD, Dailys, and EOD are
+// conceptually one card per shift (one X-430 with internal checklist
+// tiles), not N task rows like Departures/Stayovers/Arrivals. The
+// bucket header for these buckets renders as a direct <Link> to the
+// task's detail card — no expansion affordance, no chevron, no rows
+// on the home. Bryan's product call: "you can only click the top one"
+// for Dailys; "you can just open it" for SOD/EOD. Multi-task buckets
+// (Departures / Stayovers / Arrivals) keep the expand-and-row-link
+// behavior since each task is a separate room.
+const DIRECT_LINK_BUCKETS = new Set<BucketKey>(["sod", "da", "e"]);
+
 // Type-safe StaffHomeBucket → BucketKey pairs in display order
 const BUCKET_ENTRIES: [StaffHomeBucket, BucketKey][] = [
   ["start_of_day", "sod"],
@@ -456,6 +467,8 @@ export default function StaffHomePage() {
   // Ref-gated so subsequent task updates (e.g., a task being marked done
   // and the bucket no longer having opens) don't re-trigger the
   // auto-expand and clobber the user's manual collapse.
+  // Day 54 chase #2 — skip direct-link buckets (SOD/Dailys/EOD); they
+  // don't have an expanded state in the new model.
   const autoExpandedOnceRef = useRef(false);
   useEffect(() => {
     if (autoExpandedOnceRef.current) return;
@@ -465,6 +478,7 @@ export default function StaffHomePage() {
       return;
     }
     for (const key of bucketOrder) {
+      if (DIRECT_LINK_BUCKETS.has(key)) continue;
       if (bucketStates[key].openCount > 0) {
         setExpandedBucket(key);
         autoExpandedOnceRef.current = true;
@@ -610,7 +624,13 @@ export default function StaffHomePage() {
           {bucketOrder.map((key) => {
             const stat = BUCKET_STATIC[key];
             const state = bucketStates[key];
-            const isExpanded = expandedBucket === key;
+            // Day 54 chase #2 — SOD / Dailys / EOD render as a single
+            // navigation link (one task per shift). No expansion.
+            const isDirectLink = DIRECT_LINK_BUCKETS.has(key);
+            const firstTaskId = state.tasks[0]?.id ?? null;
+            const directLinkHref =
+              isDirectLink && firstTaskId ? `/staff/task/${firstTaskId}` : null;
+            const isExpanded = !isDirectLink && expandedBucket === key;
             const showStack = state.totalCount > 1 && !isExpanded;
             const classes = ["bucket"];
             if (showStack) classes.push("bucket--has-stack");
@@ -626,38 +646,59 @@ export default function StaffHomePage() {
               : state.isDone
                 ? state.totalCount
                 : state.openCount;
+
+            // Inner content of the bucket header (same regardless of
+            // whether wrapper is Link, button, or inert div).
+            const headerInner = (
+              <>
+                <div className="bucket__stripe" />
+                <div className="bucket__head-body">
+                  <div className="bucket__abbr">{stat.abbr}</div>
+                  <div className="bucket__name">{stat.title}</div>
+                </div>
+                <div className="bucket__right">
+                  {state.isDone && (
+                    <div className="bucket__check" aria-label="All complete">
+                      ✓
+                    </div>
+                  )}
+                  <div className="bucket__count">{headerCount}</div>
+                  {!state.isEmpty && !isDirectLink && (
+                    <span className="bucket__chevron" aria-hidden>
+                      ▾
+                    </span>
+                  )}
+                </div>
+              </>
+            );
+
             return (
               <div
                 key={key}
                 className={classes.join(" ")}
                 data-bucket={stat.dataAttr}
               >
-                <button
-                  type="button"
-                  className="bucket__header"
-                  onClick={() => handleBucketTap(key)}
-                  aria-expanded={isExpanded}
-                  aria-controls={`bucket-rows-${key}`}
-                >
-                  <div className="bucket__stripe" />
-                  <div className="bucket__head-body">
-                    <div className="bucket__abbr">{stat.abbr}</div>
-                    <div className="bucket__name">{stat.title}</div>
+                {directLinkHref ? (
+                  <Link href={directLinkHref} className="bucket__header">
+                    {headerInner}
+                  </Link>
+                ) : isDirectLink ? (
+                  // Direct-link bucket but no task to link to (count=0).
+                  // Render inert — no click handler, no Link target.
+                  <div className="bucket__header bucket__header--inert">
+                    {headerInner}
                   </div>
-                  <div className="bucket__right">
-                    {state.isDone && (
-                      <div className="bucket__check" aria-label="All complete">
-                        ✓
-                      </div>
-                    )}
-                    <div className="bucket__count">{headerCount}</div>
-                    {!state.isEmpty && (
-                      <span className="bucket__chevron" aria-hidden>
-                        ▾
-                      </span>
-                    )}
-                  </div>
-                </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="bucket__header"
+                    onClick={() => handleBucketTap(key)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`bucket-rows-${key}`}
+                  >
+                    {headerInner}
+                  </button>
+                )}
                 {isExpanded && (
                   <div className="bucket__rows" id={`bucket-rows-${key}`}>
                     {state.tasks.length === 0 ? (
