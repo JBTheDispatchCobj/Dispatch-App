@@ -1,46 +1,44 @@
 -- ============================================================================
--- Day 54 chase #1 + #2 follow-up — populate Lizzie's staff home with demo tasks
+-- Day 54 chase #3 follow-up — populate Lizzie's staff home with demo tasks
 -- ============================================================================
--- 15 tasks across all six buckets so the new stacked-deck UI can be verified
--- end-to-end.
+-- 15 tasks + 6 Dailys checklist items so the new stacked-deck UI demos
+-- every bucket render mode end-to-end.
 --
--- Day 54 chase #2 product call: SOD / Dailys / EOD are SINGLE-task buckets
--- (one X-430 detail card per shift with internal checklist tiles). On the
--- staff home they render as direct-link headers (no expansion). Departures,
--- Stayovers, and Arrivals are multi-task (one task per room) and keep the
--- expand-and-link-rows model.
+-- Bucket render modes (Day 54 chase #2 / #3):
+--   SOD:        direct-link, no expansion. One task per shift.
+--   Departures: multi-task expand. One task per departing room.
+--   Stayovers:  multi-task expand. One task per stayover room.
+--   Arrivals:   multi-task expand. One task per arriving room.
+--   Dailys:     preview-expand. Header is a <Link> to Da-430; chevron
+--               toggles inline preview of task_checklist_items
+--               (display-only — taps don't navigate or toggle done).
+--   EOD:        direct-link, but LOCKED until every non-EOD bucket has
+--               zero open tasks. When locked, header is inert + shows
+--               a "Locked" chip.
 --
 -- Bucket states demonstrated:
---   SOD:        1 task, DONE       → bucket flips to done state, header
---                                     is a direct link to SOD-430
---   Departures: 5 tasks, 1 DONE    → mixed-row expanded view
---   Stayovers:  4 tasks, all OPEN  → standard active state
---   Arrivals:   3 tasks, all OPEN  → ETA chips render (4:00 PM / 2:00 PM x2)
---   Dailys:     1 task, OPEN       → header is a direct link to Da-430
---   EOD:        1 task, OPEN       → header is a direct link to E-430
+--   SOD:        1 task DONE       → bucket flips to done state, direct-link
+--   Departures: 5 tasks, 1 DONE   → mixed-row expanded view
+--   Stayovers:  4 tasks, all OPEN → standard active state, stack visual
+--   Arrivals:   3 tasks, all OPEN → ETA chips render
+--   Dailys:     1 task OPEN + 6 checklist items → preview-expand
+--   EOD:        1 task OPEN, but LOCKED (Departures has 4 open)
 --
--- The AFTER-INSERT trigger `tasks_seed_default_checklist()` will auto-seed
--- the canonical checklist items per card_type (Day 52 chase #3 / Day 53
--- chase #2): departures = 7 (or 8 for Deep), arrivals = 3, stayovers = 8.
--- SOD / Dailys / EOD do NOT get auto-checklist seeding — their X-430 detail
--- cards render whatever checklist rows exist (none, for now). If you want
--- to populate SOD-430 / Da-430 with checklist tiles, insert into
--- task_checklist_items manually keyed off the new task ids.
+-- The AFTER-INSERT trigger `tasks_seed_default_checklist()` auto-seeds
+-- the canonical checklist items for housekeeping_turn / arrival /
+-- stayover. SOD / Dailys / EOD do NOT auto-seed — Dailys items are
+-- inserted explicitly below.
 --
--- Idempotent — re-run safe. Deletes all existing tasks for Lizzie before
--- inserting the new set.
+-- Idempotent — deletes all existing tasks for Lizzie before inserting.
+-- task_checklist_items rows cascade with tasks on delete.
 --
 -- Apply via Supabase dashboard SQL editor → New query → paste → Run.
--- Then refresh https://dispatch-app-iota.vercel.app/staff to see the deck.
---
--- NOTE on Daily Brief counts: the brief at the top reads from the
--- `reservations` table, not from `tasks`. To populate the brief with
--- matching counts (3 / 5 / 4), run the companion reservations seed.
 -- ============================================================================
 
 DO $$
 DECLARE
   v_lizzie_id uuid;
+  v_dailys_id uuid := gen_random_uuid();
   v_today     date := CURRENT_DATE;
 BEGIN
   SELECT id INTO v_lizzie_id
@@ -50,21 +48,19 @@ BEGIN
 
   IF v_lizzie_id IS NULL THEN
     RAISE EXCEPTION
-      'Could not find a staff row with name like Lizzie. '
-      'Run: SELECT id, name FROM public.staff; '
-      'then adjust the ILIKE filter to match your test user.';
+      'Could not find a staff row with name like Lizzie.';
   END IF;
 
   DELETE FROM tasks WHERE staff_id = v_lizzie_id;
 
-  -- ── SOD (Start of Day) — 1 task, DONE ──────────────────────────────────
+  -- ── SOD — 1 task, DONE ──────────────────────────────────────────
   INSERT INTO tasks
     (title, status, card_type, source, priority, staff_id, due_date, completed_at, context)
   VALUES
     ('Start of Day', 'done', 'start_of_day', 'manual', 'medium', v_lizzie_id, v_today, now(),
      '{"staff_home_bucket":"start_of_day"}'::jsonb);
 
-  -- ── Departures (housekeeping_turn) — 5 tasks, 1 DONE ───────────────────
+  -- ── Departures — 5 tasks, 1 DONE ────────────────────────────────
   INSERT INTO tasks
     (title, status, card_type, source, priority, staff_id, room_number, due_date, completed_at, context)
   VALUES
@@ -79,7 +75,7 @@ BEGIN
     ('Turnover Room 24', 'open', 'housekeeping_turn', 'manual', 'high',   v_lizzie_id, '24', v_today, NULL,
      '{"staff_home_bucket":"departures","outgoing_guest":{"name":"Hannah Mills","room_type":"King Jacuzzi","clean_type":"Deep"}}'::jsonb);
 
-  -- ── Stayovers (stayover card_type) — 4 tasks, all OPEN ─────────────────
+  -- ── Stayovers — 4 tasks, all OPEN ────────────────────────────────
   INSERT INTO tasks
     (title, status, card_type, source, priority, staff_id, room_number, due_date, context)
   VALUES
@@ -92,7 +88,7 @@ BEGIN
     ('Service Room 12', 'open', 'stayover', 'manual', 'medium', v_lizzie_id, '12', v_today,
      '{"staff_home_bucket":"stayovers","current_guest":{"name":"Olivia Brennan","room_type":"King Jacuzzi","night_n":5,"total_nights":14}}'::jsonb);
 
-  -- ── Arrivals (arrival card_type) — 3 tasks, all OPEN ───────────────────
+  -- ── Arrivals — 3 tasks, all OPEN ─────────────────────────────────
   INSERT INTO tasks
     (title, status, card_type, source, priority, staff_id, room_number, due_date, context)
   VALUES
@@ -103,19 +99,28 @@ BEGIN
     ('Prep Room 42', 'open', 'arrival', 'manual', 'medium', v_lizzie_id, '42', v_today,
      '{"staff_home_bucket":"arrivals","incoming_guest":{"name":"Linda Park","room_type":"ADA Single","checkin_time":"14:00"}}'::jsonb);
 
-  -- ── Dailys (dailys card_type) — 1 task, OPEN ───────────────────────────
+  -- ── Dailys — 1 task, OPEN, with 6 checklist items ─────────────────
   INSERT INTO tasks
-    (title, status, card_type, source, priority, staff_id, due_date, context)
+    (id, title, status, card_type, source, priority, staff_id, due_date, context)
   VALUES
-    ('Property Round', 'open', 'dailys', 'manual', 'medium', v_lizzie_id, v_today,
+    (v_dailys_id, 'Property Round', 'open', 'dailys', 'manual', 'medium', v_lizzie_id, v_today,
      '{"staff_home_bucket":"dailys"}'::jsonb);
 
-  -- ── EOD (eod card_type) — 1 task, OPEN ─────────────────────────────────
+  INSERT INTO task_checklist_items (task_id, title, sort_order, done)
+  VALUES
+    (v_dailys_id, 'Restock Cart',     1, false),
+    (v_dailys_id, 'Public Restrooms', 2, false),
+    (v_dailys_id, 'Dust Pictures',    3, false),
+    (v_dailys_id, 'Trash Pickup',     4, false),
+    (v_dailys_id, 'Wash Windows',     5, false),
+    (v_dailys_id, 'Vacuum Hallways',  6, false);
+
+  -- ── EOD — 1 task, OPEN (locked until others clear) ──────────────────
   INSERT INTO tasks
     (title, status, card_type, source, priority, staff_id, due_date, context)
   VALUES
     ('Wrap Shift', 'open', 'eod', 'manual', 'medium', v_lizzie_id, v_today,
      '{"staff_home_bucket":"eod"}'::jsonb);
 
-  RAISE NOTICE 'Seeded 15 demo tasks for Lizzie (staff_id %). SOD 1 done · Dep 1/5 done · Sta 4 open · Arr 3 open · Dly 1 open · EOD 1 open.', v_lizzie_id;
+  RAISE NOTICE 'Seeded 15 tasks + 6 Dailys checklist items for Lizzie (staff_id %).', v_lizzie_id;
 END $$;

@@ -6723,9 +6723,76 @@ main.wrap--wide {
   color: inherit;
 }
 
-/* Inert variant — direct-link bucket with zero tasks. Not clickable. */
+/* Inert variant — direct-link bucket with zero tasks OR EOD locked. */
 .bucket__header--inert {
   cursor: default;
+}
+
+/* Day 54 chase #3 — Split header for preview-expand buckets (Dailys).
+   Left = <Link> nav to detail card; right = <button> chevron toggling
+   inline checklist preview. Two click targets, both inside the same
+   header band. */
+.bucket__header--split {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  background: transparent;
+  padding: 0;
+}
+.bucket__header-link {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 6px 1fr;
+  align-items: stretch;
+  text-decoration: none;
+  color: inherit;
+  min-width: 0;
+  cursor: pointer;
+}
+.bucket__header-link.bucket__header--inert {
+  cursor: default;
+}
+.bucket__chevron-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px 0 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+
+/* Day 54 chase #3 — EOD lock chip. Renders in the right cluster of the
+   EOD header when all non-EOD buckets aren't yet clear. Mirrors the
+   E-430 detail card's clock-out gate — surfaces the block early so
+   staff sees what's stopping them before they tap into EOD. */
+.bucket__lock-label {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1.5px solid var(--ink-faint);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.bucket--locked .bucket__name {
+  color: var(--ink-muted);
+}
+
+/* Day 54 chase #3 — Preview-only row variant. Used inside the Dailys
+   bucket expansion. Display-only — no Link wrap, no hover state, no
+   cursor change. Renders task_checklist_items for the Dailys task. */
+.bucket-row--preview {
+  cursor: default;
+}
+.bucket-row--preview:hover {
+  background: transparent;
 }
 
 .bucket__stripe {

@@ -16,6 +16,7 @@ import ProfileLoadError from "@/app/profile-load-error";
 import { supabase } from "@/lib/supabase";
 import {
   partitionStaffHomeTasks,
+  staffHomeBucketForTask,
   type StaffHomeBucket,
 } from "@/lib/staff-home-bucket";
 import { getTodaysReservationCounts } from "@/lib/reservations";
@@ -41,6 +42,18 @@ type TaskRow = {
   room_number: string | null;
 };
 
+// Day 54 chase #3 — Dailys preview-expand surface fetches the underlying
+// task_checklist_items for the Dailys task so they render inline on the
+// home page (display-only — Bryan's "you can only click the top one"
+// rule). Rows are keyed by item.id; done state mirrors item.done.
+type ChecklistRow = {
+  id: string;
+  task_id: string;
+  title: string;
+  sort_order: number | null;
+  done: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Bucket config
 // ---------------------------------------------------------------------------
@@ -56,16 +69,29 @@ const INCOMPLETE_STATUSES = new Set(["open", "in_progress", "paused", "blocked"]
 const STANDARD_BUCKET_ORDER: BucketKey[] = ["sod", "d", "s", "a", "da", "e"];
 const RESHUFFLED_BUCKET_ORDER: BucketKey[] = ["sod", "s", "a", "d", "da", "e"];
 
-// Day 54 chase #2 — single-task buckets. SOD, Dailys, and EOD are
-// conceptually one card per shift (one X-430 with internal checklist
-// tiles), not N task rows like Departures/Stayovers/Arrivals. The
-// bucket header for these buckets renders as a direct <Link> to the
-// task's detail card — no expansion affordance, no chevron, no rows
-// on the home. Bryan's product call: "you can only click the top one"
-// for Dailys; "you can just open it" for SOD/EOD. Multi-task buckets
-// (Departures / Stayovers / Arrivals) keep the expand-and-row-link
-// behavior since each task is a separate room.
-const DIRECT_LINK_BUCKETS = new Set<BucketKey>(["sod", "da", "e"]);
+// Day 54 chase #2 / #3 / #4 — three bucket render modes:
+//
+//   DIRECT_LINK_BUCKETS  — single-task, no expansion. Bucket header is
+//                          a direct <Link> to the task's detail card.
+//                          Currently {sod, e}. EOD additionally gates
+//                          on all-non-eod-buckets-clear (chase #3).
+//
+//   PREVIEW_EXPAND_BUCKETS — Expands like a multi-task bucket (whole
+//                            header is a toggle button, no split, no
+//                            separate Link), BUT the expanded rows
+//                            show task_checklist_items (display-only,
+//                            no Link wrap). Bryan's chase #4 spec:
+//                            "Should be able to be expanded like the
+//                            other tabs that are not EOD and SOD";
+//                            rows are NOT clickable as individual tasks.
+//                            Currently {da}.
+//
+//   (multi-task default)   — Departures / Stayovers / Arrivals. Whole
+//                            header is a toggle <button>; rows are
+//                            <Link> anchors to each task's detail.
+//
+const DIRECT_LINK_BUCKETS = new Set<BucketKey>(["sod", "e"]);
+const PREVIEW_EXPAND_BUCKETS = new Set<BucketKey>(["da"]);
 
 // Type-safe StaffHomeBucket → BucketKey pairs in display order
 const BUCKET_ENTRIES: [StaffHomeBucket, BucketKey][] = [
@@ -299,6 +325,7 @@ export default function StaffHomePage() {
   const [clockingIn, setClockingIn] = useState(false);
   const [clockInError, setClockInError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [dailysChecklist, setDailysChecklist] = useState<ChecklistRow[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
@@ -347,6 +374,38 @@ export default function StaffHomePage() {
       room_number: r.room_number ? String(r.room_number) : null,
     }));
     setTasks(rows);
+
+    // Day 54 chase #3 — fetch task_checklist_items for any Dailys task(s)
+    // so the home page can preview them inline when the Dailys bucket
+    // expands. Display-only on home; the Da-430 detail card is where
+    // staff actually toggle them.
+    const dailysIds = rows
+      .filter((r) => staffHomeBucketForTask(r) === "dailys")
+      .map((r) => r.id);
+    if (dailysIds.length === 0) {
+      setDailysChecklist([]);
+    } else {
+      const { data: ciData, error: ciErr } = await supabase
+        .from("task_checklist_items")
+        .select("id, task_id, title, sort_order, done")
+        .in("task_id", dailysIds)
+        .order("sort_order", { ascending: true, nullsFirst: false });
+      if (ciErr) {
+        console.warn("[staff-home] Dailys checklist fetch failed:", ciErr.message);
+        setDailysChecklist([]);
+      } else {
+        setDailysChecklist(
+          ((ciData ?? []) as Record<string, unknown>[]).map((c) => ({
+            id: String(c.id),
+            task_id: String(c.task_id),
+            title: String(c.title ?? ""),
+            sort_order: typeof c.sort_order === "number" ? c.sort_order : null,
+            done: c.done === true,
+          })),
+        );
+      }
+    }
+
     setLoadingTasks(false);
   }, []);
 
@@ -463,6 +522,20 @@ export default function StaffHomePage() {
     [tasks],
   );
 
+  // Day 54 chase #3 — EOD gate. The EOD bucket header is locked until
+  // every non-EOD bucket has zero incomplete tasks. Empty buckets
+  // (totalCount === 0) count as clear; nothing to do = no blocker.
+  // This mirrors the clock-out gate inside the E-430 detail card —
+  // surfacing the gate on the home so staff can see what's blocking
+  // their wrap before they tap into EOD.
+  const allNonEodBucketsClear = useMemo(() => {
+    for (const [, key] of BUCKET_ENTRIES) {
+      if (key === "e") continue;
+      if (bucketStates[key].openCount > 0) return false;
+    }
+    return true;
+  }, [bucketStates]);
+
   // Auto-expand first bucket with open tasks once on initial task load.
   // Ref-gated so subsequent task updates (e.g., a task being marked done
   // and the bucket no longer having opens) don't re-trigger the
@@ -478,6 +551,9 @@ export default function StaffHomePage() {
       return;
     }
     for (const key of bucketOrder) {
+      // Skip non-expandable buckets (SOD/EOD). Dailys is expandable (preview
+      // mode) and IS a valid auto-expand target — matches Bryan's chase #4
+      // "Should be able to be expanded like the other tabs" parity.
       if (DIRECT_LINK_BUCKETS.has(key)) continue;
       if (bucketStates[key].openCount > 0) {
         setExpandedBucket(key);
@@ -624,12 +700,18 @@ export default function StaffHomePage() {
           {bucketOrder.map((key) => {
             const stat = BUCKET_STATIC[key];
             const state = bucketStates[key];
-            // Day 54 chase #2 — SOD / Dailys / EOD render as a single
-            // navigation link (one task per shift). No expansion.
+            // Day 54 chase #2 / #3 / #4 — three render modes per bucket.
             const isDirectLink = DIRECT_LINK_BUCKETS.has(key);
+            const isPreviewExpand = PREVIEW_EXPAND_BUCKETS.has(key);
             const firstTaskId = state.tasks[0]?.id ?? null;
-            const directLinkHref =
-              isDirectLink && firstTaskId ? `/staff/task/${firstTaskId}` : null;
+            // EOD specifically locks until all non-EOD buckets are clear.
+            const isEodLocked = key === "e" && !allNonEodBucketsClear;
+            // Only direct-link buckets get a nav href (Dailys is now
+            // expand-toggle like Stayovers, no header link).
+            const navHref =
+              isDirectLink && firstTaskId && !isEodLocked
+                ? `/staff/task/${firstTaskId}`
+                : null;
             const isExpanded = !isDirectLink && expandedBucket === key;
             const showStack = state.totalCount > 1 && !isExpanded;
             const classes = ["bucket"];
@@ -637,37 +719,45 @@ export default function StaffHomePage() {
             if (isExpanded) classes.push("bucket--expanded");
             if (state.isDone) classes.push("bucket--done");
             if (state.isEmpty) classes.push("bucket--empty");
-            // Count shown in header pill:
-            //   Active (has opens): open count, solid accent
-            //   Done (all done):    total count, outlined + check
-            //   Empty (0 tasks):    "0", outlined
+            if (isEodLocked) classes.push("bucket--locked");
+            // Count: open count when active, total when done, 0 when empty.
             const headerCount = state.isEmpty
               ? 0
               : state.isDone
                 ? state.totalCount
                 : state.openCount;
 
-            // Inner content of the bucket header (same regardless of
-            // whether wrapper is Link, button, or inert div).
-            const headerInner = (
+            // Right-side cluster (lock chip / check / count / chevron).
+            // Chevron renders on every expandable bucket with at least one
+            // task (Dep / Sta / Arr / Dailys). Hidden on direct-link buckets
+            // (SOD / EOD) and on empty buckets.
+            const showChevron = !isDirectLink && !state.isEmpty;
+            const rightCluster = (
+              <>
+                {isEodLocked && (
+                  <span className="bucket__lock-label">Locked</span>
+                )}
+                {state.isDone && (
+                  <div className="bucket__check" aria-label="All complete">
+                    ✓
+                  </div>
+                )}
+                <div className="bucket__count">{headerCount}</div>
+                {showChevron && (
+                  <span className="bucket__chevron" aria-hidden>
+                    ▾
+                  </span>
+                )}
+              </>
+            );
+
+            // Left-side cluster (stripe + abbr + name). Shared across modes.
+            const leftCluster = (
               <>
                 <div className="bucket__stripe" />
                 <div className="bucket__head-body">
                   <div className="bucket__abbr">{stat.abbr}</div>
                   <div className="bucket__name">{stat.title}</div>
-                </div>
-                <div className="bucket__right">
-                  {state.isDone && (
-                    <div className="bucket__check" aria-label="All complete">
-                      ✓
-                    </div>
-                  )}
-                  <div className="bucket__count">{headerCount}</div>
-                  {!state.isEmpty && !isDirectLink && (
-                    <span className="bucket__chevron" aria-hidden>
-                      ▾
-                    </span>
-                  )}
                 </div>
               </>
             );
@@ -678,17 +768,24 @@ export default function StaffHomePage() {
                 className={classes.join(" ")}
                 data-bucket={stat.dataAttr}
               >
-                {directLinkHref ? (
-                  <Link href={directLinkHref} className="bucket__header">
-                    {headerInner}
+                {navHref ? (
+                  /* ── Mode: DIRECT_LINK (SOD, EOD-unlocked) ── */
+                  <Link href={navHref} className="bucket__header">
+                    {leftCluster}
+                    <div className="bucket__right">{rightCluster}</div>
                   </Link>
                 ) : isDirectLink ? (
-                  // Direct-link bucket but no task to link to (count=0).
-                  // Render inert — no click handler, no Link target.
+                  /* ── Mode: DIRECT_LINK but inert (EOD locked, or zero tasks) ── */
                   <div className="bucket__header bucket__header--inert">
-                    {headerInner}
+                    {leftCluster}
+                    <div className="bucket__right">{rightCluster}</div>
                   </div>
                 ) : (
+                  /* Mode: expand-toggle (Dep / Sta / Arr / Dailys).
+                     Whole header is a button; tap toggles inline expand.
+                     Rows that render below differ by bucket type — Dailys
+                     shows task_checklist_items as display-only previews,
+                     Dep/Sta/Arr show task rows wrapped in Link anchors. */
                   <button
                     type="button"
                     className="bucket__header"
@@ -696,10 +793,49 @@ export default function StaffHomePage() {
                     aria-expanded={isExpanded}
                     aria-controls={`bucket-rows-${key}`}
                   >
-                    {headerInner}
+                    {leftCluster}
+                    <div className="bucket__right">{rightCluster}</div>
                   </button>
                 )}
-                {isExpanded && (
+
+                {/* Expanded rows. Two shapes:
+                    · Dailys (preview-expand): task_checklist_items, display-only
+                    · Multi-task: task rows wrapped in <Link> */}
+                {isExpanded && isPreviewExpand && (
+                  <div className="bucket__rows" id={`bucket-rows-${key}`}>
+                    {dailysChecklist.length === 0 ? (
+                      <div className="bucket-row bucket-row--empty">
+                        <div className="bucket-row__stripe" />
+                        <div className="bucket-row__check" />
+                        <div className="bucket-row__body">
+                          <div className="bucket-row__primary">
+                            No checklist items yet
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      dailysChecklist.map((item) => {
+                        const rowClasses = ["bucket-row", "bucket-row--preview"];
+                        if (item.done) rowClasses.push("bucket-row--done");
+                        return (
+                          <div key={item.id} className={rowClasses.join(" ")}>
+                            <div className="bucket-row__stripe" />
+                            <div className="bucket-row__check" aria-hidden>
+                              ✓
+                            </div>
+                            <div className="bucket-row__body">
+                              <div className="bucket-row__primary">
+                                {item.title}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {isExpanded && !isPreviewExpand && (
                   <div className="bucket__rows" id={`bucket-rows-${key}`}>
                     {state.tasks.length === 0 ? (
                       <div className="bucket-row bucket-row--empty">
