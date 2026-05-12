@@ -156,35 +156,61 @@ export async function fetchClockedInAt(
 }
 
 // =============================================================================
-// Phase 2b — Cross-staff EOD activation gate
+// Wrap Shift gates
 // =============================================================================
+// Two independent gates AND'd together:
+//
+//   1. Cross-staff EOD activation gate (Phase 2b, Day 31):
+//      All other on-shift staff must be in their EOD card before this
+//      staff can wrap. Prevents one housekeeper from clocking out while
+//      another is still mid-shift waiting for them.
+//
+//   2. Self all-buckets-done gate (Day 54 chase #1):
+//      The current staff must have zero incomplete (open / in_progress /
+//      paused / blocked) tasks across any bucket EXCEPT the EOD card
+//      itself. Per Bryan's new product rule — "you cannot clock out
+//      without a full slate of checkmarks on completed buckets."
+//      Replaces the old hard sequential gating model (which has been
+//      retired from the staff home; staff can now work buckets in any
+//      order, but clock-out is the gate).
+//
+// Both gates fail-OPEN on Supabase errors. Admin override remains the
+// intended escape hatch when either gate misbehaves.
+
+const INCOMPLETE_STATUSES = ["open", "in_progress", "paused", "blocked"] as const;
 
 export type CanWrapShiftResult = {
-  /** True when no other clocked-in staff is blocking the wrap. */
+  /** True when both gates pass — no other-staff blockers AND no self-open tasks. */
   canWrap: boolean;
   /** Names of clocked-in staff who haven't started their EOD card yet. */
   blockedBy: string[];
+  /** Count of current staff's incomplete non-EOD tasks (Day 54 chase #1). */
+  selfOpenCount: number;
 };
 
 /**
- * Master plan I.C — "EOD activation gate: locked until all other on-shift
- * housekeepers are in their EOD card." Returns the gate state for the
- * current staff member.
+ * Returns the wrap-shift gate state for the current staff member.
  *
- * Definition of "in their EOD card": at least one task with
- * `card_type='eod'` and `status != 'open'` created in the last 24h. The
- * 24h window keeps stale EOD rows from previous shifts out of the check.
+ * Cross-staff EOD definition (gate 1): "in their EOD card" means at
+ * least one task with `card_type='eod'` and `status != 'open'` created
+ * in the last 24h. The 24h window keeps stale EOD rows from previous
+ * shifts out of the check.
  *
- * Fail-open: any fetch error returns `{ canWrap: true, blockedBy: [] }`.
- * For 4-staff beta, surfacing a Supabase error to the user inside an
- * already-failure-prone wrap-shift flow is worse than letting them
- * proceed. Admin override per master plan exception clause is the
- * intended escape hatch when the gate misbehaves.
+ * Self all-buckets-done definition (gate 2): zero rows in `tasks` for
+ * this staff_id with `card_type != 'eod'` and `status IN
+ * (open, in_progress, paused, blocked)`. The current EOD task is
+ * deliberately excluded — it's still in progress while Wrap Shift is
+ * being clicked. Tasks the staff was reassigned away from no longer
+ * have their staff_id, so they don't count either.
+ *
+ * Fail-open: any fetch error returns `canWrap: true` for that gate.
  */
 export async function canWrapShift(
   client: SupabaseClient,
   currentStaffId: string,
 ): Promise<CanWrapShiftResult> {
+  // ── Gate 1: cross-staff EOD activation ────────────────────────────
+  let blockedBy: string[] = [];
   const { data: othersRaw, error: othersErr } = await client
     .from("staff")
     .select("id, name")
@@ -195,39 +221,59 @@ export async function canWrapShift(
       "[clock-in] canWrapShift others fetch failed:",
       othersErr.message,
     );
-    return { canWrap: true, blockedBy: [] };
-  }
-  const others = (othersRaw ?? []) as Array<{ id: string; name: string }>;
-  if (others.length === 0) {
-    return { canWrap: true, blockedBy: [] };
+    // fail-open for gate 1
+  } else {
+    const others = (othersRaw ?? []) as Array<{ id: string; name: string }>;
+    if (others.length > 0) {
+      const otherIds = others.map((s) => s.id);
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: eodRaw, error: eodErr } = await client
+        .from("tasks")
+        .select("staff_id")
+        .in("staff_id", otherIds)
+        .eq("card_type", "eod")
+        .neq("status", "open")
+        .gte("created_at", since);
+      if (eodErr) {
+        console.warn(
+          "[clock-in] canWrapShift tasks fetch failed:",
+          eodErr.message,
+        );
+        // fail-open for gate 1
+      } else {
+        const inEod = new Set<string>();
+        for (const t of (eodRaw ?? []) as Array<{ staff_id: string }>) {
+          if (t.staff_id) inEod.add(t.staff_id);
+        }
+        blockedBy = others
+          .filter((s) => !inEod.has(s.id))
+          .map((s) => s.name)
+          .filter((n) => typeof n === "string" && n.trim().length > 0);
+      }
+    }
   }
 
-  const otherIds = others.map((s) => s.id);
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: eodRaw, error: eodErr } = await client
+  // ── Gate 2: self all-buckets-done (Day 54 chase #1) ───────────────
+  let selfOpenCount = 0;
+  const { data: selfRaw, error: selfErr } = await client
     .from("tasks")
-    .select("staff_id")
-    .in("staff_id", otherIds)
-    .eq("card_type", "eod")
-    .neq("status", "open")
-    .gte("created_at", since);
-  if (eodErr) {
+    .select("id")
+    .eq("staff_id", currentStaffId)
+    .neq("card_type", "eod")
+    .in("status", INCOMPLETE_STATUSES as unknown as string[]);
+  if (selfErr) {
     console.warn(
-      "[clock-in] canWrapShift tasks fetch failed:",
-      eodErr.message,
+      "[clock-in] canWrapShift self fetch failed:",
+      selfErr.message,
     );
-    return { canWrap: true, blockedBy: [] };
+    // fail-open for gate 2 — selfOpenCount stays 0
+  } else {
+    selfOpenCount = (selfRaw ?? []).length;
   }
 
-  const inEod = new Set<string>();
-  for (const t of (eodRaw ?? []) as Array<{ staff_id: string }>) {
-    if (t.staff_id) inEod.add(t.staff_id);
-  }
-
-  const blockedBy = others
-    .filter((s) => !inEod.has(s.id))
-    .map((s) => s.name)
-    .filter((n) => typeof n === "string" && n.trim().length > 0);
-
-  return { canWrap: blockedBy.length === 0, blockedBy };
+  return {
+    canWrap: blockedBy.length === 0 && selfOpenCount === 0,
+    blockedBy,
+    selfOpenCount,
+  };
 }

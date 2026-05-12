@@ -96,6 +96,10 @@ export type EODCardProps = {
   onPostNote: (e: FormEvent) => void;
   /** Phase 2b — cross-staff EOD activation gate state. */
   wrapBlockedBy: string[];
+  /** Day 54 chase #1 — self all-buckets-done gate. Count of this staff's
+      incomplete non-EOD tasks. > 0 blocks Wrap Shift with a different
+      message than the cross-staff gate. */
+  wrapSelfOpenCount: number;
   canWrapKnown: boolean;
   canWrapBusy: boolean;
   onRefreshCanWrap: () => void;
@@ -137,6 +141,7 @@ export default function EODCard({
   onResume,
   onPostNote,
   wrapBlockedBy,
+  wrapSelfOpenCount,
   canWrapKnown,
   canWrapBusy,
   onRefreshCanWrap,
@@ -361,12 +366,37 @@ export default function EODCard({
             <div className="supply" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
           </section>
 
-          {/* Phase 2b — cross-staff EOD activation gate. The Wrap Shift
-              button is locked when there are still on-shift housekeepers
-              who haven't started their EOD card. Fail-open via
-              canWrapShift's error handling — when the gate fetch errors,
-              wrapBlockedBy stays empty and the button is enabled. */}
-          {!taskDone && wrapBlockedBy.length > 0 ? (
+          {/* Wrap Shift gates — two independent locks AND'd in canWrapShift:
+              · Self all-buckets-done (Day 54 chase #1) — current staff has
+                incomplete non-EOD tasks. Prioritized over the cross-staff
+                gate because it's actionable: the staff can clear it
+                themselves by checking off their own cards.
+              · Cross-staff EOD activation (Phase 2b, Day 31) — other on-shift
+                staff aren't in their EOD card yet. Not actionable by this
+                staff; waiting on someone else.
+              Fail-open via canWrapShift's error handling — fetch errors
+              leave the gate counts at 0/[] and the button enabled. */}
+          {!taskDone && wrapSelfOpenCount > 0 ? (
+            <div className="staff-task-exec-eod-gate" role="status" aria-live="polite">
+              <div className="staff-task-exec-eod-gate-icon" aria-hidden>
+                ⏸
+              </div>
+              <div className="staff-task-exec-eod-gate-body">
+                <div className="staff-task-exec-eod-gate-title">Wrap Shift locked</div>
+                <div className="staff-task-exec-eod-gate-msg">
+                  {wrapSelfOpenCount} card{wrapSelfOpenCount === 1 ? "" : "s"} still open across your buckets. Check them off before wrapping.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="staff-task-exec-eod-gate-refresh"
+                onClick={onRefreshCanWrap}
+                disabled={canWrapBusy}
+              >
+                {canWrapBusy ? "…" : "Refresh"}
+              </button>
+            </div>
+          ) : !taskDone && wrapBlockedBy.length > 0 ? (
             <div className="staff-task-exec-eod-gate" role="status" aria-live="polite">
               <div className="staff-task-exec-eod-gate-icon" aria-hidden>
                 ⏸
@@ -410,7 +440,8 @@ export default function EODCard({
                 taskDone ||
                 paused ||
                 !canWrapKnown ||
-                wrapBlockedBy.length > 0
+                wrapBlockedBy.length > 0 ||
+                wrapSelfOpenCount > 0
               }
             >
               {taskDone ? "Done" : doneBusy ? "…" : "Wrap Shift"}

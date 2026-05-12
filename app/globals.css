@@ -2875,60 +2875,65 @@ main.wrap--wide {
      Pure additive. No existing tokens modified.
   ========================================================================= */
 
-  /* ─── A. Vivid bucket accents ──────────────────────────────────────────── */
-  --sod-accent:        #FFD000;
-  --departures-accent: #00D4B4;
+  /* ─── A. Vivid bucket accents — Day 54 chase #1 reshuffle ──
+     Old palette flattened with too many warms (yellow / mint / pink / orange / purple / red).
+     New rhythm alternates cool/warm down the stack:
+       SOD green · Departures yellow · Stayovers purple ·
+       Arrivals orange (unchanged) · Dailys royal blue · EOD hot pink.
+     Per-bucket accent-ink / accent-pale / accent-tint also moved to match. */
+  --sod-accent:        #00C853;
+  --departures-accent: #FFD000;
   --arrivals-accent:   #FF5722;
-  --stayovers-accent:  #FF477E;
-  --dailys-accent:     #9333FF;
-  --eod-accent:        #FF0044;
+  --stayovers-accent:  #A855F7;
+  --dailys-accent:     #2563EB;
+  --eod-accent:        #EC4899;
 
   /* ─── B. Accent-ink (deep ink on vivid accent bg) ──────────────────────── */
-  --sod-accent-ink:        #3B1F00;
-  --departures-accent-ink: #02312D;
+  --sod-accent-ink:        #003D14;
+  --departures-accent-ink: #3B1F00;
   --arrivals-accent-ink:   #3A1502;
-  --stayovers-accent-ink:  #3D0E14;
-  --dailys-accent-ink:     #1F0840;
-  --eod-accent-ink:        #3C0410;
+  --stayovers-accent-ink:  #2E0B5C;
+  --dailys-accent-ink:     #0A1C5C;
+  --eod-accent-ink:        #5C0E3E;
 
   /* ─── C. Accent-pale (very light tint for backgrounds) ─────────────────── */
-  --sod-accent-pale:        #FFFAE0;
-  --departures-accent-pale: #D0F7F0;
+  --sod-accent-pale:        #D4F7DD;
+  --departures-accent-pale: #FFFAE0;
   --arrivals-accent-pale:   #FFEAE0;
-  --stayovers-accent-pale:  #FFE0EA;
-  --dailys-accent-pale:     #F0E0FF;
-  --eod-accent-pale:        #FFD6DE;
+  --stayovers-accent-pale:  #F0E0FF;
+  --dailys-accent-pale:     #DBE6FF;
+  --eod-accent-pale:        #FCE7F3;
 
   /* ─── D. Derived alpha variants (tint 0.18 · soft 0.10 · wash 0.10 · aura 0.20) */
-  --sod-accent-tint: rgba(255, 208,   0, 0.18);
-  --sod-accent-soft: rgba(255, 208,   0, 0.10);
-  --sod-accent-wash: rgba(255, 208,   0, 0.10);
-  --sod-accent-aura: rgba(255, 208,   0, 0.20);
+  --sod-accent-tint: rgba(  0, 200,  83, 0.18);
+  --sod-accent-soft: rgba(  0, 200,  83, 0.10);
+  --sod-accent-wash: rgba(  0, 200,  83, 0.10);
+  --sod-accent-aura: rgba(  0, 200,  83, 0.20);
 
-  --departures-accent-tint: rgba(  0, 212, 180, 0.18);
-  --departures-accent-soft: rgba(  0, 212, 180, 0.10);
-  --departures-accent-wash: rgba(  0, 212, 180, 0.10);
-  --departures-accent-aura: rgba(  0, 212, 180, 0.20);
+  --departures-accent-tint: rgba(255, 208,   0, 0.18);
+  --departures-accent-soft: rgba(255, 208,   0, 0.10);
+  --departures-accent-wash: rgba(255, 208,   0, 0.10);
+  --departures-accent-aura: rgba(255, 208,   0, 0.20);
 
   --arrivals-accent-tint: rgba(255,  87,  34, 0.18);
   --arrivals-accent-soft: rgba(255,  87,  34, 0.10);
   --arrivals-accent-wash: rgba(255,  87,  34, 0.10);
   --arrivals-accent-aura: rgba(255,  87,  34, 0.20);
 
-  --stayovers-accent-tint: rgba(255,  71, 126, 0.18);
-  --stayovers-accent-soft: rgba(255,  71, 126, 0.10);
-  --stayovers-accent-wash: rgba(255,  71, 126, 0.10);
-  --stayovers-accent-aura: rgba(255,  71, 126, 0.20);
+  --stayovers-accent-tint: rgba(168,  85, 247, 0.18);
+  --stayovers-accent-soft: rgba(168,  85, 247, 0.10);
+  --stayovers-accent-wash: rgba(168,  85, 247, 0.10);
+  --stayovers-accent-aura: rgba(168,  85, 247, 0.20);
 
-  --dailys-accent-tint: rgba(147,  51, 255, 0.18);
-  --dailys-accent-soft: rgba(147,  51, 255, 0.10);
-  --dailys-accent-wash: rgba(147,  51, 255, 0.10);
-  --dailys-accent-aura: rgba(147,  51, 255, 0.20);
+  --dailys-accent-tint: rgba( 37,  99, 235, 0.18);
+  --dailys-accent-soft: rgba( 37,  99, 235, 0.10);
+  --dailys-accent-wash: rgba( 37,  99, 235, 0.10);
+  --dailys-accent-aura: rgba( 37,  99, 235, 0.20);
 
-  --eod-accent-tint: rgba(255,   0,  68, 0.18);
-  --eod-accent-soft: rgba(255,   0,  68, 0.10);
-  --eod-accent-wash: rgba(255,   0,  68, 0.10);
-  --eod-accent-aura: rgba(255,   0,  68, 0.20);
+  --eod-accent-tint: rgba(236,  72, 153, 0.18);
+  --eod-accent-soft: rgba(236,  72, 153, 0.10);
+  --eod-accent-wash: rgba(236,  72, 153, 0.10);
+  --eod-accent-aura: rgba(236,  72, 153, 0.20);
 
   /* ─── E. Cross-cutting tokens ───────────────────────────────────────────── */
   --status-on:      #00C8FF;
@@ -6654,4 +6659,306 @@ main.wrap--wide {
 .note-compose--modal .note-compose__submit {
   width: 100%;
   margin-top: 14px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Day 54 chase #1 — Staff home stacked-deck redesign
+   iOS-Notification-Center-style bucket cards with per-row
+   checkmarks. Replaces .deck / .bcard rendering on /staff (those
+   classes remain above as dead code for one chase; cleanup later).
+   No locked/blur state. Per-bucket auto-done when all rows checked.
+   Clock-out gate as a separate footer block.
+═══════════════════════════════════════════════════════════════════ */
+
+.bucket-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-top: 8px;
+}
+
+.bucket {
+  background: #FFFFFF;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-raised);
+  position: relative;
+  transition: opacity 200ms ease, box-shadow 200ms ease;
+}
+
+/* Stack visual via layered box-shadows — ghost cards peek out
+   below the main card. Removed when expanded (rows are now visible). */
+.bucket--has-stack {
+  box-shadow:
+    var(--shadow-raised),
+    0 6px 0 -3px #FFFFFF,
+    0 9px 6px -3px rgba(30, 20, 10, 0.07),
+    0 12px 0 -6px rgba(255, 255, 255, 0.88),
+    0 16px 9px -6px rgba(30, 20, 10, 0.06);
+}
+.bucket--has-stack.bucket--expanded {
+  box-shadow: var(--shadow-raised);
+}
+
+.bucket--empty {
+  opacity: 0.65;
+}
+
+.bucket__header {
+  display: grid;
+  grid-template-columns: 6px 1fr auto;
+  align-items: stretch;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  padding: 0;
+}
+
+.bucket__stripe {
+  background: var(--accent);
+}
+
+.bucket__head-body {
+  padding: 20px 0 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bucket__abbr {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: var(--accent);
+  text-transform: uppercase;
+  min-width: 32px;
+}
+
+.bucket__name {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--shell-ink);
+  line-height: 1;
+}
+
+.bucket__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 18px;
+}
+
+.bucket__count {
+  min-width: 38px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  line-height: 1;
+}
+
+.bucket__chevron {
+  color: var(--ink-faint);
+  font-size: 14px;
+  transition: transform 200ms ease;
+}
+
+.bucket--expanded .bucket__chevron {
+  transform: rotate(180deg);
+}
+
+/* DONE state — all rows checked */
+.bucket--done .bucket__name { color: var(--ink-muted); }
+.bucket--done .bucket__abbr { color: var(--ink-muted); }
+.bucket--done .bucket__stripe { background: var(--ink-faint); }
+.bucket--done .bucket__count {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--ink-faint);
+}
+.bucket--done .bucket__check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* EMPTY state — 0 tasks, dimmed but still visible */
+.bucket--empty .bucket__count {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--ink-faint);
+}
+
+/* Rows container */
+.bucket__rows {
+  border-top: 1px solid var(--hairline);
+}
+
+/* Individual rows — anchor tag so the whole row navigates to /staff/task/[id] */
+.bucket-row {
+  display: grid;
+  grid-template-columns: 6px 38px 1fr auto;
+  align-items: stretch;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+  transition: background 120ms ease;
+  background: transparent;
+  text-decoration: none;
+  color: inherit;
+  font-family: inherit;
+}
+.bucket-row:last-child {
+  border-bottom: none;
+}
+.bucket-row:hover {
+  background: var(--accent-pale, var(--shell-bg));
+}
+
+.bucket-row__stripe {
+  background: var(--accent);
+  opacity: 0.32;
+}
+
+.bucket-row__check {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.6px solid var(--ink-faint);
+  background: transparent;
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: transparent;
+  line-height: 1;
+  transition: all 150ms ease;
+}
+
+.bucket-row__body {
+  padding: 14px 6px 14px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bucket-row__primary {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--shell-ink);
+  line-height: 1.25;
+  letter-spacing: -0.1px;
+}
+
+.bucket-row__secondary {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.25;
+}
+
+.bucket-row__meta {
+  align-self: center;
+  margin-right: 16px;
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  background: var(--accent-tint);
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* Done row state */
+.bucket-row--done .bucket-row__check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
+}
+.bucket-row--done .bucket-row__stripe { opacity: 0.5; }
+.bucket-row--done .bucket-row__primary {
+  color: var(--ink-muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--accent);
+}
+.bucket-row--done .bucket-row__secondary { color: var(--ink-soft); }
+.bucket-row--done .bucket-row__meta { opacity: 0.55; }
+.bucket-row--done:hover { background: var(--shell-bg); }
+
+/* Empty placeholder row */
+.bucket-row--empty {
+  cursor: default;
+}
+.bucket-row--empty:hover { background: transparent; }
+.bucket-row--empty .bucket-row__stripe { opacity: 0.15; }
+.bucket-row--empty .bucket-row__check { display: none; }
+.bucket-row--empty .bucket-row__primary {
+  color: var(--ink-soft);
+  font-weight: 500;
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* Per-bucket accent injection via data-bucket attribute */
+.bucket[data-bucket="sod"]        { --accent: var(--sod-accent);        --accent-ink: var(--sod-accent-ink);        --accent-pale: var(--sod-accent-pale);        --accent-tint: var(--sod-accent-tint); }
+.bucket[data-bucket="departures"] { --accent: var(--departures-accent); --accent-ink: var(--departures-accent-ink); --accent-pale: var(--departures-accent-pale); --accent-tint: var(--departures-accent-tint); }
+.bucket[data-bucket="stayovers"]  { --accent: var(--stayovers-accent);  --accent-ink: var(--stayovers-accent-ink);  --accent-pale: var(--stayovers-accent-pale);  --accent-tint: var(--stayovers-accent-tint); }
+.bucket[data-bucket="arrivals"]   { --accent: var(--arrivals-accent);   --accent-ink: var(--arrivals-accent-ink);   --accent-pale: var(--arrivals-accent-pale);   --accent-tint: var(--arrivals-accent-tint); }
+.bucket[data-bucket="dailys"]     { --accent: var(--dailys-accent);     --accent-ink: var(--dailys-accent-ink);     --accent-pale: var(--dailys-accent-pale);     --accent-tint: var(--dailys-accent-tint); }
+.bucket[data-bucket="eod"]        { --accent: var(--eod-accent);        --accent-ink: var(--eod-accent-ink);        --accent-pale: var(--eod-accent-pale);        --accent-tint: var(--eod-accent-tint); }
+
+/* Clock-out gate footer */
+.clockout-gate {
+  margin-top: 28px;
+  background: var(--shell-bg);
+  border: 1.5px dashed var(--hairline-strong);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: center;
+}
+.clockout-gate--ready {
+  background: #FFFFFF;
+  border-style: solid;
+  border-color: var(--ink-faint);
+}
+.clockout-gate__label {
+  font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  font-size: 10px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 1.8px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.clockout-gate__text {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+.clockout-gate--ready .clockout-gate__text {
+  color: var(--shell-ink);
+  font-weight: 600;
 }

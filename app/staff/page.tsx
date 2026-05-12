@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchProfile,
   mayAccessStaffRoutes,
@@ -38,6 +38,7 @@ type TaskRow = {
   status: string;
   card_type: string;
   context: unknown;
+  room_number: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -46,12 +47,12 @@ type TaskRow = {
 
 const INCOMPLETE_STATUSES = new Set(["open", "in_progress", "paused", "blocked"]);
 
-// Standard time-arc order: SOD → Departures → Stayovers → Arrivals → Dailys → EOD.
-// Reshuffled order (Day 38, Bryan's product rule + master plan IV.D / R15):
-// when past PRE_STAYOVER_RESHUFFLE_AT (11 AM weekday / 12 PM weekend) AND
-// Departures still has incomplete tasks, Stayovers/Arrivals move ABOVE
-// Departures so the day's stayover service + check-in window aren't
-// blocked behind a slow turnover.
+// Day 38 — Standard time-arc order vs. Reshuffled order. Reshuffled
+// applies when past PRE_STAYOVER_RESHUFFLE_AT (11 AM weekday / 12 PM
+// weekend) AND Departures still has incomplete tasks. Day 54 chase #1
+// keeps this reshuffle but drops the hard sequential gating —
+// reshuffle now just changes RENDER ORDER, not lockability. Staff can
+// work any bucket any time; clock-out is the gate.
 const STANDARD_BUCKET_ORDER: BucketKey[] = ["sod", "d", "s", "a", "da", "e"];
 const RESHUFFLED_BUCKET_ORDER: BucketKey[] = ["sod", "s", "a", "d", "da", "e"];
 
@@ -67,19 +68,17 @@ const BUCKET_ENTRIES: [StaffHomeBucket, BucketKey][] = [
 
 type BucketStatic = {
   title: string;
-  context: string;
-  accent: string;
-  ink: string;
-  titleOnAccent?: string;
+  abbr: string;       // 3-char abbr in left column: SOD / DEP / STA / ARR / DLY / EOD
+  dataAttr: string;   // CSS [data-bucket="..."] selector value
 };
 
 const BUCKET_STATIC: Record<BucketKey, BucketStatic> = {
-  sod: { title: "Start of Day", context: "Open shift",      accent: "var(--sod-accent)",       ink: "var(--sod-accent-ink)" },
-  d:   { title: "Departures",   context: "Checkout window", accent: "var(--departures-accent)", ink: "var(--departures-accent-ink)" },
-  s:   { title: "Stayovers",    context: "Service rounds",  accent: "var(--stayovers-accent)",  ink: "var(--stayovers-accent-ink)" },
-  a:   { title: "Arrivals",     context: "Check-in window", accent: "var(--arrivals-accent)",   ink: "var(--arrivals-accent-ink)" },
-  da:  { title: "Dailys",       context: "Property rounds", accent: "var(--dailys-accent)",     ink: "var(--dailys-accent-ink)",   titleOnAccent: "var(--dailys-accent-pale)" },
-  e:   { title: "End of Day",   context: "Wrap shift",      accent: "var(--eod-accent)",        ink: "var(--eod-accent-ink)",      titleOnAccent: "var(--eod-accent-pale)" },
+  sod: { title: "Start of Day", abbr: "SOD", dataAttr: "sod" },
+  d:   { title: "Departures",   abbr: "DEP", dataAttr: "departures" },
+  s:   { title: "Stayovers",    abbr: "STA", dataAttr: "stayovers" },
+  a:   { title: "Arrivals",     abbr: "ARR", dataAttr: "arrivals" },
+  da:  { title: "Dailys",       abbr: "DLY", dataAttr: "dailys" },
+  e:   { title: "End of Day",   abbr: "EOD", dataAttr: "eod" },
 };
 
 // ---------------------------------------------------------------------------
@@ -107,10 +106,7 @@ function formatShortDate(d: Date): string {
 // Day 38 — late-Departures reshuffle gate. Returns true when the given
 // timestamp is at or past the PRE_STAYOVER_RESHUFFLE_AT cutoff in the
 // property timezone. Cutoff is 11:00 weekdays / 12:00 weekend per
-// dispatch-config.ts Section 5 (R13–R15). Property timezone (not the
-// staff browser's timezone) so a remote-tested staff still gets
-// Wisconsin semantics; matches the orchestrator's date math everywhere
-// else.
+// dispatch-config.ts Section 5 (R13–R15).
 function isPastReshuffleTime(now: Date): boolean {
   const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: PROPERTY_TIMEZONE,
@@ -137,10 +133,6 @@ function isPastReshuffleTime(now: Date): boolean {
   return hour > cutoffHour || (hour === cutoffHour && minute >= cutoffMin);
 }
 
-// Day 38 — pure helper for computing the deck's bucket order at any
-// point in time. Reshuffles when past the cutoff AND Departures has
-// incomplete tasks; otherwise standard order. Used in the render path
-// (bucketOrder useMemo) and in loadTasks's initial-active advancement.
 function computeBucketOrder(
   now: Date,
   departuresHasIncomplete: boolean,
@@ -150,22 +142,139 @@ function computeBucketOrder(
   return RESHUFFLED_BUCKET_ORDER;
 }
 
-// ---------------------------------------------------------------------------
-// Icons (unchanged from Day 20 static page)
-// ---------------------------------------------------------------------------
+// Parse the jsonb `tasks.context` blob safely. Mirrors lib/staff-home-bucket.ts.
+function parseContext(raw: unknown): Record<string, unknown> {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  if (typeof raw === "string") {
+    try {
+      const o = JSON.parse(raw) as unknown;
+      return o && typeof o === "object" && !Array.isArray(o)
+        ? (o as Record<string, unknown>)
+        : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
 
-const CalIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="5" width="18" height="16" rx="2" />
-    <path d="M3 9h18M8 3v4M16 3v4" />
-  </svg>
-);
+function readObjectField(
+  ctx: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const v = ctx[key];
+  return v && typeof v === "object" && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {};
+}
 
-const CheckIcon = () => (
-  <svg className="icon-check" viewBox="0 0 24 24" fill="none" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12l5 5L20 7" />
-  </svg>
-);
+function asString(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  return String(v).trim();
+}
+
+// Format a 24h "HH:MM" / "HH:MM:SS" string → 12h "H:MM AM/PM".
+// Returns a default of "2:00 PM" when input is empty (per Bryan's spec
+// for Arrivals — default check-in 2:00 PM if system has no data).
+function formatEta(raw: string): string {
+  const m = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return raw || "2:00 PM";
+  const h24 = parseInt(m[1], 10);
+  const mm = m[2];
+  const period = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+  return `${h12}:${mm} ${period}`;
+}
+
+// Per-bucket row content shape:
+//   Departures: Room # · type · guest · clean type
+//   Stayovers:  Room # · type · guest · Night N/M
+//   Arrivals:   Room # · type · guest · ETA (default 2:00 PM)
+//   Dailys:     task title · location · (no meta)
+//   SOD:        task title · location · (no meta)
+//   EOD:        Wrap Shift · "Sign off & clock out" · short date
+// When `context.{outgoing,incoming,current}_guest` is missing, the row
+// falls back to task.title / room_number / em-dash. The X-430 detail
+// card still does the V.A BR4 reservation fallback per-task on tap;
+// we don't repeat that here (would multiply DB calls).
+type RowContent = {
+  primary: string;
+  secondary: string;
+  meta?: string;
+};
+
+function buildRowContent(task: TaskRow, bucket: BucketKey): RowContent {
+  const ctx = parseContext(task.context);
+  const room = task.room_number ?? "";
+
+  if (bucket === "d") {
+    const og = readObjectField(ctx, "outgoing_guest");
+    const roomType = asString(og.room_type);
+    const guestName = asString(og.name);
+    const cleanType = asString(og.clean_type) || "Standard";
+    return {
+      primary: room && roomType
+        ? `Room ${room} · ${roomType}`
+        : room ? `Room ${room}` : task.title,
+      secondary: guestName || "—",
+      meta: cleanType,
+    };
+  }
+
+  if (bucket === "s") {
+    const cg = readObjectField(ctx, "current_guest");
+    const roomType = asString(cg.room_type);
+    const guestName = asString(cg.name);
+    const nightN = cg.night_n;
+    const totalN = cg.total_nights;
+    const nightDisplay =
+      typeof nightN === "number" && typeof totalN === "number"
+        ? `Night ${nightN} / ${totalN}`
+        : "";
+    return {
+      primary: room && roomType
+        ? `Room ${room} · ${roomType}`
+        : room ? `Room ${room}` : task.title,
+      secondary: guestName || "—",
+      meta: nightDisplay || undefined,
+    };
+  }
+
+  if (bucket === "a") {
+    const ig = readObjectField(ctx, "incoming_guest");
+    const roomType = asString(ig.room_type);
+    const guestName = asString(ig.name);
+    const rawEta = asString(ig.checkin_time) || asString(ig.eta);
+    return {
+      primary: room && roomType
+        ? `Room ${room} · ${roomType}`
+        : room ? `Room ${room}` : task.title,
+      secondary: guestName || "—",
+      meta: formatEta(rawEta),
+    };
+  }
+
+  if (bucket === "e") {
+    return {
+      primary: task.title || "Wrap Shift",
+      secondary: "Sign off & clock out",
+      meta: formatShortDate(new Date()),
+    };
+  }
+
+  // SOD or Dailys — task.title + location_label-equivalent
+  const location =
+    asString(ctx.location) ||
+    asString(ctx.location_label) ||
+    asString(ctx.where) ||
+    "";
+  return {
+    primary: task.title || "Task",
+    secondary: location || "—",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -182,14 +291,13 @@ export default function StaffHomePage() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
-  const [done, setDone] = useState<Set<BucketKey>>(new Set());
-  const [active, setActive] = useState<BucketKey>("sod");
+  // Day 54 chase #1 — single-accordion expansion. null = no bucket open.
+  // First bucket with open tasks auto-expands once on initial task load
+  // (see useEffect below). After that, expanding is fully user-driven.
+  const [expandedBucket, setExpandedBucket] = useState<BucketKey | null>(null);
   const [now] = useState(() => new Date());
-  // Brief counts — initial values match the pre-BR1 hardcoded fallback so the
-  // brief card renders sensibly even before the reservations table exists.
-  // Replaced live by getTodaysReservationCounts() once the reservations table
-  // is in place. If the fetch fails (table not yet migrated, RLS issue, etc.)
-  // these fallback values stay visible.
+  // Brief counts — initial fallback values match the pre-BR1 hardcoded brief
+  // so the card renders sensibly before reservations table is in place.
   const [briefCounts, setBriefCounts] = useState({
     arrivals: 3,
     departures: 2,
@@ -204,18 +312,12 @@ export default function StaffHomePage() {
       setLoadingTasks(false);
       return;
     }
-    // Sort by reshuffle priority_tier first (NULLS LAST so untiered tasks
-    // — sod / dailys / eod / etc. — fall to the end of their bucket), then
-    // by due_date. priority_tier is written by lib/orchestration/reshuffle.ts:
-    //   1 = same-day-arrival departure (turnover required, top of Departures)
-    //   2 = stayover or arrival
-    //   3 = leftover departure (no booking after, bottom of Departures)
-    // priority_tier lives in tasks.context (jsonb). The "->" notation tells
-    // PostgREST to project the jsonb subkey for sorting; jsonb numeric
-    // values sort numerically.
+    // Day 54 chase #1 — added room_number to the select so per-bucket
+    // row content can render "Room 29 · Single Queen" without a separate
+    // per-task fetch. Existing priority_tier + due_date sort preserved.
     const { data, error: qErr } = await supabase
       .from("tasks")
-      .select("id, title, status, card_type, context")
+      .select("id, title, status, card_type, context, room_number")
       .eq("staff_id", sid)
       .order("context->priority_tier", { ascending: true, nullsFirst: false })
       .order("due_date", { ascending: true, nullsFirst: false });
@@ -231,37 +333,9 @@ export default function StaffHomePage() {
       status: String(r.status ?? "open"),
       card_type: String(r.card_type ?? "housekeeping_turn"),
       context: r.context,
+      room_number: r.room_number ? String(r.room_number) : null,
     }));
     setTasks(rows);
-
-    // Derive initial is-done state from real data: bucket is done when it
-    // has tasks but all of them are complete (Option A — single query, full picture).
-    const partitioned = partitionStaffHomeTasks(rows);
-    const initialDone = new Set<BucketKey>();
-    for (const [bucket, key] of BUCKET_ENTRIES) {
-      const all = partitioned[bucket];
-      if (all.length > 0 && !all.some((t) => INCOMPLETE_STATUSES.has(t.status))) {
-        initialDone.add(key);
-      }
-    }
-    setDone(initialDone);
-
-    // Day 38 chase #1 — advance `active` past initially-done buckets so
-    // the deck doesn't render with a "completed but active" head bucket
-    // (the Day 37 'never unlocks past SOD' symptom). Walks the same
-    // dynamic bucket order the render path uses, so the late-Departures
-    // reshuffle is honored on initial load too.
-    const departuresIncomplete = (partitioned.departures ?? []).some(
-      (t) => INCOMPLETE_STATUSES.has(t.status),
-    );
-    const order = computeBucketOrder(new Date(), departuresIncomplete);
-    for (const k of order) {
-      if (!initialDone.has(k)) {
-        setActive(k);
-        break;
-      }
-    }
-
     setLoadingTasks(false);
   }, []);
 
@@ -297,29 +371,21 @@ export default function StaffHomePage() {
 
       // Master plan I.C — fetch the staff row's clocked_in_at to decide
       // whether to render the Pre-Clock-In screen (I.B) or the bucket deck.
-      // Non-blocking: if the column / RLS isn't ready, we fall through to
-      // the bucket deck (legacy behavior) rather than trapping the user on
-      // an empty Pre-Clock-In screen.
       if (p.staff_id) {
         const clk = await fetchClockedInAt(supabase, p.staff_id);
         if (!cancelled) setClockedInAt(clk);
-        // Only load tasks if already clocked in; the bucket deck is gated
-        // on clocked_in_at being a string. Pre-Clock-In view doesn't need
-        // task data.
         if (clk) {
           await loadTasks(p.staff_id);
         } else {
           setLoadingTasks(false);
         }
       } else {
-        // No staff_id (manager / admin) — fall through to legacy behavior.
         setClockedInAt(null);
         await loadTasks(null);
       }
       setReady(true);
 
-      // BR3: live reservation counts. Non-blocking — if the table isn't
-      // migrated yet or the query errors, the hardcoded fallback above stays.
+      // BR3 — live reservation counts. Non-blocking.
       try {
         const counts = await getTodaysReservationCounts();
         if (!cancelled) setBriefCounts(counts);
@@ -344,42 +410,69 @@ export default function StaffHomePage() {
     };
   }, [loadTasks]);
 
-  // Per-bucket derived data: count (incomplete only), nextTask title, nextTaskId for navigation
-  const bucketData = useMemo(() => {
-    const partitioned = partitionStaffHomeTasks(tasks);
+  // Per-bucket partitioned tasks + derived state.
+  const partitionedTasks = useMemo(() => partitionStaffHomeTasks(tasks), [tasks]);
+
+  const bucketStates = useMemo(() => {
     const out = {} as Record<BucketKey, {
-      count: number;
-      nextTask: string;
-      nextTaskId: string | null;
+      tasks: TaskRow[];
+      openCount: number;
+      totalCount: number;
+      isDone: boolean;   // all tasks done (and there's at least one task)
+      isEmpty: boolean;  // 0 tasks total
     }>;
     for (const [bucket, key] of BUCKET_ENTRIES) {
-      const all = partitioned[bucket];
-      const incomplete = all.filter((t) => INCOMPLETE_STATUSES.has(t.status));
-      const first = incomplete[0] ?? null;
+      const bucketTasks = partitionedTasks[bucket] ?? [];
+      const openCount = bucketTasks.filter(
+        (t) => INCOMPLETE_STATUSES.has(t.status),
+      ).length;
       out[key] = {
-        count: incomplete.length,
-        nextTask: first?.title ?? (all.length > 0 ? "All complete" : "No tasks"),
-        nextTaskId: first?.id ?? null,
+        tasks: bucketTasks,
+        openCount,
+        totalCount: bucketTasks.length,
+        isDone: bucketTasks.length > 0 && openCount === 0,
+        isEmpty: bucketTasks.length === 0,
       };
     }
     return out;
-  }, [tasks]);
+  }, [partitionedTasks]);
 
-  // Day 38 — dynamic bucket order. Re-derived on every render via
-  // computeBucketOrder so the deck reshuffles when the cutoff passes
-  // (subject to `now` being a static state set on mount; deck reflows
-  // when the page reloads or when bucketData.d.count changes via task
-  // updates). Render path + handleActionClick advancement loop both
-  // read from this.
+  // Day 38 — dynamic bucket order; late-Departures reshuffle preserved.
   const bucketOrder = useMemo<BucketKey[]>(
-    () => computeBucketOrder(now, bucketData.d.count > 0),
-    [now, bucketData],
+    () => computeBucketOrder(now, bucketStates.d.openCount > 0),
+    [now, bucketStates],
   );
 
-  const incompleteTotal = useMemo(
+  const totalOpenCount = useMemo(
     () => tasks.filter((t) => INCOMPLETE_STATUSES.has(t.status)).length,
     [tasks],
   );
+  const totalDoneCount = useMemo(
+    () => tasks.filter((t) => t.status === "done").length,
+    [tasks],
+  );
+
+  // Auto-expand first bucket with open tasks once on initial task load.
+  // Ref-gated so subsequent task updates (e.g., a task being marked done
+  // and the bucket no longer having opens) don't re-trigger the
+  // auto-expand and clobber the user's manual collapse.
+  const autoExpandedOnceRef = useRef(false);
+  useEffect(() => {
+    if (autoExpandedOnceRef.current) return;
+    if (loadingTasks) return;
+    if (tasks.length === 0) {
+      autoExpandedOnceRef.current = true;
+      return;
+    }
+    for (const key of bucketOrder) {
+      if (bucketStates[key].openCount > 0) {
+        setExpandedBucket(key);
+        autoExpandedOnceRef.current = true;
+        return;
+      }
+    }
+    autoExpandedOnceRef.current = true;
+  }, [loadingTasks, tasks, bucketOrder, bucketStates]);
 
   const handleClockIn = useCallback(async () => {
     if (!staffId || clockingIn) return;
@@ -392,55 +485,16 @@ export default function StaffHomePage() {
       return;
     }
     setClockedInAt(result.clockedInAt);
-    // Now that we're clocked in, load the bucket deck data.
     await loadTasks(staffId);
     setClockingIn(false);
   }, [staffId, clockingIn, loadTasks]);
 
-  const handleCardClick = (key: BucketKey) => {
-    if (key === active) return;
-    // Day 38 — clicking a non-active card focuses it but does NOT
-    // remove its done state. So clicking a checkmarked SOD navigates
-    // back to view it while keeping the checkmark; user can then click
-    // SOD's still-checkmarked action button to advance forward, OR
-    // click directly on a forward-eligible bucket (is-unlockable, all
-    // previous buckets done) to jump there. Per Bryan's product
-    // clarification — "view" ≠ "re-open." Explicit un-complete
-    // semantics is a separate post-beta enhancement if needed.
-    setActive(key);
-  };
-
-  const handleActionClick = (e: React.MouseEvent, key: BucketKey) => {
-    e.stopPropagation();
-    if (key !== active) return;
-    const newDone = new Set(done);
-    newDone.add(key);
-
-    // Pre-stayover reshuffle re-activation (master plan IV.D / R15 + Bryan's
-    // Day 26 product clarification): when the housekeeper marks Arrivals
-    // done, if the Departures bucket still has incomplete tasks, re-activate
-    // Departures so Tier-3 leftover turnovers get cleaned up before Dailys /
-    // EOD. The within-bucket sort (priority_tier ASC, due_date ASC) places
-    // Tier-3 leftovers naturally at the bottom of Departures. Tier-1
-    // departures (same-day-arrival turnovers) should already be done by
-    // this point; if any aren't, they get done now too.
-    if (key === "a" && bucketData.d.count > 0) {
-      newDone.delete("d");
-      setDone(newDone);
-      setActive("d");
-      return;
-    }
-
-    setDone(newDone);
-    // Day 38 — walk the dynamic bucketOrder so the late-Departures
-    // reshuffle is honored when advancing.
-    const idx = bucketOrder.indexOf(key);
-    for (let i = idx + 1; i < bucketOrder.length; i++) {
-      if (!newDone.has(bucketOrder[i])) {
-        setActive(bucketOrder[i]);
-        return;
-      }
-    }
+  // Single-accordion expansion. Tapping an open bucket header collapses
+  // it; tapping a different one collapses the prior + expands this one.
+  // Done buckets stay tappable (Day 38 re-touch rule); empty buckets
+  // still expand to show their "No <bucket> today" placeholder.
+  const handleBucketTap = (key: BucketKey) => {
+    setExpandedBucket((current) => (current === key ? null : key));
   };
 
   if (profileFailure) {
@@ -466,11 +520,8 @@ export default function StaffHomePage() {
     );
   }
 
-  // Master plan I.B — Pre-Clock-In screen. Renders only when we know for
-  // sure the staff member is clocked out (clockedInAt === null). If the
-  // column isn't migrated yet or the fetch errored, clockedInAt is
-  // undefined and we fall through to the legacy bucket deck so existing
-  // staff aren't trapped on an empty screen.
+  // Master plan I.B — Pre-Clock-In screen. Renders only when we know
+  // for sure the staff member is clocked out (clockedInAt === null).
   if (clockedInAt === null && staffId) {
     return (
       <main className="staff-home">
@@ -503,14 +554,16 @@ export default function StaffHomePage() {
     );
   }
 
+  // Clock-out gate computed values for the footer card.
+  const incompleteBucketCount = bucketOrder.filter(
+    (k) => bucketStates[k].openCount > 0,
+  ).length;
+  const clockOutReady = tasks.length > 0 && totalOpenCount === 0;
+
   return (
     <main className="staff-home">
       <div className="staff-home__shell">
 
-        {/* Master plan I.A: staff side is execution-first per
-            dispatch-ui-rules; admin owns task creation via AddTaskModal on
-            /admin, /admin/tasks, /admin/staff/[id]. The Day 20 visual
-            placeholder + button was removed Day 30. */}
         <div className="staff-home__hdr">
           <div>
             <h1 className="staff-home__hello">Hi, {firstName(displayName)}.</h1>
@@ -518,7 +571,8 @@ export default function StaffHomePage() {
           </div>
         </div>
 
-        {/* Brief — counts remain hardcoded pending ResNexus integration (post-beta BR) */}
+        {/* Daily brief — UNCHANGED from Day 20 / Day 47 (Bryan's spec:
+            keep the header + brief identical, only redesign below). */}
         <div className="staff-home__brief">
           <div className="staff-home__brief-head">
             <span>Daily brief</span>
@@ -542,76 +596,136 @@ export default function StaffHomePage() {
 
         <div className="staff-home__tasksbar">
           <span>Tasks today</span>
-          <span>{incompleteTotal} open</span>
+          <span>
+            {totalOpenCount} open
+            {totalDoneCount > 0 ? ` · ${totalDoneCount} done` : ""}
+          </span>
         </div>
 
-        <div className="deck">
+        {/* Day 54 chase #1 — new stacked-deck render. Replaces the old
+            .deck / .bcard hard-locked sequential deck. All buckets
+            always visible + expandable; rows go directly to /staff/task/[id]
+            via <Link>; per-row checkmark mirrors task.status. */}
+        <div className="bucket-deck">
           {bucketOrder.map((key) => {
             const stat = BUCKET_STATIC[key];
-            const data = bucketData[key];
-            const isActive = active === key;
-            const isDone = done.has(key);
-            // Day 38 — forward-unlock gating. A blurred bucket whose
-            // previous buckets in the dynamic order are all in `done`
-            // becomes click-eligible so the user can jump forward
-            // directly. Per Bryan's "can only move forward if previous
-            // completed" rule. CSS gives is-unlockable cards
-            // pointer-events: auto so handleCardClick can fire.
-            const idx = bucketOrder.indexOf(key);
-            const previousAllDone = idx > 0
-              && bucketOrder.slice(0, idx).every((k) => done.has(k));
-            const isUnlockable = previousAllDone && !isActive && !isDone;
-            const classes = ["bcard"];
-            if (isActive) classes.push("is-active");
-            if (isDone) classes.push("is-done");
-            if (isUnlockable) classes.push("is-unlockable");
-            const titleColor = stat.titleOnAccent ?? stat.ink;
+            const state = bucketStates[key];
+            const isExpanded = expandedBucket === key;
+            const showStack = state.totalCount > 1 && !isExpanded;
+            const classes = ["bucket"];
+            if (showStack) classes.push("bucket--has-stack");
+            if (isExpanded) classes.push("bucket--expanded");
+            if (state.isDone) classes.push("bucket--done");
+            if (state.isEmpty) classes.push("bucket--empty");
+            // Count shown in header pill:
+            //   Active (has opens): open count, solid accent
+            //   Done (all done):    total count, outlined + check
+            //   Empty (0 tasks):    "0", outlined
+            const headerCount = state.isEmpty
+              ? 0
+              : state.isDone
+                ? state.totalCount
+                : state.openCount;
             return (
               <div
                 key={key}
                 className={classes.join(" ")}
-                data-bucket={key}
-                style={{ ["--accent" as string]: stat.accent, ["--ink" as string]: stat.ink } as React.CSSProperties}
-                onClick={() => handleCardClick(key)}
+                data-bucket={stat.dataAttr}
               >
-                <div className="bcard__head">
-                  <h2 className="bcard__title" style={{ color: titleColor }}>
-                    {stat.title}
-                  </h2>
-                  <button
-                    className="bcard__action"
-                    aria-label={isDone ? "Completed" : "Complete"}
-                    onClick={(e) => handleActionClick(e, key)}
-                  >
-                    <span className="num">{data.count}</span>
-                    <CheckIcon />
-                  </button>
-                </div>
-                <span className="bcard__meta" style={{ color: titleColor }}>
-                  <CalIcon />
-                  {formatShortDate(now)} · {stat.context}
-                </span>
-                <div className="bcard__inset">
-                  <div className="bcard__insetlabel">
-                    <span className="bcard__insetpre">Next up</span>
-                    {data.nextTask}
+                <button
+                  type="button"
+                  className="bucket__header"
+                  onClick={() => handleBucketTap(key)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`bucket-rows-${key}`}
+                >
+                  <div className="bucket__stripe" />
+                  <div className="bucket__head-body">
+                    <div className="bucket__abbr">{stat.abbr}</div>
+                    <div className="bucket__name">{stat.title}</div>
                   </div>
-                  {data.nextTaskId ? (
-                    <Link
-                      href={`/staff/task/${data.nextTaskId}`}
-                      className="bcard__insetcta"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      View ›
-                    </Link>
-                  ) : (
-                    <span className="bcard__insetcta" style={{ opacity: 0.4 }}>View ›</span>
-                  )}
-                </div>
+                  <div className="bucket__right">
+                    {state.isDone && (
+                      <div className="bucket__check" aria-label="All complete">
+                        ✓
+                      </div>
+                    )}
+                    <div className="bucket__count">{headerCount}</div>
+                    {!state.isEmpty && (
+                      <span className="bucket__chevron" aria-hidden>
+                        ▾
+                      </span>
+                    )}
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="bucket__rows" id={`bucket-rows-${key}`}>
+                    {state.tasks.length === 0 ? (
+                      <div className="bucket-row bucket-row--empty">
+                        <div className="bucket-row__stripe" />
+                        <div className="bucket-row__check" />
+                        <div className="bucket-row__body">
+                          <div className="bucket-row__primary">
+                            No {stat.title.toLowerCase()} today
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      state.tasks.map((task) => {
+                        const content = buildRowContent(task, key);
+                        const isTaskDone = task.status === "done";
+                        const rowClasses = ["bucket-row"];
+                        if (isTaskDone) rowClasses.push("bucket-row--done");
+                        return (
+                          <Link
+                            key={task.id}
+                            href={`/staff/task/${task.id}`}
+                            className={rowClasses.join(" ")}
+                          >
+                            <div className="bucket-row__stripe" />
+                            <div className="bucket-row__check" aria-hidden>
+                              ✓
+                            </div>
+                            <div className="bucket-row__body">
+                              <div className="bucket-row__primary">
+                                {content.primary}
+                              </div>
+                              {content.secondary && (
+                                <div className="bucket-row__secondary">
+                                  {content.secondary}
+                                </div>
+                              )}
+                            </div>
+                            {content.meta && (
+                              <div className="bucket-row__meta">
+                                {content.meta}
+                              </div>
+                            )}
+                          </Link>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+
+        {/* Day 54 chase #1 — clock-out gate visualization. Real gate
+            enforcement lives in lib/clock-in.ts canWrapShift + the
+            EOD detail card. This footer mirrors that state on the
+            home page so staff knows what's left before they can wrap. */}
+        {tasks.length > 0 && (
+          <div className={`clockout-gate${clockOutReady ? " clockout-gate--ready" : ""}`}>
+            <div className="clockout-gate__label">Clock-Out Gate</div>
+            <div className="clockout-gate__text">
+              {clockOutReady
+                ? "All buckets clear. Open End of Day to wrap your shift."
+                : `${totalOpenCount} card${totalOpenCount === 1 ? "" : "s"} still open across ${incompleteBucketCount} bucket${incompleteBucketCount === 1 ? "" : "s"}.`}
+            </div>
+          </div>
+        )}
 
         <p className="staff-home__foot">The Dispatch Co · Staff</p>
       </div>

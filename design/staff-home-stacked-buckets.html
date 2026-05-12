@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1, viewport-fit=cover">
+<title>Dispatch — Staff Home / Stacked Buckets (Mockup v2)</title>
+<style>
+  :root {
+    /* ── Cream surface (Day 20 tokens, from app/globals.css) ── */
+    --page-bg: #E6DFCD;
+    --shell-bg: #F5F0E6;
+    --shell-ink: #2C1608;
+    --ink-muted: rgba(44, 22, 8, 0.62);
+    --ink-soft: rgba(44, 22, 8, 0.42);
+    --ink-faint: rgba(44, 22, 8, 0.20);
+    --hairline: rgba(44, 22, 8, 0.10);
+    --hairline-strong: rgba(44, 22, 8, 0.20);
+    --shadow-card: 0 1px 2px rgba(30, 20, 10, 0.06), 0 4px 12px rgba(30, 20, 10, 0.08), 0 18px 32px rgba(30, 20, 10, 0.06);
+    --shadow-raised: 0 1px 1px rgba(30, 20, 10, 0.04), 0 2px 6px rgba(30, 20, 10, 0.06);
+
+    /* ── Six bucket accents · Day 54 reshuffle ──
+       Old palette flattened with too many warms. New rhythm alternates
+       cool/warm down the stack: green / yellow / purple / orange / blue / hot pink. */
+    --sod-accent:        #00C853;            /* emerald green (color pop) */
+    --sod-accent-ink:    #003D14;
+    --sod-accent-pale:   #D4F7DD;
+    --sod-accent-tint:   rgba(0, 200, 83, 0.18);
+
+    --departures-accent:        #FFD000;     /* clean yellow */
+    --departures-accent-ink:    #3B1F00;
+    --departures-accent-pale:   #FFFAE0;
+    --departures-accent-tint:   rgba(255, 208, 0, 0.18);
+
+    --stayovers-accent:        #A855F7;      /* violet / purple */
+    --stayovers-accent-ink:    #2E0B5C;
+    --stayovers-accent-pale:   #F0E0FF;
+    --stayovers-accent-tint:   rgba(168, 85, 247, 0.18);
+
+    --arrivals-accent:        #FF5722;       /* orange (unchanged) */
+    --arrivals-accent-ink:    #3A1502;
+    --arrivals-accent-pale:   #FFEAE0;
+    --arrivals-accent-tint:   rgba(255, 87, 34, 0.18);
+
+    --dailys-accent:        #2563EB;         /* royal blue */
+    --dailys-accent-ink:    #0A1C5C;
+    --dailys-accent-pale:   #DBE6FF;
+    --dailys-accent-tint:   rgba(37, 99, 235, 0.18);
+
+    --eod-accent:        #EC4899;            /* hot pink */
+    --eod-accent-ink:    #5C0E3E;
+    --eod-accent-pale:   #FCE7F3;
+    --eod-accent-tint:   rgba(236, 72, 153, 0.18);
+
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { background: var(--page-bg); color: var(--shell-ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+
+  body {
+    min-height: 100vh;
+    padding: 32px 8px 80px;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02), transparent 40%);
+  }
+
+  /* ─── Section wrappers ───────────────────────────────────────── */
+  .phone {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .section-divider {
+    max-width: 390px;
+    margin: 64px auto 28px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+  }
+  .section-divider::before, .section-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 60px;
+    height: 1px;
+    background: var(--hairline-strong);
+  }
+  .section-divider::before { left: 16px; }
+  .section-divider::after { right: 16px; }
+
+  /* ─── GREETING (UNCHANGED) ───────────────────────────────────── */
+  .greeting { padding: 0 4px; }
+  .greeting h1 { font-size: 40px; font-weight: 700; line-height: 1.05; letter-spacing: -1.2px; color: var(--shell-ink); }
+  .greeting .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 14px;
+  }
+
+  /* ─── DAILY BRIEF (UNCHANGED) ────────────────────────────────── */
+  .brief {
+    background: #FFFFFF;
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-top: 26px;
+    box-shadow: var(--shadow-raised);
+  }
+  .brief__head { display: flex; justify-content: space-between; align-items: baseline; }
+  .brief__label, .brief__date {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-weight: 500;
+  }
+  .brief__sep { height: 1px; background: var(--hairline); margin: 14px 0 16px; }
+  .brief__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .brief__stat-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .brief__stat-value { font-size: 32px; font-weight: 600; line-height: 1; color: var(--shell-ink); }
+
+  /* ─── TASKS TODAY CAPTION ROW ────────────────────────────────── */
+  .tasks-caption {
+    margin: 30px 4px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .tasks-caption .label, .tasks-caption .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    font-weight: 500;
+  }
+
+  /* ─── BUCKET STACK ─────────────────────────────────────────────
+     v2 changes:
+       · Locked state removed — all buckets always full-color.
+       · Stack visual via layered box-shadows when bucket has multiple items.
+       · Per-row checkmark left of body.
+       · Gap between buckets widened so stack-ghost cards have breathing room. */
+  .stack { display: flex; flex-direction: column; gap: 22px; }
+
+  .bucket {
+    background: #FFFFFF;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-raised);
+    position: relative;
+    transition: opacity 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+  }
+
+  /* Stacked-card visual — extra box-shadow layers simulate ghost cards
+     peeking out below the main card. Removed when bucket is expanded. */
+  .bucket--has-stack {
+    box-shadow:
+      var(--shadow-raised),
+      0 6px 0 -3px #FFFFFF,
+      0 9px 6px -3px rgba(30, 20, 10, 0.07),
+      0 12px 0 -6px rgba(255, 255, 255, 0.88),
+      0 16px 9px -6px rgba(30, 20, 10, 0.06);
+  }
+  .bucket--has-stack.bucket--expanded {
+    box-shadow: var(--shadow-raised);
+  }
+
+  /* Header row — collapsed state */
+  .bucket__header {
+    display: grid;
+    grid-template-columns: 6px 1fr auto;
+    align-items: stretch;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+
+  .bucket__stripe {
+    background: var(--accent);
+  }
+
+  .bucket__head-body {
+    padding: 20px 0 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .bucket__abbr {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    color: var(--accent);
+    text-transform: uppercase;
+    min-width: 32px;
+  }
+
+  .bucket__name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--shell-ink);
+    line-height: 1;
+  }
+
+  .bucket__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 18px;
+  }
+
+  .bucket__count {
+    min-width: 38px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    padding: 0 12px;
+    line-height: 1;
+  }
+
+  .bucket__chevron {
+    color: var(--ink-faint);
+    font-size: 14px;
+    transition: transform 200ms ease;
+  }
+
+  /* ── DONE state — all rows checked ── */
+  .bucket--done .bucket__name { color: var(--ink-muted); }
+  .bucket--done .bucket__abbr { color: var(--ink-muted); }
+  .bucket--done .bucket__stripe { background: var(--ink-faint); }
+  .bucket--done .bucket__count {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--ink-faint);
+  }
+  .bucket--done .bucket__check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #FFFFFF;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ── EXPANDED state ── */
+  .bucket__rows { display: none; }
+  .bucket--expanded .bucket__rows {
+    display: block;
+    border-top: 1px solid var(--hairline);
+  }
+  .bucket--expanded .bucket__chevron { transform: rotate(180deg); }
+
+  /* ─── Individual task rows ───────────────────────────────────── */
+  .row {
+    display: grid;
+    grid-template-columns: 6px 38px 1fr auto;
+    align-items: stretch;
+    border-bottom: 1px solid var(--hairline);
+    cursor: pointer;
+    transition: background 120ms ease;
+    background: transparent;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--accent-pale, var(--shell-bg)); }
+
+  .row__stripe {
+    background: var(--accent);
+    opacity: 0.32;
+  }
+
+  /* Check circle — empty when open, filled with checkmark when done */
+  .row__check {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.6px solid var(--ink-faint);
+    background: transparent;
+    align-self: center;
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: transparent;
+    line-height: 1;
+    transition: all 150ms ease;
+  }
+
+  .row__body {
+    padding: 14px 6px 14px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .row__primary {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--shell-ink);
+    line-height: 1.25;
+    letter-spacing: -0.1px;
+  }
+
+  .row__secondary {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.25;
+  }
+
+  .row__meta {
+    align-self: center;
+    margin-right: 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-ink);
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    background: var(--accent-tint);
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  /* Done row state */
+  .row--done .row__check {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #FFFFFF;
+  }
+  .row--done .row__stripe { opacity: 0.5; }
+  .row--done .row__primary {
+    color: var(--ink-muted);
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: var(--accent);
+  }
+  .row--done .row__secondary { color: var(--ink-soft); }
+  .row--done .row__meta { opacity: 0.55; }
+  .row--done:hover { background: var(--shell-bg); }
+
+  /* Empty placeholder row */
+  .row--empty {
+    cursor: default;
+  }
+  .row--empty:hover { background: transparent; }
+  .row--empty .row__stripe { opacity: 0.15; }
+  .row--empty .row__check { display: none; }
+  .row--empty .row__primary {
+    color: var(--ink-soft);
+    font-weight: 500;
+    font-style: italic;
+    font-size: 13px;
+  }
+  .row--empty .row__meta { display: none; }
+
+  /* ─── Per-bucket accent injection ────────────────────────────── */
+  .bucket[data-bucket="sod"]        { --accent: var(--sod-accent);        --accent-ink: var(--sod-accent-ink);        --accent-pale: var(--sod-accent-pale);        --accent-tint: var(--sod-accent-tint); }
+  .bucket[data-bucket="departures"] { --accent: var(--departures-accent); --accent-ink: var(--departures-accent-ink); --accent-pale: var(--departures-accent-pale); --accent-tint: var(--departures-accent-tint); }
+  .bucket[data-bucket="stayovers"]  { --accent: var(--stayovers-accent);  --accent-ink: var(--stayovers-accent-ink);  --accent-pale: var(--stayovers-accent-pale);  --accent-tint: var(--stayovers-accent-tint); }
+  .bucket[data-bucket="arrivals"]   { --accent: var(--arrivals-accent);   --accent-ink: var(--arrivals-accent-ink);   --accent-pale: var(--arrivals-accent-pale);   --accent-tint: var(--arrivals-accent-tint); }
+  .bucket[data-bucket="dailys"]     { --accent: var(--dailys-accent);     --accent-ink: var(--dailys-accent-ink);     --accent-pale: var(--dailys-accent-pale);     --accent-tint: var(--dailys-accent-tint); }
+  .bucket[data-bucket="eod"]        { --accent: var(--eod-accent);        --accent-ink: var(--eod-accent-ink);        --accent-pale: var(--eod-accent-pale);        --accent-tint: var(--eod-accent-tint); }
+
+  /* ─── Clock-out gate footer ──────────────────────────────────── */
+  .clockout {
+    margin-top: 32px;
+    background: var(--shell-bg);
+    border: 1.5px dashed var(--hairline-strong);
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-align: center;
+  }
+  .clockout--ready {
+    background: #FFFFFF;
+    border: 1.5px solid var(--ink-faint);
+  }
+  .clockout__label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .clockout__text {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+  .clockout--ready .clockout__text { color: var(--shell-ink); font-weight: 600; }
+
+  /* ─── Footer ─────────────────────────────────────────────────── */
+  .footnote {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+  }
+
+  /* ─── Annotation captions (mockup-only) ──────────────────────── */
+  .annotation {
+    max-width: 390px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PRIMARY MOCKUP — Canonical mid-shift state, v2
+     · All buckets visible + full color (no locked/blur state)
+     · Stack visual on buckets where N > 1
+     · Departures expanded with mixed done/open rows
+     · SOD done (all 6 checked)
+     · Clock-out gate footer surfaced
+══════════════════════════════════════════════════════════════════ -->
+<div class="phone">
+
+  <!-- GREETING (unchanged) -->
+  <header class="greeting">
+    <h1>Hi, Lizzie.</h1>
+    <div class="date">Thursday · May 7</div>
+  </header>
+
+  <!-- DAILY BRIEF (unchanged) -->
+  <section class="brief">
+    <div class="brief__head">
+      <div class="brief__label">Daily Brief</div>
+      <div class="brief__date">Thu · May 7</div>
+    </div>
+    <div class="brief__sep"></div>
+    <div class="brief__stats">
+      <div>
+        <span class="brief__stat-label">Arrivals</span>
+        <div class="brief__stat-value">3</div>
+      </div>
+      <div>
+        <span class="brief__stat-label">Departures</span>
+        <div class="brief__stat-value">5</div>
+      </div>
+      <div>
+        <span class="brief__stat-label">Stayovers</span>
+        <div class="brief__stat-value">4</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TASKS TODAY caption -->
+  <div class="tasks-caption">
+    <div class="label">Tasks Today</div>
+    <div class="count">17 Open · 8 Done</div>
+  </div>
+
+  <!-- BUCKET STACK -->
+  <div class="stack">
+
+    <!-- SOD : done (all 6 checked) — keeps stack visual to convey "6 cards lived here" -->
+    <div class="bucket bucket--done bucket--has-stack" data-bucket="sod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">SOD</div>
+          <div class="bucket__name">Start of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__check">✓</div>
+          <div class="bucket__count">6</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- DEPARTURES : expanded with mixed done/open rows (2 done, 3 open) -->
+    <div class="bucket bucket--has-stack bucket--expanded" data-bucket="departures">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">DEP</div>
+          <div class="bucket__name">Departures</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">5</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row row--done" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 29 · Single Queen</div>
+            <div class="row__secondary">Tamzid Mafid</div>
+          </div>
+          <div class="row__meta">Deep</div>
+        </button>
+        <button class="row row--done" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 32 · Double King</div>
+            <div class="row__secondary">Emma Russo</div>
+          </div>
+          <div class="row__meta">Standard</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 18 · King Suite</div>
+            <div class="row__secondary">Daniel Park</div>
+          </div>
+          <div class="row__meta">Pet</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 41 · ADA Double</div>
+            <div class="row__secondary">Marcus Lee</div>
+          </div>
+          <div class="row__meta">Standard</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 24 · King Jacuzzi</div>
+            <div class="row__secondary">Hannah Mills</div>
+          </div>
+          <div class="row__meta">Standard</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- STAYOVERS : collapsed, full color, stack (4 cards) -->
+    <div class="bucket bucket--has-stack" data-bucket="stayovers">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">STA</div>
+          <div class="bucket__name">Stayovers</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">4</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- ARRIVALS : collapsed, full color, stack (3 cards) -->
+    <div class="bucket bucket--has-stack" data-bucket="arrivals">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">ARR</div>
+          <div class="bucket__name">Arrivals</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">3</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- DAILYS : collapsed, full color, stack (6 cards) -->
+    <div class="bucket bucket--has-stack" data-bucket="dailys">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">DLY</div>
+          <div class="bucket__name">Dailys</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">6</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- EOD : collapsed, full color, NO stack (1 card) -->
+    <div class="bucket" data-bucket="eod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">EOD</div>
+          <div class="bucket__name">End of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">1</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- CLOCK-OUT GATE -->
+  <div class="clockout">
+    <div class="clockout__label">Clock-Out Gate</div>
+    <div class="clockout__text">17 cards still open across 5 buckets.<br>Wrap Shift unlocks when every bucket shows ✓.</div>
+  </div>
+
+  <div class="footnote">The Dispatch Co · Staff</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     REFERENCE PANELS — Per-bucket row shape
+══════════════════════════════════════════════════════════════════ -->
+
+<div class="section-divider">Reference · Row Shapes</div>
+<div class="annotation">Each bucket expanded to show its row content shape.<br>In production one bucket is open at a time (accordion).</div>
+
+<!-- SOD expanded -->
+<div class="phone" style="margin-top: 24px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="sod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">SOD</div>
+          <div class="bucket__name">Start of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">6</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row row--done" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Prep Mop</div>
+            <div class="row__secondary">Laundry Room</div>
+          </div>
+          <div class="row__meta">Setup</div>
+        </button>
+        <button class="row row--done" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Cups on Cart</div>
+            <div class="row__secondary">Supply Room</div>
+          </div>
+          <div class="row__meta">Setup</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Collect Rags</div>
+            <div class="row__secondary">Laundry Room</div>
+          </div>
+          <div class="row__meta">Setup</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Daily Pow-Wow</div>
+            <div class="row__secondary">Office</div>
+          </div>
+          <div class="row__meta">Meeting</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Distribute Cart</div>
+            <div class="row__secondary">Hallway</div>
+          </div>
+          <div class="row__meta">Setup</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Check Resnex</div>
+            <div class="row__secondary">Office</div>
+          </div>
+          <div class="row__meta">Brief</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stayovers expanded -->
+<div class="phone" style="margin-top: 18px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="stayovers">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">STA</div>
+          <div class="bucket__name">Stayovers</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">4</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 20 · King Suite</div>
+            <div class="row__secondary">David Adams</div>
+          </div>
+          <div class="row__meta">Night 2 / 3</div>
+        </button>
+        <button class="row row--done" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 27 · Double Queen</div>
+            <div class="row__secondary">Sarah Chen</div>
+          </div>
+          <div class="row__meta">Night 1 / 4</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 35 · Single Queen</div>
+            <div class="row__secondary">James Walker</div>
+          </div>
+          <div class="row__meta">Night 3 / 7</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 12 · King Jacuzzi</div>
+            <div class="row__secondary">Olivia Brennan</div>
+          </div>
+          <div class="row__meta">Night 5 / 14</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrivals expanded -->
+<div class="phone" style="margin-top: 18px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="arrivals">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">ARR</div>
+          <div class="bucket__name">Arrivals</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">3</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 23 · King Suite</div>
+            <div class="row__secondary">Katie Wilkins</div>
+          </div>
+          <div class="row__meta">4:00 PM</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 31 · Double Queen</div>
+            <div class="row__secondary">Marcus Webb</div>
+          </div>
+          <div class="row__meta">2:00 PM</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Room 42 · ADA Single</div>
+            <div class="row__secondary">Linda Park</div>
+          </div>
+          <div class="row__meta">2:00 PM</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dailys expanded -->
+<div class="phone" style="margin-top: 18px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="dailys">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">DLY</div>
+          <div class="bucket__name">Dailys</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">6</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Restock Cart</div>
+            <div class="row__secondary">Supply Room</div>
+          </div>
+          <div class="row__meta">Round</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Public Restrooms</div>
+            <div class="row__secondary">Lobby + Hallway</div>
+          </div>
+          <div class="row__meta">Round</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Dust Pictures</div>
+            <div class="row__secondary">All hallways</div>
+          </div>
+          <div class="row__meta">Round</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Trash Pickup</div>
+            <div class="row__secondary">Property-wide</div>
+          </div>
+          <div class="row__meta">Round</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Wash Windows</div>
+            <div class="row__secondary">Lobby</div>
+          </div>
+          <div class="row__meta">Weekly</div>
+        </button>
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Vacuum Hallways</div>
+            <div class="row__secondary">20s · 30s · 40s</div>
+          </div>
+          <div class="row__meta">Round</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EOD expanded -->
+<div class="phone" style="margin-top: 18px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="eod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">EOD</div>
+          <div class="bucket__name">End of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">1</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <button class="row" type="button">
+          <div class="row__stripe"></div>
+          <div class="row__check">✓</div>
+          <div class="row__body">
+            <div class="row__primary">Wrap Shift</div>
+            <div class="row__secondary">Sign off &amp; clock out</div>
+          </div>
+          <div class="row__meta">Thu · May 7</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Empty bucket variant — Arrivals = 0 -->
+<div class="section-divider">Variant · Empty Bucket</div>
+<div class="annotation">When a bucket has zero tasks for the day, header still renders<br>with count "0" + a placeholder row when expanded. No stack visual (N = 0).</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="stack">
+    <div class="bucket bucket--expanded" data-bucket="arrivals" style="opacity: 0.65;">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">ARR</div>
+          <div class="bucket__name">Arrivals</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count" style="background: transparent; color: var(--ink-soft); border: 1.5px solid var(--ink-faint);">0</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+      <div class="bucket__rows">
+        <div class="row row--empty">
+          <div class="row__stripe"></div>
+          <div class="row__check"></div>
+          <div class="row__body">
+            <div class="row__primary">No arrivals today</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Header state variants reference -->
+<div class="section-divider">Header States · Reference</div>
+<div class="annotation">Four bucket-header states stacked:<br>multi-card (stack) · single-card (no stack) · all-done · empty.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="stack" style="gap: 30px;">
+
+    <!-- Multi-card with stack -->
+    <div class="bucket bucket--has-stack" data-bucket="departures">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">DEP</div>
+          <div class="bucket__name">Departures</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">5</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Single-card no stack -->
+    <div class="bucket" data-bucket="eod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">EOD</div>
+          <div class="bucket__name">End of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count">1</div>
+          <div class="bucket__chevron">▾</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- All-done -->
+    <div class="bucket bucket--done bucket--has-stack" data-bucket="sod">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">SOD</div>
+          <div class="bucket__name">Start of Day</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__check">✓</div>
+          <div class="bucket__count">6</div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Empty (count 0) -->
+    <div class="bucket" data-bucket="arrivals" style="opacity: 0.65;">
+      <button class="bucket__header" type="button">
+        <div class="bucket__stripe"></div>
+        <div class="bucket__head-body">
+          <div class="bucket__abbr">ARR</div>
+          <div class="bucket__name">Arrivals</div>
+        </div>
+        <div class="bucket__right">
+          <div class="bucket__count" style="background: transparent; color: var(--ink-soft); border: 1.5px solid var(--ink-faint);">0</div>
+        </div>
+      </button>
+    </div>
+
+  </div>
+  <div class="footnote">Mockup · Day 54 v2 · Staff Home Redesign</div>
+</div>
+
+<!-- Lightweight interaction (mockup-only — single-accordion expand on click,
+     plus row checkmark toggle on click for demo purposes) -->
+<script>
+(function() {
+  document.addEventListener('click', function(e) {
+    // Row checkmark toggle (mockup-only — real impl would write task status)
+    var row = e.target.closest('.row');
+    if (row && !row.classList.contains('row--empty')) {
+      e.stopPropagation();
+      row.classList.toggle('row--done');
+      // Recompute bucket done state
+      var bucket = row.closest('.bucket');
+      var rows = bucket.querySelectorAll('.row:not(.row--empty)');
+      var allDone = rows.length > 0 && Array.prototype.every.call(rows, function(r) { return r.classList.contains('row--done'); });
+      bucket.classList.toggle('bucket--done', allDone);
+      return;
+    }
+    // Bucket header expand/collapse (single accordion)
+    var header = e.target.closest('.bucket__header');
+    if (!header) return;
+    var bucket = header.parentElement;
+    var wasExpanded = bucket.classList.contains('bucket--expanded');
+    if (!wasExpanded) {
+      var parent = bucket.parentElement;
+      Array.prototype.forEach.call(parent.querySelectorAll('.bucket--expanded'), function(b) {
+        b.classList.remove('bucket--expanded');
+      });
+    }
+    bucket.classList.toggle('bucket--expanded');
+  });
+})();
+</script>
+
+</body>
+</html>

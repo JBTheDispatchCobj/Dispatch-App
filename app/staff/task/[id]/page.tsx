@@ -232,6 +232,7 @@ export default function StaffTaskExecutionPage() {
   // resolves). Fail-open semantics: gate fetch failure → blockedBy=[] →
   // wrap proceeds.
   const [wrapBlockedBy, setWrapBlockedBy] = useState<string[]>([]);
+  const [wrapSelfOpenCount, setWrapSelfOpenCount] = useState(0);
   const [canWrapKnown, setCanWrapKnown] = useState(false);
   const [canWrapBusy, setCanWrapBusy] = useState(false);
 
@@ -516,6 +517,7 @@ export default function StaffTaskExecutionPage() {
     if (!task || !staffId) {
       setCanWrapKnown(true);
       setWrapBlockedBy([]);
+      setWrapSelfOpenCount(0);
       return;
     }
     const ct = task.card_type.toLowerCase();
@@ -523,11 +525,13 @@ export default function StaffTaskExecutionPage() {
     if (!isEod) {
       setCanWrapKnown(true);
       setWrapBlockedBy([]);
+      setWrapSelfOpenCount(0);
       return;
     }
     setCanWrapBusy(true);
     const result = await canWrapShift(supabase, staffId);
     setWrapBlockedBy(result.blockedBy);
+    setWrapSelfOpenCount(result.selfOpenCount);
     setCanWrapKnown(true);
     setCanWrapBusy(false);
   }, [task, staffId]);
@@ -882,6 +886,7 @@ export default function StaffTaskExecutionPage() {
         onResume={onResume}
         onPostNote={onPostNote}
         wrapBlockedBy={wrapBlockedBy}
+        wrapSelfOpenCount={wrapSelfOpenCount}
         canWrapKnown={canWrapKnown}
         canWrapBusy={canWrapBusy}
         onRefreshCanWrap={refreshCanWrap}
