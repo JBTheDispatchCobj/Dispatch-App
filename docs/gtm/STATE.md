@@ -117,4 +117,4 @@ The two tracks meet at: ICP-informed product priorities, marketing-site content 
 
 📊 GTM Inventory: 0 → 8 lanes (3 substrate-authored + 5 stubs) | Day 53 chase #4 sealed (GTM bootstrap) | HEAD `2f0a5cc`
 
-📊 GTM Inventory: 8 lanes (5 substrate-authored: I + II + III + IV plan + V.A; + prospect list pass 1 + 8-channel sourcing framework + Lane VII.A brief; 3 stubs: V.B-E + VI + VIII) | Day 53 chases #5 + #6 + #7 + #8 bundled sealed (Jennifer brief + Lane III outbound + reprioritization + prospect-list-pass-1 + multi-channel sourcing framework w/ Bryan verdicts + automation backlog + Lane IV marketing site planning doc) | HEAD `<pending CC commit>`
+📊 GTM Inventory: 8 lanes (5 substrate-authored: I + II + III + IV plan + V.A; + prospect list pass 1 + 8-channel sourcing framework + Lane VII.A brief; 3 stubs: V.B-E + VI + VIII) | Day 53 chases #5 + #6 + #7 + #8 bundled sealed (Jennifer brief + Lane III outbound + reprioritization + prospect-list-pass-1 + multi-channel sourcing framework w/ Bryan verdicts + automation backlog + Lane IV marketing site planning doc) | HEAD `8725b68`
