@@ -59,26 +59,30 @@ Owner: Bryan Stauder. Co-founder (operator): Jennifer at the Wisconsin boutique 
 
 ## Section III — Outbound
 
-*UNBUILT. Queued as Day 54+ chase. Pre-scoping context lives in the Lane I + II briefs (ICP precision, trigger language, sourcing layers all sketched there).*
+*Substrate: `docs/gtm/lanes/03-outbound.md`. Authored Day 53 chase #5. Beta motion (2-10 hotels) vs post-beta motion (10-100) explicitly split; both scoped.*
 
-- **III.A — Sourcing layers.** SCOPED IN LANE I. BLLA, AAHOA, state innkeeper associations, LinkedIn search, Google Maps + PMS detection.
-- **III.B — Enrichment stack.** UNSCOPED. Tools (Apollo, Clay, Instantly, Hunter, etc.) + budget needed.
-- **III.C — Sequence design.** UNSCOPED. Email cadence, LinkedIn approach, phone fallback.
-- **III.D — Trigger-language playbook.** SKETCHED IN LANE I. Three opening hooks proposed; needs A/B testing.
-- **III.E — CRM choice.** UNSCOPED. HubSpot vs Attio vs Airtable vs custom.
-- **III.F — Human-in-the-loop handoff.** UNSCOPED. When does Bryan get the call? Demo-booked threshold? Reply quality?
-- **III.G — Beta-stage hand-curated approach.** PROPOSED IN LANE I. For 2-10 beta hotels, hand-curation likely beats automation. System scales post-beta.
+- **III.A — Sourcing layers.** AUTHORED. Three primary (BLLA, state innkeeper associations, AAHOA) + four secondary (Google Maps + PMS detection, LinkedIn, hospitality groups, conferences) with priority order + access notes.
+- **III.B — Trigger-language playbook (3 hooks).** AUTHORED. Hook A (diagnostic), Hook B (variable-turnover scenario), Hook C (operator-credibility / Jennifer-as-Wisconsin-innkeeper). All three to be tested in beta.
+- **III.C — Sequence design (beta).** AUTHORED. 1-on-1 personalized emails, no automation, 5/day cadence, 2 follow-ups max. ~200 emails over 8 weeks = 10 beta hotels at 5%/50% reply/close rates.
+- **III.D — Sequence design (post-beta).** AUTHORED. Three-touch email + LinkedIn warmup, 30-50/day, multi-channel.
+- **III.E — CRM choice.** AUTHORED. Airtable for beta ($0-20/mo); Attio or HubSpot Free for post-beta ($0-50/seat/mo). Avoid Salesforce until $1M ARR.
+- **III.F — Enrichment stack.** AUTHORED. No tools needed for beta; Apollo.io ($99/mo) for post-beta; Clay.com if Apollo's data quality outgrown.
+- **III.G — Human-in-the-loop handoff.** AUTHORED. Beta = Bryan handles every reply personally. Post-beta = SDR qualifies, Bryan engages at demo-request / pricing-question / 3rd-back-and-forth thresholds.
+- **III.H — First-list playbook per sub-segment.** AUTHORED. Sub-segment 1 (independent boutiques) → 100 named via BLLA + state associations + Google Maps. Sub-segment 2 (franchisees) → deferred until 5+ independents paying. Sub-segment 3 (motels) → opportunistic.
+- **III.I — Beta-stage 8-week timeline.** AUTHORED. Week-by-week schedule with $435 total beta-stack budget; Bryan time ~10 hrs/week.
+- **III.J — Post-beta stack cost.** AUTHORED. ~$1,800-3,400/month full stack (Apollo + Clay + Attio + Instantly + SDR/VA). Funded by Revify rev share or seed round.
 
 ## Section IV — Marketing site
 
-*UNBUILT. Brand decision is the gating question. Refero/Linktree tokens (Bryan-explored Day 53) are aesthetically aggressive playful-pop; Dispatch's existing app aesthetic is operational cream/sage muted. They clash.*
+*Substrate: `docs/gtm/lanes/04-marketing-site.md`. Authored Day 53 chase #8. Six decisions to lock before any build (plan mode).*
 
-- **IV.A — Brand reference selection.** OPEN QUESTION. Linktree-style (vibrant pop, content-creator vibe) vs operator-grade (hospitality-warm, trust-signal-heavy, screenshot-credible). Recommendation pending.
-- **IV.B — Content scope.** UNSCOPED. Homepage + pricing + demo request + case study + about + blog at minimum. Marketing-site as a 10-page Next.js or Webflow build.
-- **IV.C — Tech stack.** UNSCOPED. Next.js (matches product stack; shared deploy) vs Webflow (no-dev, faster iteration) vs Squarespace (cheapest).
-- **IV.D — Domain + hosting.** UNSCOPED. dispatch.app? dispatchhq.com? dispatchhotels.com? Coordination with the existing dispatch-app-iota.vercel.app/ product domain.
-- **IV.E — Demo video.** UNSCOPED. 90-second shift-on-Dispatch video at Jennifer's hotel — proposed in Lane I; production unscoped.
-- **IV.F — SEO foundation.** UNSCOPED. Keyword targets (boutique hotel housekeeping app, mobile housekeeping app, etc.), content cadence.
+- **IV.A — Brand reference selection.** **Recommendation: Option C hybrid** (hospitality-color-reference + B2B-SaaS-typography). Specifically: Mr & Mrs Smith or Tablet Hotels (color); Linear or Notion (typography). Linktree-style explicitly rejected (clash with buyer + product aesthetic). PENDING BRYAN CONFIRMATION.
+- **IV.B — Content scope.** AUTHORED. Four minimum-viable pages: Homepage / Pricing / Demo Request / Privacy+Terms. Blog + features + about deferred. Homepage hero gated on Jennifer extract quote (Lane VII.A) or launches with placeholder.
+- **IV.C — Tech stack.** **Recommendation: Next.js in new `dispatch-marketing` repo.** $0 incremental cost; CC can iterate via prompts; Vercel deploy pipeline already established. Alternatives surveyed (Webflow, Framer, Astro, Squarespace) and rejected. PENDING BRYAN CONFIRMATION.
+- **IV.D — Domain + hosting.** **Recommendation: dispatchhq.com (primary), dispatchhotels.com (fallback).** Bryan availability-check + lock required.
+- **IV.E — Demo video.** AUTHORED. Pair with Lane VII.A Jennifer extract — same trip captures quote + video + metrics. Fallback: Loom screen-recording of staff app (60-90 sec, ~30 min produce).
+- **IV.F — SEO foundation.** AUTHORED. Three keyword tiers prioritized; long-tail competitor alternatives (e.g., "Hotelkit alternative sub-30-room") feasible at launch. Plausible Analytics or Fathom recommended ($9-19/mo, privacy-friendly).
+- **IV.G — Launch sequencing.** **Recommendation: Option 3 phased launch.** Site ships in ~2 weeks with placeholder hero; enriched progressively as Jennifer extract + video + case studies land. Avoids "perfect blocks live."
 
 ## Section V — Partnerships
 

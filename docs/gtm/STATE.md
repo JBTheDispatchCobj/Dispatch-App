@@ -18,15 +18,16 @@ The two tracks meet at: ICP-informed product priorities, marketing-site content 
 
 - Competitive positioning substrate authored — `docs/gtm/lanes/01-positioning.md`
 - ICP locked + pricing model proposed — `docs/gtm/lanes/02-icp-and-pricing.md`
+- Outbound system scoped (beta + post-beta motions) + 8-channel sourcing framework with Bryan verdicts + automation backlog — `docs/gtm/lanes/03-outbound.md`
+- Marketing site planning doc with 6 decisions surfaced + recommendations — `docs/gtm/lanes/04-marketing-site.md`
+- Prospect list pass 1 (15 hotels WI + VT, PMS-detection trick load-bearing) — `docs/gtm/prospect-list.md`
 - Revify call-2 brief authored — `docs/gtm/briefs/revify-call-2.md`
+- Jennifer extract call brief authored (Lane VII.A; execution deprioritized to bottom of stack) — `docs/gtm/briefs/jennifer-extract-call.md`
 - GTM master plan + STATE.md scaffolding — this doc + `docs/gtm/MASTER_PLAN.md`
 
 ## What's NOT yet authored (cross-reference MASTER_PLAN.md)
 
-- Lane III — outbound system
-- Lane IV — marketing site
 - Lane VI — funnel + onboarding
-- Lane VII — case studies + social proof
 - Lane VIII — investor narrative
 
 ---
@@ -37,16 +38,22 @@ The two tracks meet at: ICP-informed product priorities, marketing-site content 
 - ✓ **Lane II (ICP + pricing) — substrate authored** Day 53 chase #4. ICP locked (independent boutique + franchisee, under 100 rooms, sub-4.5-star). Variable-turnover pain defined (four mutation dimensions). Pricing model proposed ($5-7/room/month, $99/month minimum, transparent published). Sub-items II.D-II.G partial (buyer personas, sub-segment prioritization detail, pricing benchmark instrumentation, packaging).
 - ✓ **Lane V.A (Revify partnership eval) — call-2 brief authored** Day 53 chase #4. Decoded operating model (dual-pricing surcharge + ISO + rebate). Identified boutique-hospitality fit concern. Built 3-block call agenda (operating model, partnership economics, dealbreaker test). Angel-check angle analyzed (real, wrong timing on call-2; seed-plant for call-3).
 - ✓ **GTM master plan scaffolding** Day 53 chase #4. `docs/gtm/MASTER_PLAN.md` + this STATE.md + folder structure (lanes/, briefs/) shipped. Mirrors product-side `docs/dispatch-master-plan.md` + `docs/STATE.md` structure.
+- ✓ **Lane VII.A — Jennifer extract call brief authored** Day 53 chase #5. `docs/gtm/briefs/jennifer-extract-call.md` — 60-min interview structure (warm-up / quote extraction / metrics / wrap), pre-call setup checklist, post-call action plan, candidate-quote approval-back flow. Designed to extract Jennifer's operator voice not co-founder voice. Call execution itself deprioritized per Bryan — moved to bottom of recommended-next-chases stack pending other-lane forward motion.
+- ✓ **Lane III — Outbound system scoped** Day 53 chase #5. `docs/gtm/lanes/03-outbound.md` — beta motion (2-10 hotels: hand-curated, founder-led, no tools needed, ~$435 budget over 8 weeks) explicitly split from post-beta motion (10-100 hotels: Apollo + Clay + Attio + SDR/VA stack, ~$1,800-3,400/month). Three trigger-language hooks (diagnostic / variable-turnover / operator-credibility) ready to A/B test in beta. Three sub-segment first-list playbooks. Beta-stage 8-week timeline with week-by-week actions.
+- ✓ **Recommended-chases reprioritization** Day 53 chase #5. Lane VII.A moved from position #2 to position #5; Lane III promoted to position #2 (highest priority chase we can advance without waiting on Bryan-side execution).
+- ✓ **Lane III prospect list pass 1 authored** Day 53 chase #6. `docs/gtm/prospect-list.md` — 15 hotels sourced (8 WI Door County + 7 VT), 4 fully enriched with PMS detection + contact paths, 11 named but un-enriched. **Load-bearing find: PMS-detection-from-booking-widget-URL trick** — every hotel's PMS is detectable by clicking "Book Now" and parsing the redirect subdomain. Single highest-leverage outbound insight surfaced this session. Inn at Montpelier flagged as highest-priority cold outreach (on RezStream — same PMS as Jennifer's hotel; natural narrative fit, zero PMS-fit objection). On The River Inn deprioritized (Imprint Hospitality-managed = corporate-managed, negative ICP).
+- ✓ **Lane III multi-channel sourcing framework + Bryan-validated channel verdicts** Day 53 chase #7. Lane III doc restructured around 8 sourcing channels organized by Bryan's priority verdicts. **Tier 1 GOLD (automate):** job postings (operational-pain trigger) + negative review mining (leading-indicator). **Tier 2 hybrid:** AAHOA franchisee directory (approved $295/year), hospitality consultants (automate discovery + outreach, hand off to Bryan after reply). **Tier 3 Bryan-manual:** supplier partnerships, conferences. **Tier 4 deferred:** state innkeeper association paid memberships (scrape public directories pre-funding). **Dropped:** co-founder operator network referrals. Plus automation backlog ordered (PMS-detection agent first, then job-posting scraper, negative review monitor, consultant outreach sequencer, AAHOA scraper, state association scrapers). Foundation principle: all channels funnel into the same enriched prospect-list CSV.
+- ✓ **Lane IV marketing site planning doc authored** Day 53 chase #8. `docs/gtm/lanes/04-marketing-site.md` — Six decisions surfaced for Bryan to lock before any site build: (A) brand reference (recommendation: hybrid hospitality-color + B2B-SaaS-typography; Linktree-style explicitly rejected), (B) content scope (4 minimum-viable pages: Homepage / Pricing / Demo Request / Privacy+Terms), (C) tech stack (recommendation: Next.js in new `dispatch-marketing` repo), (D) domain (recommendation: dispatchhq.com primary, dispatchhotels.com fallback), (E) demo video (pair with Lane VII.A extract trip), (G) launch sequencing (recommendation: Option 3 phased — ship in ~2 weeks with placeholder hero, enrich progressively). SEO foundation (IV.F) deferred to post-first-case-study. Plan mode — no build started.
 
 ---
 
 ## Recommended next chases (priority-ordered)
 
-1. **Lane V.A close — Revify call-2 outcome + decision.** TIME-SENSITIVE (call this week). Outcome of the call → either close the partnership question with "yes-on-fit, negotiate-economics" or "no-on-fit, walk away cleanly" or "open: needs more info." Brief lives at briefs/revify-call-2.md.
-2. **Lane VII.A — Jennifer case study production.** Get her quote in writing (the "why Dispatch over ResNexus housekeeping module" sentence is worth more than any feature comparison). Schedule a shift-day video shoot at her hotel for the 90-second demo asset.
-3. **Lane III — Outbound system scoping.** Define ICP precision exercise (room count, PMS-in-use, geography), pick sourcing layers, propose stack (sourcing + enrichment + sequencing + CRM + handoff), size for hand-curated 2-10 beta + post-beta scale. Plan first, build second.
-4. **Lane IV.A — Marketing site brand reference selection.** Decide Linktree-style (Refero tokens) vs operational-hospitality-warm (mirror app aesthetic) vs hybrid. Gates Lane IV.B-F.
-5. **Lane VIII — Investor narrative scaffold.** Strategic angel list, TAM/SAM/SOM model skeleton, seed-round sizing. Pairs with Revify angel-seed-plant outcome.
+1. **Lane V.A close — Revify call-2 outcome + decision.** TIME-SENSITIVE (call this week). Outcome of the call → either close the partnership question with "yes-on-fit, negotiate-economics" or "no-on-fit, walk away cleanly" or "open: needs more info." Brief lives at briefs/revify-call-2.md. Bryan-side execution.
+2. **Lane III — Outbound system scoping.** Define ICP precision exercise (room count, PMS-in-use, geography), pick sourcing layers, propose stack (sourcing + enrichment + sequencing + CRM + handoff), size for hand-curated 2-10 beta + post-beta scale. Plan first, build second. **AUTHORED Day 53 chase #5 — see `lanes/03-outbound.md`.**
+3. **Lane IV.A — Marketing site brand reference selection.** Decide Linktree-style (Refero tokens) vs operational-hospitality-warm (mirror app aesthetic) vs hybrid. Gates Lane IV.B-F.
+4. **Lane VIII — Investor narrative scaffold.** Strategic angel list, TAM/SAM/SOM model skeleton, seed-round sizing. Pairs with Revify angel-seed-plant outcome.
+5. **Lane VII.A — Jennifer case study production.** *(Deprioritized Day 53 chase #5 per Bryan — fine idea, moved to bottom of active stack pending forward motion on other lanes.)* Get her quote in writing + pre/post-Dispatch metrics. Brief authored at `briefs/jennifer-extract-call.md` — call execution scheduled when Bryan's bandwidth allows.
 
 ---
 
@@ -109,3 +116,5 @@ The two tracks meet at: ICP-informed product priorities, marketing-site content 
 **Bryan apply steps (Day 53 chase #4):** zero — all markdown-only, no SQL, no UI.
 
 📊 GTM Inventory: 0 → 8 lanes (3 substrate-authored + 5 stubs) | Day 53 chase #4 sealed (GTM bootstrap) | HEAD `2f0a5cc`
+
+📊 GTM Inventory: 8 lanes (5 substrate-authored: I + II + III + IV plan + V.A; + prospect list pass 1 + 8-channel sourcing framework + Lane VII.A brief; 3 stubs: V.B-E + VI + VIII) | Day 53 chases #5 + #6 + #7 + #8 bundled sealed (Jennifer brief + Lane III outbound + reprioritization + prospect-list-pass-1 + multi-channel sourcing framework w/ Bryan verdicts + automation backlog + Lane IV marketing site planning doc) | HEAD `<pending CC commit>`
