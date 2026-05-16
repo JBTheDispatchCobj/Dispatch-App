@@ -2,24 +2,26 @@
 
 // components/admin/ActivityFeed.tsx
 //
-// Day 29 III.D Phase 3 — live activity feed component for /admin home.
-// Replaces the hardcoded FEED_ITEMS array that's been sitting in
-// app/admin/page.tsx since Phase 3 of the original UI build.
+// Day 54 chase #5 — rewritten to drop severity/kind filters + day grouping
+// in favor of an employee-categorized layout per Bryan's product call:
 //
-// Reads via lib/activity-feed.ts (Phase 2). Renders day-grouped, severity-
-// dotted, dismissable rows. Filter dropdowns for severity + kind. Refresh
-// button. Per-browser dismiss state via localStorage (no schema needed for
-// beta — dismiss is personal-view-state, not system-truth).
+//   ┌─ ACTIVITY · [Refresh] ─────────────────────────────────────┐
+//   │ Management card (collapsed) — total item count, chevron     │
+//   │ Housekeeping card (auto-expanded)                            │
+//   │   ├─ Lizzie Larson  · top 3 most recent items               │
+//   │   ├─ Angie Lopez    · top 3                                 │
+//   │   └─ Mark Parry     · "No activity today" empty state       │
+//   └─────────────────────────────────────────────────────────────┘
 //
-// Mounts on /admin home in place of the hardcoded feed (master plan III.D).
-// Will also surface on /admin/staff/[id] post-Day-29 once II.E wires
-// getActivityForUser() — that's the Phase 4 helper API delivered alongside
-// Phase 2.
+// Single accordion (one category open at a time). Today-only filter
+// (zero-inbox EOD — yesterday's items don't carry over). Per-employee
+// top-3 hard cap. Dismiss persistence via localStorage preserved.
 //
-// Inline CSS via <style> block follows the existing pattern from the
-// soon-to-be-deleted app/activity-section.tsx (Phase 5 cleanup). When the
-// /admin home rebuild (II.C) lands properly, this component's styles can
-// move to app/admin/page.module.css.
+// Category mapping for beta: profile.role 'admin'/'manager' → Management;
+// everything else → Housekeeping. When Jennifer's role schema lands
+// (Section 14 Phase 2), swap to the multi-tier mapping.
+//
+// Mockup spec at design/admin-activity-redesign.html.
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,12 +29,33 @@ import { supabase } from "@/lib/supabase";
 import {
   getActivityFeed,
   type ActivityFeedItem,
-  type ActivityKind,
-  type ActivitySeverity,
 } from "@/lib/activity-feed";
 
 // =============================================================================
-// localStorage dismiss state
+// Types + category config
+// =============================================================================
+
+type CategoryKey = "management" | "housekeeping";
+
+type ProfileRow = {
+  id: string;
+  role: string;
+  display_name: string;
+};
+
+const CATEGORIES: { key: CategoryKey; label: string }[] = [
+  { key: "management", label: "Management" },
+  { key: "housekeeping", label: "Housekeeping" },
+];
+
+function roleToCategory(role: string): CategoryKey {
+  const r = (role ?? "").toLowerCase();
+  if (r === "admin" || r === "manager") return "management";
+  return "housekeeping";
+}
+
+// =============================================================================
+// localStorage dismiss state (unchanged from Day 29)
 // =============================================================================
 
 const DISMISSED_STORAGE_KEY = "dispatch.activity-feed.dismissed.v1";
@@ -65,55 +88,21 @@ function persistDismissedToStorage(dismissed: Set<string>): void {
 }
 
 // =============================================================================
-// Day grouping + time-ago helpers (mirrors app/activity-section.tsx pattern)
+// Today filter + time-ago helpers
 // =============================================================================
 
-function localDateKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+// Compare in the property's local timezone so a midnight rollover doesn't
+// wipe activity from a still-active overnight shift.
+const PROPERTY_TZ = "America/Chicago";
+
+function localDateKey(iso: string, tz: string): string {
+  // en-CA gives YYYY-MM-DD, which is easy to compare as a string.
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: tz });
 }
 
-function todayKey(): string {
-  return localDateKey(new Date());
-}
-
-function yesterdayKey(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return localDateKey(d);
-}
-
-function dayHeaderLabel(key: string): string {
-  if (key === todayKey()) return "Today";
-  if (key === yesterdayKey()) return "Yesterday";
-  const [y, mo, da] = key.split("-").map(Number);
-  const dt = new Date(y, mo - 1, da);
-  if (dt.getFullYear() !== new Date().getFullYear()) {
-    return dt.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function groupByDay(
-  items: ActivityFeedItem[],
-): { key: string; label: string; items: ActivityFeedItem[] }[] {
-  const groups: { key: string; label: string; items: ActivityFeedItem[] }[] = [];
-  for (const item of items) {
-    const key = localDateKey(new Date(item.created_at));
-    let g = groups.find((x) => x.key === key);
-    if (!g) {
-      g = { key, label: dayHeaderLabel(key), items: [] };
-      groups.push(g);
-    }
-    g.items.push(item);
-  }
-  return groups;
+function isTodayInPropertyTz(iso: string): boolean {
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: PROPERTY_TZ });
+  return localDateKey(iso, PROPERTY_TZ) === today;
 }
 
 function formatTimeAgo(iso: string): string {
@@ -131,18 +120,44 @@ function formatTimeAgo(iso: string): string {
 }
 
 // =============================================================================
+// Avatar helpers — map staff display_name to the 4-name locked palette
+// (master plan II.D / II.E). Phase 2: swap to slug column on profiles/staff.
+// =============================================================================
+
+type AvatarSlug = "cm" | "ll" | "al" | "mp" | null;
+
+function avatarSlugFor(name: string): AvatarSlug {
+  const n = (name ?? "").toLowerCase();
+  if (n.includes("courtney")) return "cm";
+  if (n.includes("lizzie")) return "ll";
+  if (n.includes("angie")) return "al";
+  if (n.includes("mark")) return "mp";
+  return null;
+}
+
+function avatarInitials(name: string): string {
+  const parts = (name ?? "").trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return "?";
+  const first = parts[0][0] ?? "";
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? "") : "";
+  return (first + last).toUpperCase();
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
 export default function ActivityFeed() {
   const [items, setItems] = useState<ActivityFeedItem[]>([]);
+  const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const [severityFilter, setSeverityFilter] = useState<"all" | ActivitySeverity>("all");
-  const [kindFilter, setKindFilter] = useState<"all" | ActivityKind>("all");
+  // Auto-expand Housekeeping by default (where most activity lives at beta).
+  const [expandedCategory, setExpandedCategory] = useState<CategoryKey | null>(
+    "housekeeping",
+  );
 
-  // Load persisted dismissals on mount
   useEffect(() => {
     setDismissed(loadDismissedFromStorage());
   }, []);
@@ -151,19 +166,53 @@ export default function ActivityFeed() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getActivityFeed(supabase, {
-        limit: 100,
-        severityFilter:
-          severityFilter === "all" ? undefined : [severityFilter],
-        kindFilter: kindFilter === "all" ? undefined : [kindFilter],
-      });
-      setItems(result);
+      const [feed, profilesResult] = await Promise.all([
+        getActivityFeed(supabase, { limit: 200 }),
+        supabase
+          .from("profiles")
+          .select("id, role, display_name")
+          .order("display_name", { ascending: true }),
+      ]);
+
+      // Today-only filter — yesterday's items are presumed dealt with.
+      const todayItems = feed.filter((item) =>
+        isTodayInPropertyTz(item.created_at),
+      );
+      setItems(todayItems);
+
+      if (profilesResult.error) {
+        console.warn(
+          "[ActivityFeed] Profiles fetch failed:",
+          profilesResult.error.message,
+        );
+        setProfiles([]);
+      } else {
+        const rows = (profilesResult.data ?? []) as Array<{
+          id: unknown;
+          role: unknown;
+          display_name: unknown;
+        }>;
+        setProfiles(
+          rows
+            .filter((r) => typeof r.id === "string")
+            .map((r) => ({
+              id: String(r.id),
+              role: typeof r.role === "string" ? r.role : "staff",
+              display_name:
+                typeof r.display_name === "string" && r.display_name.trim()
+                  ? r.display_name
+                  : "Staff",
+            })),
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load activity.");
+      setError(
+        err instanceof Error ? err.message : "Failed to load activity.",
+      );
     } finally {
       setLoading(false);
     }
-  }, [severityFilter, kindFilter]);
+  }, []);
 
   useEffect(() => {
     void loadFeed();
@@ -194,57 +243,69 @@ export default function ActivityFeed() {
     [items, dismissed],
   );
 
-  const groups = useMemo(() => groupByDay(visibleItems), [visibleItems]);
+  // ── Grouping: category → employees → top-3 items per employee ─────────
+  const grouped = useMemo(() => {
+    // Partition profiles by category
+    const profilesByCat: Record<CategoryKey, ProfileRow[]> = {
+      management: [],
+      housekeeping: [],
+    };
+    for (const p of profiles) {
+      profilesByCat[roleToCategory(p.role)].push(p);
+    }
+
+    // Index visible items by actor_user_id; sort desc; cap at 3 per actor
+    const itemsByActor = new Map<string, ActivityFeedItem[]>();
+    for (const item of visibleItems) {
+      if (!item.actor_user_id) continue;
+      const list = itemsByActor.get(item.actor_user_id);
+      if (list) list.push(item);
+      else itemsByActor.set(item.actor_user_id, [item]);
+    }
+    for (const [actor, list] of itemsByActor) {
+      list.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      itemsByActor.set(actor, list.slice(0, 3));
+    }
+
+    return CATEGORIES.map((cat) => {
+      const catProfiles = profilesByCat[cat.key];
+      const employees = catProfiles.map((p) => ({
+        id: p.id,
+        name: p.display_name,
+        role: p.role,
+        items: itemsByActor.get(p.id) ?? [],
+      }));
+      const totalItems = employees.reduce(
+        (sum, e) => sum + e.items.length,
+        0,
+      );
+      const lastTimestamp = employees
+        .flatMap((e) => e.items)
+        .map((i) => new Date(i.created_at).getTime())
+        .reduce((max, t) => Math.max(max, t), 0);
+      return {
+        key: cat.key,
+        label: cat.label,
+        employees,
+        totalItems,
+        lastTimestamp,
+      };
+    });
+  }, [profiles, visibleItems]);
+
+  const handleCategoryTap = (key: CategoryKey) => {
+    setExpandedCategory((curr) => (curr === key ? null : key));
+  };
 
   return (
     <>
       <style>{ACTIVITY_FEED_STYLES}</style>
       <div className="af3-section">
-        <div className="af3-header">
-          <span className="af3-header-title">ACTIVITY</span>
-          <span className="af3-header-meta">
-            {visibleItems.length} ITEMS · LIVE
-          </span>
-        </div>
-
-        <div className="af3-controls">
-          <label className="af3-control">
-            <span className="af3-control-label">Severity</span>
-            <select
-              className="af3-select"
-              value={severityFilter}
-              onChange={(e) =>
-                setSeverityFilter(e.target.value as "all" | ActivitySeverity)
-              }
-              disabled={loading}
-            >
-              <option value="all">All</option>
-              <option value="critical">Critical</option>
-              <option value="warn">Warn</option>
-              <option value="info">Info</option>
-            </select>
-          </label>
-
-          <label className="af3-control">
-            <span className="af3-control-label">Kind</span>
-            <select
-              className="af3-select"
-              value={kindFilter}
-              onChange={(e) =>
-                setKindFilter(e.target.value as "all" | ActivityKind)
-              }
-              disabled={loading}
-            >
-              <option value="all">All</option>
-              <option value="task_event">Events</option>
-              <option value="note">Notes</option>
-              <option value="maintenance_issue">Maintenance</option>
-            </select>
-          </label>
-
+        <div className="af3-section-cap">
+          <span className="af3-section-label">Activity</span>
           <button
             type="button"
-            className="af3-refresh"
+            className="af3-refresh-pill"
             onClick={() => void loadFeed()}
             disabled={loading}
           >
@@ -256,63 +317,162 @@ export default function ActivityFeed() {
 
         {loading ? (
           <p className="af3-empty">Loading activity…</p>
-        ) : visibleItems.length === 0 ? (
-          <p className="af3-empty">
-            No recent activity
-            {dismissed.size > 0 ? ` (${dismissed.size} dismissed)` : ""}.
-          </p>
         ) : (
-          <div className="af3-feed" role="feed">
-            {groups.map((g) => (
-              <div key={g.key} className="af3-day">
-                <div className="af3-day-hdr">{g.label}</div>
-                {g.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`af3-item af3-item--${item.severity}`}
+          <div className="af3-cats">
+            {grouped.map((cat) => {
+              const isExpanded = expandedCategory === cat.key;
+              const isEmpty = cat.employees.length === 0;
+              const classes = ["af3-cat"];
+              if (isExpanded) classes.push("af3-cat--expanded");
+              if (isEmpty) classes.push("af3-cat--empty");
+              return (
+                <div
+                  key={cat.key}
+                  className={classes.join(" ")}
+                  data-cat={cat.key}
+                >
+                  <button
+                    type="button"
+                    className="af3-cat-header"
+                    onClick={() => handleCategoryTap(cat.key)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`af3-cat-body-${cat.key}`}
+                    disabled={isEmpty}
                   >
-                    <span
-                      className={`af3-sev af3-sev--${item.severity}`}
-                      aria-label={item.severity}
-                    />
-                    <Link
-                      href={`/admin/tasks/${item.related_task_id}`}
-                      className="af3-item-main"
-                    >
-                      <div className="af3-msg">{item.message}</div>
-                      <div className="af3-meta">
-                        {item.related_room && (
-                          <span className="af3-room">
-                            RM {item.related_room}
-                          </span>
+                    <div className="af3-cat-stripe" />
+                    <div className="af3-cat-head-body">
+                      <div className="af3-cat-name">{cat.label}</div>
+                      <div className="af3-cat-sub">
+                        {cat.employees.length}{" "}
+                        {cat.employees.length === 1 ? "Staff" : "Staff"}
+                        {cat.lastTimestamp > 0 && (
+                          <>
+                            {" · Last "}
+                            {formatTimeAgo(
+                              new Date(cat.lastTimestamp).toISOString(),
+                            )}
+                          </>
                         )}
-                        <time
-                          className="af3-time"
-                          dateTime={item.created_at}
-                        >
-                          {formatTimeAgo(item.created_at)}
-                        </time>
-                        <span className="af3-kind">
-                          {item.kind === "note"
-                            ? "NOTE"
-                            : item.kind === "maintenance_issue"
-                              ? "MAINT"
-                              : "EVENT"}
-                        </span>
                       </div>
-                    </Link>
-                    <button
-                      type="button"
-                      className="af3-dismiss"
-                      onClick={() => dismissItem(item.id)}
-                      aria-label="Dismiss"
+                    </div>
+                    <div className="af3-cat-right">
+                      <div className="af3-cat-count">{cat.totalItems}</div>
+                      {!isEmpty && (
+                        <span className="af3-cat-chevron" aria-hidden>
+                          ▾
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  {isExpanded && !isEmpty && (
+                    <div
+                      className="af3-cat-body"
+                      id={`af3-cat-body-${cat.key}`}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ))}
+                      {cat.employees.map((emp) => {
+                        const slug = avatarSlugFor(emp.name);
+                        return (
+                          <div
+                            key={emp.id}
+                            className="af3-emp"
+                            data-staff={slug ?? "default"}
+                          >
+                            <div className="af3-emp-head">
+                              <div
+                                className="af3-emp-avatar"
+                                aria-hidden
+                              >
+                                {avatarInitials(emp.name)}
+                              </div>
+                              <div className="af3-emp-id">
+                                <div className="af3-emp-name">
+                                  {emp.name}
+                                </div>
+                                <div className="af3-emp-role">
+                                  {emp.role || "Staff"}
+                                </div>
+                              </div>
+                              <div className="af3-emp-count">
+                                {emp.items.length}{" "}
+                                {emp.items.length === 1 ? "Item" : "Items"}
+                              </div>
+                            </div>
+                            <div className="af3-emp-items">
+                              {emp.items.length === 0 ? (
+                                <div className="af3-item af3-item--empty">
+                                  <div className="af3-item-msg">
+                                    No activity today.
+                                  </div>
+                                </div>
+                              ) : (
+                                emp.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className={`af3-item af3-item--${item.severity}`}
+                                  >
+                                    <span
+                                      className="af3-item-dot"
+                                      aria-hidden
+                                    />
+                                    <Link
+                                      href={`/admin/tasks/${item.related_task_id}`}
+                                      className="af3-item-body"
+                                    >
+                                      <div className="af3-item-msg">
+                                        {item.message}
+                                      </div>
+                                      <div className="af3-item-meta">
+                                        {item.related_room && (
+                                          <span className="af3-item-target">
+                                            RM {item.related_room}
+                                          </span>
+                                        )}
+                                        <time
+                                          className="af3-item-time"
+                                          dateTime={item.created_at}
+                                        >
+                                          {formatTimeAgo(item.created_at)}
+                                        </time>
+                                        <span
+                                          className={
+                                            "af3-item-kind af3-item-kind--" +
+                                            (item.kind === "note"
+                                              ? "note"
+                                              : item.kind ===
+                                                  "maintenance_issue"
+                                                ? "maint"
+                                                : "event")
+                                          }
+                                        >
+                                          {item.kind === "note"
+                                            ? "Note"
+                                            : item.kind ===
+                                                "maintenance_issue"
+                                              ? "Maint"
+                                              : "Event"}
+                                        </span>
+                                      </div>
+                                    </Link>
+                                    <button
+                                      type="button"
+                                      className="af3-item-dismiss"
+                                      onClick={() => dismissItem(item.id)}
+                                      aria-label="Dismiss"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -331,197 +491,320 @@ export default function ActivityFeed() {
 }
 
 // =============================================================================
-// Inline styles
-//
-// af3- prefix avoids collision with af- (existing app/activity-section.tsx,
-// slated for Phase 5 deletion) and any other component-level naming.
-// Mobile-first per CLAUDE.md (390px viewport). Severity dot colors match
-// the existing /admin sdotGreen/Amber/Red palette to stay visually
-// consistent with the lanes.
+// Inline styles — ported from design/admin-activity-redesign.html with the
+// af3- prefix preserved for component scoping.
 // =============================================================================
 
 const ACTIVITY_FEED_STYLES = `
 .af3-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 10px;
   margin: 0.75rem 0;
 }
-.af3-header {
+.af3-section-cap {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
   justify-content: space-between;
-  font-size: 0.6875rem;
-  letter-spacing: 0.12em;
-  color: color-mix(in srgb, var(--foreground) 60%, transparent);
+  align-items: center;
   padding: 0 0.15rem;
+  margin-bottom: 4px;
 }
-.af3-header-title {
-  font-weight: 700;
-}
-.af3-controls {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem;
-  padding: 0 0.15rem;
-}
-.af3-control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  color: color-mix(in srgb, var(--foreground) 55%, transparent);
-}
-.af3-control-label {
+.af3-section-label {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  letter-spacing: 1.8px;
   text-transform: uppercase;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  font-weight: 500;
 }
-.af3-select {
-  font-size: 0.8125rem;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
-  border-radius: 6px;
-  background: var(--background);
-  color: var(--foreground);
-  min-height: 2rem;
-}
-.af3-refresh {
-  font-size: 0.8125rem;
-  padding: 0.35rem 0.65rem;
-  min-height: 2rem;
-  border: 1px solid color-mix(in srgb, var(--foreground) 28%, transparent);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--foreground);
+.af3-refresh-pill {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--shell-ink, #2C1608);
+  background: #FFFFFF;
+  border: 1px solid var(--ink-faint, rgba(44, 22, 8, 0.20));
+  border-radius: 999px;
+  padding: 6px 14px;
   cursor: pointer;
-  margin-left: auto;
+  font-weight: 600;
 }
-.af3-refresh:disabled {
+.af3-refresh-pill:hover:not(:disabled) {
+  background: var(--shell-bg, #F5F0E6);
+}
+.af3-refresh-pill:disabled {
   opacity: 0.5;
   cursor: wait;
 }
+
 .af3-error {
-  font-size: 0.8125rem;
+  font-size: 13px;
   color: #c52c2c;
-  padding: 0.35rem 0.5rem;
+  padding: 8px 12px;
   background: rgba(197, 44, 44, 0.08);
   border-radius: 6px;
 }
 .af3-empty {
-  font-size: 0.875rem;
-  color: color-mix(in srgb, var(--foreground) 52%, transparent);
-  padding: 0.5rem 0.15rem;
+  font-size: 13px;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  padding: 8px 4px;
 }
-.af3-feed {
+
+/* Category card stack — bud tight (Day 54 chase #4 product call) */
+.af3-cats {
   display: flex;
   flex-direction: column;
-  margin: 0 -0.15rem;
-  max-height: min(70vh, 32rem);
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  gap: 4px;
 }
-.af3-day {
-  display: flex;
-  flex-direction: column;
+
+.af3-cat {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: var(--shadow-raised, 0 1px 1px rgba(30,20,10,0.04), 0 2px 6px rgba(30,20,10,0.06));
+  overflow: hidden;
+  transition: box-shadow 200ms ease;
 }
-.af3-day-hdr {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--background);
-  padding: 0.5rem 0.15rem;
-  font-weight: 600;
-  font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--foreground) 55%, transparent);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(2px);
-}
-.af3-item {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0.55rem;
-  padding: 0.7rem 0.15rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--foreground) 8%, transparent);
-}
-.af3-feed > .af3-day:last-child > .af3-item:last-child {
-  border-bottom: none;
-}
-.af3-sev {
-  flex-shrink: 0;
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  margin-top: 0.4rem;
-}
-.af3-sev--critical { background: #c52c2c; }
-.af3-sev--warn     { background: #d9a82c; }
-.af3-sev--info     { background: #4A7FA8; }
-.af3-item-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  text-decoration: none;
-  color: inherit;
-}
-.af3-item-main:hover {
-  background: color-mix(in srgb, var(--foreground) 4%, transparent);
-  border-radius: 4px;
-}
-.af3-msg {
-  font-size: 0.9375rem;
-  line-height: 1.4;
-  color: var(--foreground);
-}
-.af3-meta {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: color-mix(in srgb, var(--foreground) 50%, transparent);
-}
-.af3-room {
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-.af3-kind {
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  padding: 0.1rem 0.35rem;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--foreground) 8%, transparent);
-}
-.af3-dismiss {
-  flex-shrink: 0;
+.af3-cat-header {
+  display: grid;
+  grid-template-columns: 6px 1fr auto;
+  align-items: stretch;
+  cursor: pointer;
+  user-select: none;
   background: transparent;
   border: none;
-  color: color-mix(in srgb, var(--foreground) 40%, transparent);
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0 0.35rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  padding: 0;
+  color: inherit;
+}
+.af3-cat-header:disabled { cursor: default; }
+.af3-cat-stripe { background: var(--cat-accent, #999); }
+.af3-cat-head-body {
+  padding: 20px 0 20px 16px;
+}
+.af3-cat-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--shell-ink, #2C1608);
   line-height: 1;
 }
-.af3-dismiss:hover {
-  color: var(--foreground);
+.af3-cat-sub {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  text-transform: uppercase;
+  margin-top: 6px;
+  font-weight: 500;
 }
+.af3-cat-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 18px;
+}
+.af3-cat-count {
+  min-width: 38px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--cat-accent, #999);
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  line-height: 1;
+}
+.af3-cat-chevron {
+  color: var(--ink-faint, rgba(44, 22, 8, 0.20));
+  font-size: 14px;
+  transition: transform 200ms ease;
+}
+.af3-cat--expanded .af3-cat-chevron { transform: rotate(180deg); }
+.af3-cat--empty .af3-cat-count {
+  background: transparent;
+  color: var(--ink-soft, rgba(44, 22, 8, 0.42));
+  border: 1.5px solid var(--ink-faint, rgba(44, 22, 8, 0.20));
+}
+.af3-cat--empty .af3-cat-name {
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+}
+
+/* Per-category accent injection */
+.af3-cat[data-cat="management"]   { --cat-accent: #D9A87C; }
+.af3-cat[data-cat="housekeeping"] { --cat-accent: #7FA3A8; }
+
+/* Expanded body — employee blocks */
+.af3-cat-body {
+  display: block;
+  border-top: 1px solid var(--hairline, rgba(44, 22, 8, 0.10));
+}
+
+.af3-emp { border-bottom: 1px solid var(--hairline, rgba(44, 22, 8, 0.10)); }
+.af3-emp:last-child { border-bottom: none; }
+
+.af3-emp-head {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 8px;
+}
+.af3-emp-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  background: var(--shell-bg, #F5F0E6);
+  color: var(--shell-ink, #2C1608);
+}
+.af3-emp[data-staff="cm"] .af3-emp-avatar {
+  background: linear-gradient(135deg, #F5D8B8, #D9A87C);
+  color: #7A4A2E;
+}
+.af3-emp[data-staff="ll"] .af3-emp-avatar {
+  background: linear-gradient(135deg, #CDE0E4, #7FA3A8);
+  color: #2C4F54;
+}
+.af3-emp[data-staff="al"] .af3-emp-avatar {
+  background: linear-gradient(135deg, #F5C8A8, #C68B64);
+  color: #5C3320;
+}
+.af3-emp[data-staff="mp"] .af3-emp-avatar {
+  background: linear-gradient(135deg, #DAE0C2, #9BA67C);
+  color: #3C4728;
+}
+
+.af3-emp-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shell-ink, #2C1608);
+  line-height: 1.2;
+}
+.af3-emp-role {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  text-transform: uppercase;
+  margin-top: 3px;
+  font-weight: 500;
+}
+.af3-emp-count {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.af3-emp-items { padding: 0 0 10px; }
+
+/* Activity item row */
+.af3-item {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: start;
+  gap: 12px;
+  padding: 10px 18px 10px 14px;
+}
+.af3-item + .af3-item {
+  border-top: 1px solid var(--hairline, rgba(44, 22, 8, 0.10));
+}
+.af3-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 7px;
+  background: #2563EB;
+}
+.af3-item--critical .af3-item-dot { background: #EC4899; }
+.af3-item--warn .af3-item-dot { background: #FFD000; }
+.af3-item-body {
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.af3-item-body:hover .af3-item-msg {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.af3-item-msg {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--shell-ink, #2C1608);
+}
+.af3-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+.af3-item-target { color: var(--shell-ink, #2C1608); font-weight: 600; }
+.af3-item-time { color: var(--ink-soft, rgba(44, 22, 8, 0.42)); }
+.af3-item-kind {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.af3-item-kind--event { background: rgba(37, 99, 235, 0.12); color: #0A1C5C; }
+.af3-item-kind--note  { background: rgba(168, 85, 247, 0.14); color: #2E0B5C; }
+.af3-item-kind--maint { background: rgba(255, 87, 34, 0.14); color: #3A1502; }
+.af3-item-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint, rgba(44, 22, 8, 0.20));
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  align-self: start;
+  margin-top: 2px;
+}
+.af3-item-dismiss:hover { color: var(--ink-soft, rgba(44, 22, 8, 0.42)); }
+
+.af3-item--empty { padding: 4px 18px 14px 32px; }
+.af3-item--empty .af3-item-msg {
+  color: var(--ink-soft, rgba(44, 22, 8, 0.42));
+  font-style: italic;
+  font-weight: 400;
+  font-size: 12px;
+}
+
 .af3-restore {
   align-self: flex-start;
   background: transparent;
-  border: 1px dashed color-mix(in srgb, var(--foreground) 25%, transparent);
+  border: 1px dashed var(--ink-faint, rgba(44, 22, 8, 0.20));
   border-radius: 6px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  padding: 6px 12px;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: color-mix(in srgb, var(--foreground) 60%, transparent);
+  color: var(--ink-muted, rgba(44, 22, 8, 0.62));
   cursor: pointer;
+  margin-top: 6px;
 }
 `;
