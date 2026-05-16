@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1, viewport-fit=cover">
+<title>Dispatch — Admin Activity Redesign v2 (Day 54 chase #4)</title>
+<style>
+  :root {
+    --page-bg: #E6DFCD;
+    --shell-bg: #F5F0E6;
+    --shell-ink: #2C1608;
+    --ink-muted: rgba(44, 22, 8, 0.62);
+    --ink-soft: rgba(44, 22, 8, 0.42);
+    --ink-faint: rgba(44, 22, 8, 0.20);
+    --hairline: rgba(44, 22, 8, 0.10);
+    --hairline-strong: rgba(44, 22, 8, 0.20);
+    --shadow-card: 0 1px 2px rgba(30, 20, 10, 0.06), 0 4px 12px rgba(30, 20, 10, 0.08), 0 18px 32px rgba(30, 20, 10, 0.06);
+    --shadow-raised: 0 1px 1px rgba(30, 20, 10, 0.04), 0 2px 6px rgba(30, 20, 10, 0.06);
+
+    /* Per-staff avatar gradients */
+    --avatar-cm:     linear-gradient(135deg, #F5D8B8, #D9A87C);
+    --avatar-cm-ink: #7A4A2E;
+    --avatar-ll:     linear-gradient(135deg, #CDE0E4, #7FA3A8);
+    --avatar-ll-ink: #2C4F54;
+    --avatar-al:     linear-gradient(135deg, #F5C8A8, #C68B64);
+    --avatar-al-ink: #5C3320;
+    --avatar-mp:     linear-gradient(135deg, #DAE0C2, #9BA67C);
+    --avatar-mp-ink: #3C4728;
+
+    /* Category accents (Phase-1 beta — Management warm, Housekeeping cool).
+       Phase 2 categories — Front Desk, Maintenance, Shift Lead, etc. —
+       would slot in here when Jennifer's role schema lands. */
+    --cat-mgmt-accent:     #D9A87C;
+    --cat-mgmt-tint:       rgba(217, 168, 124, 0.18);
+    --cat-mgmt-ink:        #5C3220;
+    --cat-mgmt-pale:       #F5E4D2;
+
+    --cat-hk-accent:       #7FA3A8;
+    --cat-hk-tint:         rgba(127, 163, 168, 0.18);
+    --cat-hk-ink:          #2C4F54;
+    --cat-hk-pale:         #DDE9EB;
+
+    /* Severity dots */
+    --sev-critical: #EC4899;
+    --sev-warn:     #FFD000;
+    --sev-info:     #2563EB;
+
+    /* Kind chip palette */
+    --kind-event:       rgba(37, 99, 235, 0.12);
+    --kind-event-ink:   #0A1C5C;
+    --kind-note:        rgba(168, 85, 247, 0.14);
+    --kind-note-ink:    #2E0B5C;
+    --kind-maint:       rgba(255, 87, 34, 0.14);
+    --kind-maint-ink:   #3A1502;
+
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--page-bg);
+    color: var(--shell-ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    padding: 32px 8px 80px;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02), transparent 40%);
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ─── Greeting + Daily Brief (admin context) ─────────────────────── */
+  .greeting h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.05;
+  }
+  .greeting .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 14px;
+  }
+  .brief {
+    background: #FFFFFF;
+    border-radius: 14px;
+    box-shadow: var(--shadow-raised);
+    padding: 20px 22px;
+    margin-top: 26px;
+  }
+  .brief__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .brief__label, .brief__prop {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .brief__headline {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-top: 8px;
+    line-height: 1.25;
+  }
+  .brief__sep { height: 1px; background: var(--hairline); margin: 16px 0; }
+  .brief__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .brief__stat-lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    margin-bottom: 4px;
+  }
+  .brief__stat-val { font-size: 22px; font-weight: 600; line-height: 1.05; }
+  .brief__stat-val .unit { font-size: 12px; color: var(--ink-muted); margin-left: 2px; font-weight: 500; }
+  .brief__stat-val.small { font-size: 14px; font-weight: 600; }
+
+  /* ─── Section caption (Activity header row) ──────────────────────── */
+  .section-cap {
+    margin: 32px 4px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .section-cap__label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .section-cap__action {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--shell-ink);
+    background: #FFFFFF;
+    border: 1px solid var(--ink-faint);
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .section-cap__action:hover { background: var(--shell-bg); }
+
+  /* ════════════════════════════════════════════════════════════════
+     CATEGORY CARDS — top-level container for the new activity feed.
+     One card per role-category (Management / Housekeeping / ...).
+     Tap to expand → per-employee subsections with their top 3 items.
+  ═══════════════════════════════════════════════════════════════════ */
+  /* Day 54 chase #4 — category cards bud tight together so the
+     two-card stack reads as a single Activity section. */
+  .cats { display: flex; flex-direction: column; gap: 4px; }
+
+  .cat {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: var(--shadow-raised);
+    overflow: hidden;
+    transition: box-shadow 200ms ease;
+  }
+
+  .cat__header {
+    display: grid;
+    grid-template-columns: 6px 1fr auto;
+    align-items: stretch;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    padding: 0;
+    text-decoration: none;
+    color: inherit;
+  }
+  .cat__stripe { background: var(--accent); }
+  .cat__head-body {
+    padding: 20px 0 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .cat__name {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+    color: var(--shell-ink);
+    line-height: 1;
+  }
+  .cat__staff-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .cat__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 18px;
+  }
+  .cat__count {
+    min-width: 38px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 14px;
+    display: grid;
+    place-items: center;
+    padding: 0 12px;
+    line-height: 1;
+  }
+  .cat__chevron {
+    color: var(--ink-faint);
+    font-size: 14px;
+    transition: transform 200ms ease;
+  }
+  .cat--expanded .cat__chevron { transform: rotate(180deg); }
+
+  /* Empty category */
+  .cat--empty .cat__count {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1.5px solid var(--ink-faint);
+  }
+  .cat--empty .cat__name { color: var(--ink-muted); }
+
+  /* Expanded body — list of employee blocks */
+  .cat__body { display: none; border-top: 1px solid var(--hairline); }
+  .cat--expanded .cat__body { display: block; }
+
+  /* Per-category accent injection via data-cat */
+  .cat[data-cat="management"] {
+    --accent: var(--cat-mgmt-accent);
+    --accent-ink: var(--cat-mgmt-ink);
+    --accent-tint: var(--cat-mgmt-tint);
+    --accent-pale: var(--cat-mgmt-pale);
+  }
+  .cat[data-cat="housekeeping"] {
+    --accent: var(--cat-hk-accent);
+    --accent-ink: var(--cat-hk-ink);
+    --accent-tint: var(--cat-hk-tint);
+    --accent-pale: var(--cat-hk-pale);
+  }
+
+  /* ─── Employee sub-block (inside expanded category) ──────────────── */
+  .emp { border-bottom: 1px solid var(--hairline); }
+  .emp:last-child { border-bottom: none; }
+
+  .emp__head {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px 8px;
+  }
+  .emp__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+  }
+  .emp[data-staff="cm"] .emp__avatar { background: var(--avatar-cm); color: var(--avatar-cm-ink); }
+  .emp[data-staff="ll"] .emp__avatar { background: var(--avatar-ll); color: var(--avatar-ll-ink); }
+  .emp[data-staff="al"] .emp__avatar { background: var(--avatar-al); color: var(--avatar-al-ink); }
+  .emp[data-staff="mp"] .emp__avatar { background: var(--avatar-mp); color: var(--avatar-mp-ink); }
+
+  .emp__name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    line-height: 1.2;
+  }
+  .emp__role {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 3px;
+    font-weight: 500;
+  }
+  .emp__count {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .emp__items { padding: 0 0 10px; }
+
+  /* Activity item row */
+  .item {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    align-items: start;
+    gap: 12px;
+    padding: 10px 18px 10px 14px;
+  }
+  .item + .item { border-top: 1px solid var(--hairline); }
+
+  .item__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 7px;
+    background: var(--sev-info);
+  }
+  .item--critical .item__dot { background: var(--sev-critical); }
+  .item--warn .item__dot { background: var(--sev-warn); }
+
+  .item__body { min-width: 0; }
+  .item__msg {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--shell-ink);
+  }
+  .item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+  }
+  .item__target { color: var(--shell-ink); font-weight: 600; }
+  .item__time { color: var(--ink-soft); }
+
+  .item__kind {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .item__kind--event { background: var(--kind-event); color: var(--kind-event-ink); }
+  .item__kind--note  { background: var(--kind-note);  color: var(--kind-note-ink); }
+  .item__kind--maint { background: var(--kind-maint); color: var(--kind-maint-ink); }
+
+  .item__dismiss {
+    background: transparent;
+    border: none;
+    color: var(--ink-faint);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    align-self: start;
+    margin-top: 2px;
+  }
+  .item__dismiss:hover { color: var(--ink-soft); }
+
+  .item--empty {
+    padding: 4px 18px 14px 32px;
+  }
+  .item--empty .item__msg {
+    color: var(--ink-soft);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 12px;
+  }
+
+  /* ─── Footer + reference dividers ────────────────────────────────── */
+  .footnote {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+  }
+  .section-divider {
+    max-width: 390px;
+    margin: 64px auto 28px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ""; position: absolute; top: 50%;
+    width: 60px; height: 1px; background: var(--hairline-strong);
+  }
+  .section-divider::before { left: 16px; }
+  .section-divider::after { right: 16px; }
+  .annotation {
+    max-width: 390px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PRIMARY MOCKUP — Admin home + new category-card Activity feed
+══════════════════════════════════════════════════════════════════ -->
+<div class="phone">
+
+  <header class="greeting">
+    <h1>Hi, Courtney.</h1>
+    <div class="date">Tuesday · May 12</div>
+  </header>
+
+  <section class="brief">
+    <div class="brief__head">
+      <div class="brief__label">Daily Brief</div>
+      <div class="brief__prop">Property</div>
+    </div>
+    <div class="brief__headline">High turnover today — 5 check-ins later.</div>
+    <div class="brief__sep"></div>
+    <div class="brief__stats">
+      <div>
+        <div class="brief__stat-lbl">Occupancy</div>
+        <div class="brief__stat-val">87<span class="unit">%</span></div>
+      </div>
+      <div>
+        <div class="brief__stat-lbl">On Shift</div>
+        <div class="brief__stat-val">4<span class="unit">staff</span></div>
+      </div>
+      <div>
+        <div class="brief__stat-lbl">Event</div>
+        <div class="brief__stat-val small">Dueling Pianos · Balsam</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Activity section header — Refresh only -->
+  <div class="section-cap">
+    <span class="section-cap__label">Activity</span>
+    <button type="button" class="section-cap__action">Refresh</button>
+  </div>
+
+  <div class="cats">
+
+    <!-- ── Management card (collapsed) ── -->
+    <div class="cat" data-cat="management">
+      <button type="button" class="cat__header">
+        <div class="cat__stripe"></div>
+        <div class="cat__head-body">
+          <div>
+            <div class="cat__name">Management</div>
+            <div class="cat__staff-count">1 Staff · Last 26 min</div>
+          </div>
+        </div>
+        <div class="cat__right">
+          <div class="cat__count">3</div>
+          <span class="cat__chevron" aria-hidden>▾</span>
+        </div>
+      </button>
+      <div class="cat__body">
+        <div class="emp" data-staff="cm">
+          <div class="emp__head">
+            <div class="emp__avatar">CM</div>
+            <div>
+              <div class="emp__name">Courtney Manager</div>
+              <div class="emp__role">Manager</div>
+            </div>
+            <div class="emp__count">3 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney reassigned card → Lizzie — Turnover Room 24</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 24</span>
+                  <span class="item__time">26 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item item--warn">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney set priority → high — Turnover Room 24</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 24</span>
+                  <span class="item__time">28 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney added admin notes — Property Round</div>
+                <div class="item__meta">
+                  <span class="item__target">Dailys</span>
+                  <span class="item__time">1 hr ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Housekeeping card (expanded — primary state demo) ── -->
+    <div class="cat cat--expanded" data-cat="housekeeping">
+      <button type="button" class="cat__header">
+        <div class="cat__stripe"></div>
+        <div class="cat__head-body">
+          <div>
+            <div class="cat__name">Housekeeping</div>
+            <div class="cat__staff-count">3 Staff · Last 3 min</div>
+          </div>
+        </div>
+        <div class="cat__right">
+          <div class="cat__count">7</div>
+          <span class="cat__chevron" aria-hidden>▾</span>
+        </div>
+      </button>
+      <div class="cat__body">
+        <!-- Lizzie -->
+        <div class="emp" data-staff="ll">
+          <div class="emp__head">
+            <div class="emp__avatar">LL</div>
+            <div>
+              <div class="emp__name">Lizzie Larson</div>
+              <div class="emp__role">Housekeeping · On Shift</div>
+            </div>
+            <div class="emp__count">5 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--critical">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie reported: leaking sink — needs plumber</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 18</span>
+                  <span class="item__time">3 min ago</span>
+                  <span class="item__kind item__kind--maint">Maint</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie marked done — Turnover Room 29</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 29</span>
+                  <span class="item__time">12 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie noted: guest left a thank-you card</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 29</span>
+                  <span class="item__time">14 min ago</span>
+                  <span class="item__kind item__kind--note">Note</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Angie -->
+        <div class="emp" data-staff="al">
+          <div class="emp__head">
+            <div class="emp__avatar">AL</div>
+            <div>
+              <div class="emp__name">Angie Lopez</div>
+              <div class="emp__role">Housekeeping · Off Shift</div>
+            </div>
+            <div class="emp__count">2 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--warn">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Angie status: open → in_progress — Service Room 27</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 27</span>
+                  <span class="item__time">42 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Angie added a photo — Service Room 27</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 27</span>
+                  <span class="item__time">45 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mark (zero activity today) -->
+        <div class="emp" data-staff="mp">
+          <div class="emp__head">
+            <div class="emp__avatar">MP</div>
+            <div>
+              <div class="emp__name">Mark Parry</div>
+              <div class="emp__role">GC / Maintenance · Off Shift</div>
+            </div>
+            <div class="emp__count">0 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--empty">
+              <div class="item__msg">No activity today.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footnote">The Dispatch Co · Admin</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     REFERENCE — Both categories expanded side by side
+══════════════════════════════════════════════════════════════════ -->
+
+<div class="section-divider">Reference · Both Categories Expanded</div>
+<div class="annotation">Single-accordion in production — only one category open at a time.<br>This shows the expanded shape of both.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="cats">
+
+    <!-- Management expanded -->
+    <div class="cat cat--expanded" data-cat="management">
+      <button type="button" class="cat__header">
+        <div class="cat__stripe"></div>
+        <div class="cat__head-body">
+          <div>
+            <div class="cat__name">Management</div>
+            <div class="cat__staff-count">1 Staff · Last 26 min</div>
+          </div>
+        </div>
+        <div class="cat__right">
+          <div class="cat__count">3</div>
+          <span class="cat__chevron" aria-hidden>▾</span>
+        </div>
+      </button>
+      <div class="cat__body">
+        <div class="emp" data-staff="cm">
+          <div class="emp__head">
+            <div class="emp__avatar">CM</div>
+            <div>
+              <div class="emp__name">Courtney Manager</div>
+              <div class="emp__role">Manager</div>
+            </div>
+            <div class="emp__count">3 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney reassigned card → Lizzie — Turnover Room 24</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 24</span>
+                  <span class="item__time">26 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item item--warn">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney set priority → high — Turnover Room 24</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 24</span>
+                  <span class="item__time">28 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Courtney added admin notes — Property Round</div>
+                <div class="item__meta">
+                  <span class="item__target">Dailys</span>
+                  <span class="item__time">1 hr ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Housekeeping expanded (same as primary) -->
+    <div class="cat cat--expanded" data-cat="housekeeping">
+      <button type="button" class="cat__header">
+        <div class="cat__stripe"></div>
+        <div class="cat__head-body">
+          <div>
+            <div class="cat__name">Housekeeping</div>
+            <div class="cat__staff-count">3 Staff · Last 3 min</div>
+          </div>
+        </div>
+        <div class="cat__right">
+          <div class="cat__count">7</div>
+          <span class="cat__chevron" aria-hidden>▾</span>
+        </div>
+      </button>
+      <div class="cat__body">
+        <div class="emp" data-staff="ll">
+          <div class="emp__head">
+            <div class="emp__avatar">LL</div>
+            <div>
+              <div class="emp__name">Lizzie Larson</div>
+              <div class="emp__role">Housekeeping · On Shift</div>
+            </div>
+            <div class="emp__count">5 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--critical">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie reported: leaking sink — needs plumber</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 18</span>
+                  <span class="item__time">3 min ago</span>
+                  <span class="item__kind item__kind--maint">Maint</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie marked done — Turnover Room 29</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 29</span>
+                  <span class="item__time">12 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Lizzie noted: guest left a thank-you card</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 29</span>
+                  <span class="item__time">14 min ago</span>
+                  <span class="item__kind item__kind--note">Note</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+        <div class="emp" data-staff="al">
+          <div class="emp__head">
+            <div class="emp__avatar">AL</div>
+            <div>
+              <div class="emp__name">Angie Lopez</div>
+              <div class="emp__role">Housekeeping · Off Shift</div>
+            </div>
+            <div class="emp__count">2 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--warn">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Angie status: open → in_progress — Service Room 27</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 27</span>
+                  <span class="item__time">42 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+            <div class="item">
+              <div class="item__dot"></div>
+              <div class="item__body">
+                <div class="item__msg">Angie added a photo — Service Room 27</div>
+                <div class="item__meta">
+                  <span class="item__target">RM 27</span>
+                  <span class="item__time">45 min ago</span>
+                  <span class="item__kind item__kind--event">Event</span>
+                </div>
+              </div>
+              <button class="item__dismiss" aria-label="Dismiss">×</button>
+            </div>
+          </div>
+        </div>
+        <div class="emp" data-staff="mp">
+          <div class="emp__head">
+            <div class="emp__avatar">MP</div>
+            <div>
+              <div class="emp__name">Mark Parry</div>
+              <div class="emp__role">GC / Maintenance · Off Shift</div>
+            </div>
+            <div class="emp__count">0 Items</div>
+          </div>
+          <div class="emp__items">
+            <div class="item item--empty">
+              <div class="item__msg">No activity today.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="footnote">Day 54 chase #4 v2 · Admin Activity Redesign</div>
+</div>
+
+<!-- Single-accordion expand interaction -->
+<script>
+(function() {
+  document.addEventListener('click', function(e) {
+    // Dismiss button — hide row, stop propagation so we don't toggle the category
+    var dismiss = e.target.closest('.item__dismiss');
+    if (dismiss) {
+      e.stopPropagation();
+      var item = dismiss.closest('.item');
+      if (item) item.style.display = 'none';
+      return;
+    }
+    // Category header — toggle expand (single accordion within container)
+    var header = e.target.closest('.cat__header');
+    if (!header) return;
+    var cat = header.parentElement;
+    var wasExpanded = cat.classList.contains('cat--expanded');
+    if (!wasExpanded) {
+      var container = cat.parentElement;
+      Array.prototype.forEach.call(container.querySelectorAll('.cat--expanded'), function(b) {
+        b.classList.remove('cat--expanded');
+      });
+    }
+    cat.classList.toggle('cat--expanded');
+  });
+})();
+</script>
+
+</body>
+</html>
