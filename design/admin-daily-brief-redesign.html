@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1, viewport-fit=cover">
+<title>Dispatch — Admin Daily Brief Redesign (Day 54 chase #6)</title>
+<style>
+  :root {
+    --page-bg: #E6DFCD;
+    --shell-bg: #F5F0E6;
+    --shell-ink: #2C1608;
+    --ink-muted: rgba(44, 22, 8, 0.62);
+    --ink-soft: rgba(44, 22, 8, 0.42);
+    --ink-faint: rgba(44, 22, 8, 0.20);
+    --hairline: rgba(44, 22, 8, 0.10);
+    --hairline-strong: rgba(44, 22, 8, 0.20);
+    --shadow-raised: 0 1px 1px rgba(30, 20, 10, 0.04), 0 2px 6px rgba(30, 20, 10, 0.06);
+
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--page-bg);
+    color: var(--shell-ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    min-height: 100vh;
+    padding: 32px 8px 80px;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02), transparent 40%);
+  }
+  .phone {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ─── Greeting ─────────────────────────────────────────────────── */
+  .greeting h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.05;
+  }
+  .greeting .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 14px;
+  }
+
+  /* ─── Daily Brief (redesigned 2×3 grid) ────────────────────────── */
+  .brief {
+    background: #FFFFFF;
+    border-radius: 14px;
+    box-shadow: var(--shadow-raised);
+    padding: 18px 20px;
+    margin-top: 26px;
+  }
+  .brief__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .brief__label, .brief__date {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .brief__sep { height: 1px; background: var(--hairline); margin: 14px 0; }
+
+  /* The grid — 2 rows × 3 columns */
+  .brief__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    column-gap: 4px;
+    row-gap: 4px;
+  }
+  .brief__cell {
+    padding: 10px 8px;
+    border-radius: 8px;
+    background: transparent;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: background 120ms ease;
+  }
+  .brief__cell--tap { cursor: pointer; }
+  .brief__cell--tap:hover { background: var(--shell-bg); }
+
+  .brief__lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .brief__val {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.3px;
+    color: var(--shell-ink);
+  }
+  .brief__val--small {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--shell-ink);
+  }
+  .brief__val--sub {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* Inter-row divider — subtle hairline between row 1 and row 2 */
+  .brief__row-sep {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--hairline);
+    margin: 2px 0;
+  }
+
+  /* Table tile — icon + label, clickable */
+  .brief__tile-icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 4px;
+    color: var(--shell-ink);
+    display: block;
+  }
+
+  /* ─── Faded context below (so the brief integrates visually) ───── */
+  .next-section {
+    margin-top: 32px;
+    padding: 0 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .next-section__hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    margin-top: 6px;
+  }
+
+  /* Reference + footer */
+  .footnote {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+  }
+  .section-divider {
+    max-width: 390px;
+    margin: 64px auto 28px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ""; position: absolute; top: 50%;
+    width: 60px; height: 1px; background: var(--hairline-strong);
+  }
+  .section-divider::before { left: 16px; }
+  .section-divider::after { right: 16px; }
+  .annotation {
+    max-width: 390px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PRIMARY MOCKUP — Admin Daily Brief, 2×3 grid
+══════════════════════════════════════════════════════════════════ -->
+<div class="phone">
+
+  <header class="greeting">
+    <h1>Hi, Courtney.</h1>
+    <div class="date">Tuesday · May 12</div>
+  </header>
+
+  <section class="brief">
+    <div class="brief__head">
+      <div class="brief__label">Daily Brief</div>
+      <div class="brief__date">Tue · May 12</div>
+    </div>
+    <div class="brief__sep"></div>
+
+    <div class="brief__grid">
+
+      <!-- Row 1: Arrivals · Departures · On Shift  (ResNexus + clock-in) -->
+      <div class="brief__cell">
+        <span class="brief__lbl">Arrivals</span>
+        <span class="brief__val">4</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Departures</span>
+        <span class="brief__val">6</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">On Shift</span>
+        <span class="brief__val">1</span>
+      </div>
+
+      <!-- Inter-row hairline -->
+      <div class="brief__row-sep"></div>
+
+      <!-- Row 2: Weather · Events · Table (Google + new property table) -->
+      <div class="brief__cell">
+        <span class="brief__lbl">Weather</span>
+        <span class="brief__val--small">72°F<br>Sunny</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Events</span>
+        <span class="brief__val--small">Dueling Pianos<br>Balsam</span>
+      </div>
+      <a href="/admin/table" class="brief__cell brief__cell--tap">
+        <span class="brief__lbl">Table</span>
+        <svg class="brief__tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Faded next-section indicator so the Daily Brief integrates into the page -->
+  <div class="next-section">
+    Watchlist · 2 Items
+    <div class="next-section__hint">(rest of admin home unchanged for this chase)</div>
+  </div>
+
+  <div class="footnote">The Dispatch Co · Admin</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     REFERENCE — Same brief with sample variant data
+══════════════════════════════════════════════════════════════════ -->
+<div class="section-divider">Reference · Different Day Data</div>
+<div class="annotation">Same component, lighter day — zero arrivals, no events.<br>Shows how the grid handles low-data states.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <section class="brief">
+    <div class="brief__head">
+      <div class="brief__label">Daily Brief</div>
+      <div class="brief__date">Wed · May 13</div>
+    </div>
+    <div class="brief__sep"></div>
+    <div class="brief__grid">
+      <div class="brief__cell">
+        <span class="brief__lbl">Arrivals</span>
+        <span class="brief__val">0</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Departures</span>
+        <span class="brief__val">2</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">On Shift</span>
+        <span class="brief__val">0</span>
+      </div>
+      <div class="brief__row-sep"></div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Weather</span>
+        <span class="brief__val--small">58°F<br>Cloudy</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Events</span>
+        <span class="brief__val--small" style="color: var(--ink-soft); font-style: italic;">No events</span>
+      </div>
+      <a href="/admin/table" class="brief__cell brief__cell--tap">
+        <span class="brief__lbl">Table</span>
+        <svg class="brief__tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+  <div class="footnote">Day 54 chase #6 · Admin Daily Brief Redesign</div>
+</div>
+
+</body>
+</html>

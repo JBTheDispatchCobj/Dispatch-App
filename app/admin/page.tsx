@@ -12,6 +12,14 @@ import {
 import ProfileLoadError from "../profile-load-error";
 import AddTaskModal from "@/components/admin/AddTaskModal";
 import ActivityFeed from "@/components/admin/ActivityFeed";
+import {
+  getCurrentWeather,
+  getOnShiftCount,
+  getTownEventsToday,
+  type EventBrief,
+  type WeatherBrief,
+} from "@/lib/admin-brief";
+import { getTodaysReservationCounts } from "@/lib/reservations";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
@@ -22,6 +30,10 @@ type DotColor = "green" | "amber" | "red" | "blue" | "mute";
 
 type LaneItem = { id: string; title: string; body: string; chip: string; href?: string };
 
+// Day 54 chase #6 — replaced the old BriefStat single-row stats with a
+// 2x3 grid driven by live data + Google stubs. The BriefStat type stays
+// dead code for one chase in case other admin surfaces import it; check
+// before removing.
 type BriefStat = {
   label: string;
   value: string;
@@ -34,14 +46,13 @@ type BriefStat = {
 // lib/activity-feed.ts (task_events + notes union with severity boost).
 
 /* ------------------------------------------------------------------ */
-/* BRIEF_STATS — out of chase #1 scope; stays mocked                   */
+/* BRIEF_STATS — retired in Day 54 chase #6; replaced by live 2x3      */
+/* grid sourced from reservations + staff + admin-brief stubs.         */
 /* ------------------------------------------------------------------ */
 
-const BRIEF_STATS: BriefStat[] = [
-  { label: "OCCUPANCY", value: "87", unit: "%" },
-  { label: "ON SHIFT", value: "4", unit: " staff" },
-  { label: "EVENT", value: "Dueling Pianos · Balsam", unit: "", compact: true },
-];
+// Voided so the old constant doesn't accidentally get re-imported.
+const BRIEF_STATS: BriefStat[] = [];
+void BRIEF_STATS;
 
 /* ------------------------------------------------------------------ */
 /* Lane fetchers — Day 36 chase #1 derives                              */
@@ -263,6 +274,13 @@ export default function AdminHomePage() {
   const [criticalItems, setCriticalItems]     = useState<LaneItem[]>([]);
   const [notesItems, setNotesItems]           = useState<LaneItem[]>([]);
 
+  // Day 54 chase #6 — Daily Brief 2x3 grid state.
+  const [briefArrivals, setBriefArrivals]     = useState<number>(0);
+  const [briefDepartures, setBriefDepartures] = useState<number>(0);
+  const [briefOnShift, setBriefOnShift]       = useState<number>(0);
+  const [briefWeather, setBriefWeather]       = useState<WeatherBrief | null>(null);
+  const [briefEvents, setBriefEvents]         = useState<EventBrief | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -297,17 +315,29 @@ export default function AdminHomePage() {
     if (!ready) return;
     let cancelled = false;
     void (async () => {
-      const [watch, sched, crit, notes] = await Promise.all([
+      const [watch, sched, crit, notes, reservations, onShift, weather, events] = await Promise.all([
         fetchWatchlistItems(),
         fetchSchedulingItems(),
         fetchCriticalItems(),
         fetchNotesItems(),
+        getTodaysReservationCounts().catch((err) => {
+          console.warn("[admin-home] reservation counts fetch failed:", err);
+          return { arrivals: 0, departures: 0, stayovers: 0 };
+        }),
+        getOnShiftCount(supabase),
+        getCurrentWeather(),
+        getTownEventsToday(),
       ]);
       if (cancelled) return;
       setWatchlistItems(watch);
       setSchedulingItems(sched);
       setCriticalItems(crit);
       setNotesItems(notes);
+      setBriefArrivals(reservations.arrivals);
+      setBriefDepartures(reservations.departures);
+      setBriefOnShift(onShift);
+      setBriefWeather(weather);
+      setBriefEvents(events);
     })();
     return () => {
       cancelled = true;
@@ -329,25 +359,87 @@ export default function AdminHomePage() {
           <button className={styles.addBtn} aria-label="Add task" onClick={() => setModalOpen(true)}>+</button>
         </div>
 
-        {/* Daily Brief */}
+        {/* Daily Brief — Day 54 chase #6: 2x3 grid replacing the old
+            headline + 3-stat row. Top row sourced from ResNexus + clock-in;
+            bottom row from Google stubs (weather, events) + a Table tile
+            that navigates to a placeholder /admin/table route. */}
         <div className={styles.brief}>
           <div className={styles.briefHead}>
             <span>DAILY BRIEF</span>
             <span>PROPERTY</span>
           </div>
-          <div className={styles.briefTitle}>
-            High turnover today &mdash; 5 check-ins later.
-          </div>
-          <div className={styles.briefStat}>
-            {BRIEF_STATS.map((s) => (
-              <div key={s.label}>
-                <div className={styles.statLabel}>{s.label}</div>
-                <div className={`${styles.statVal}${s.compact ? ` ${styles.statValCompact}` : ""}`}>
-                  {s.value}
-                  {s.unit && <small className={styles.statValUnit}>{s.unit}</small>}
-                </div>
+          <div className={styles.briefGrid}>
+            {/* Row 1 — Arrivals / Departures / On Shift */}
+            <div className={styles.briefCell}>
+              <div className={styles.statLabel}>ARRIVALS</div>
+              <div className={styles.statVal}>{briefArrivals}</div>
+            </div>
+            <div className={styles.briefCell}>
+              <div className={styles.statLabel}>DEPARTURES</div>
+              <div className={styles.statVal}>{briefDepartures}</div>
+            </div>
+            <div className={styles.briefCell}>
+              <div className={styles.statLabel}>ON SHIFT</div>
+              <div className={styles.statVal}>{briefOnShift}</div>
+            </div>
+
+            <div className={styles.briefRowSep} />
+
+            {/* Row 2 — Weather / Events / Table */}
+            <div className={styles.briefCell}>
+              <div className={styles.statLabel}>WEATHER</div>
+              <div className={styles.briefCellText}>
+                {briefWeather?.temp_f !== null && briefWeather?.temp_f !== undefined ? (
+                  <>
+                    {briefWeather.temp_f}&deg;F
+                    {briefWeather.condition && (
+                      <>
+                        <br />
+                        {briefWeather.condition}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <span className={styles.briefCellMuted}>&mdash;</span>
+                )}
               </div>
-            ))}
+            </div>
+            <div className={styles.briefCell}>
+              <div className={styles.statLabel}>EVENTS</div>
+              <div className={styles.briefCellText}>
+                {briefEvents?.headline ? (
+                  <>
+                    {briefEvents.headline}
+                    {briefEvents.venue && (
+                      <>
+                        <br />
+                        {briefEvents.venue}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <span className={styles.briefCellMuted}>No events</span>
+                )}
+              </div>
+            </div>
+            <Link href="/admin/table" className={`${styles.briefCell} ${styles.briefCellTap}`}>
+              <div className={styles.statLabel}>TABLE</div>
+              <svg
+                className={styles.briefTileIcon}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </Link>
           </div>
         </div>
 

@@ -152,6 +152,58 @@
   min-width: 0;
 }
 
+/* Day 54 chase #6 — 2x3 grid for the new Daily Brief
+   (Arrivals / Departures / On Shift on top; Weather / Events / Table on bottom). */
+.briefGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  column-gap: 4px;
+  row-gap: 4px;
+  padding: 10px 0 2px;
+  border-top: 1px solid rgba(44,22,8,0.08);
+}
+
+.briefCell {
+  padding: 10px 8px;
+  border-radius: 8px;
+  background: transparent;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: background 120ms ease;
+  min-width: 0;
+}
+
+.briefCellTap { cursor: pointer; }
+.briefCellTap:hover { background: rgba(44,22,8,0.04); }
+
+.briefCellText {
+  font-weight: 500;
+  font-size: 13px;
+  color: #2C1608;
+  line-height: 1.25;
+}
+
+.briefCellMuted {
+  color: rgba(44,22,8,0.42);
+  font-style: italic;
+}
+
+.briefTileIcon {
+  width: 26px;
+  height: 26px;
+  color: #2C1608;
+  display: block;
+  margin-top: 2px;
+}
+
+.briefRowSep {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: rgba(44,22,8,0.08);
+  margin: 2px 0;
+}
+
 .statLabel {
   font-family: var(--font-mono);
   letter-spacing: 0.16em;
