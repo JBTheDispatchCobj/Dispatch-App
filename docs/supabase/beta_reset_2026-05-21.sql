@@ -48,24 +48,36 @@ update public.profiles set role = 'staff', staff_id = 'a0c1e000-0000-4000-8000-0
 --    Idempotent: clears prior import cards (source='pms') then re-inserts.
 --    is_staff_report=false + staff_id set → auto 7-item checklist per card.
 -- =========================================================================
--- delete from public.tasks where source <> 'pms';   -- (optional) also clear leftover demo cards
 delete from public.tasks where source = 'pms';
+-- Reservation-derived cards, generated FROM the channel-manager reservations,
+-- one per room in today's buckets, titled "Room <n> - <guest>". Future-proof:
+-- re-run after any reservations import and titles/rooms follow the data.
 insert into public.tasks
   (title, card_type, status, priority, source, room_number,
    assignee_name, staff_id, is_staff_report, created_by_user_id, context)
-values
-  ('Turnover Room 41','housekeeping_turn','open','medium','pms','41','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"departures"}'::jsonb),
-  ('Turnover Room 28','housekeeping_turn','open','medium','pms','28','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"departures"}'::jsonb),
-  ('Turnover Room 22','housekeeping_turn','open','medium','pms','22','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"departures"}'::jsonb),
-  ('Turnover Room 31','housekeeping_turn','open','medium','pms','31','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"departures"}'::jsonb),
-  ('Prep Room 29','arrival','open','medium','pms','29','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"arrivals"}'::jsonb),
-  ('Service Room 39','stayover','open','medium','pms','39','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 33','stayover','open','medium','pms','33','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 21','stayover','open','medium','pms','21','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 23','stayover','open','medium','pms','23','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 25','stayover','open','medium','pms','25','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 27','stayover','open','medium','pms','27','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
-  ('Service Room 37','stayover','open','medium','pms','37','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb);
+-- Departures (turnover) — Departs = today
+select 'Room ' || r.room_number || ' - ' || r.guest_name, 'housekeeping_turn', 'open', 'medium', 'pms',
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"departures"}'::jsonb
+  from public.reservations r
+  where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
+    and r.departure_date = current_date
+union all
+-- Arrivals (prep) — Arrives = today
+select 'Room ' || r.room_number || ' - ' || r.guest_name, 'arrival', 'open', 'medium', 'pms',
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"arrivals"}'::jsonb
+  from public.reservations r
+  where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
+    and r.arrival_date = current_date
+union all
+-- Stayovers (service) — arrival < today < departure
+select 'Room ' || r.room_number || ' - ' || r.guest_name, 'stayover', 'open', 'medium', 'pms',
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"stayovers"}'::jsonb
+  from public.reservations r
+  where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
+    and r.arrival_date < current_date and r.departure_date > current_date;
 
 -- Fixed standing daily cards (NOT reservation-derived): SOD, Dailys, EOD.
 -- These don't change day-to-day except by manual override. card_type 'dailys'
