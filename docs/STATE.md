@@ -4,6 +4,8 @@
 
 *Update this doc inline when items close. Add new entries to "Open Jennifer questions" and "Standing tabled" as discovered. Do not recreate the daily handoff narrative.*
 
+> **Day 54 fresh-chat handoff:** if you are a new session picking up the in-flight UI redesign + beta launch, read `docs/HANDOFF.md` first — it has the live UI chase queue (this file's "next chases" section is stale at Day 52), the mobile staff-login beta-blocker, and the beta checklist.
+
 ---
 
 ## What the product is

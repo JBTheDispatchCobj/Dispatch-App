@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1, viewport-fit=cover">
+<title>Dispatch — Admin Home (Locked sections — Day 54)</title>
+<style>
+  :root {
+    --page-bg: #E6DFCD;
+    --shell-bg: #F5F0E6;
+    --shell-ink: #2C1608;
+    --ink-muted: rgba(44, 22, 8, 0.62);
+    --ink-soft: rgba(44, 22, 8, 0.42);
+    --ink-faint: rgba(44, 22, 8, 0.20);
+    --hairline: rgba(44, 22, 8, 0.10);
+    --hairline-strong: rgba(44, 22, 8, 0.20);
+    --shadow-raised: 0 1px 1px rgba(30, 20, 10, 0.04), 0 2px 6px rgba(30, 20, 10, 0.06);
+    --shadow-soft: 0 1px 2px rgba(30, 20, 10, 0.05);
+
+    /* Master tile accents */
+    --inc-accent: #D9A87C;
+    --sys-accent: #FFD000;
+    --out-accent: #2563EB;
+    --mnt-accent: #7FA3A8;
+
+    --inc-pale:  #F5E4D2;
+    --sys-pale:  #FFF5C2;
+    --out-pale:  #DBE6FF;
+    --mnt-pale:  #DDE9EB;
+
+    --inc-tint:  rgba(217, 168, 124, 0.18);
+    --sys-tint:  rgba(255, 208, 0, 0.18);
+    --out-tint:  rgba(37, 99, 235, 0.14);
+    --mnt-tint:  rgba(127, 163, 168, 0.18);
+
+    --inc-ink:   #5C3220;
+    --sys-ink:   #3B1F00;
+    --out-ink:   #0A1C5C;
+    --mnt-ink:   #2C4F54;
+
+    --avatar-ll: linear-gradient(135deg, #CDE0E4, #7FA3A8);
+    --avatar-ll-ink: #2C4F54;
+
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--page-bg);
+    color: var(--shell-ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    padding: 32px 8px 80px;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02), transparent 40%);
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ─── Greeting ──────────────────────────────────────────────── */
+  .greeting h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.05;
+  }
+  .greeting .date {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 14px;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SECTION 1 — Daily Brief (locked, Day 54 chase #6)
+     2 rows × 3 columns. No headline message.
+     Row 1: Arrivals · Departures · On Shift (ResNexus + clock-in)
+     Row 2: Weather · Events · Table tile (Google stubs + new route)
+  ═══════════════════════════════════════════════════════════════════ */
+  .brief {
+    background: #FFFFFF;
+    border-radius: 14px;
+    box-shadow: var(--shadow-raised);
+    padding: 18px 20px;
+    margin-top: 26px;
+  }
+  .brief__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .brief__label, .brief__date {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .brief__sep { height: 1px; background: var(--hairline); margin: 14px 0; }
+  .brief__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    column-gap: 4px;
+    row-gap: 4px;
+  }
+  .brief__cell {
+    padding: 10px 8px;
+    border-radius: 8px;
+    background: transparent;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: background 120ms ease;
+  }
+  .brief__cell--tap { cursor: pointer; }
+  .brief__cell--tap:hover { background: var(--shell-bg); }
+  .brief__lbl {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .brief__val {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.3px;
+    color: var(--shell-ink);
+  }
+  .brief__val--small {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--shell-ink);
+  }
+  .brief__row-sep {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--hairline);
+    margin: 2px 0;
+  }
+  .brief__tile-icon {
+    width: 28px;
+    height: 28px;
+    margin-bottom: 4px;
+    color: var(--shell-ink);
+    display: block;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SECTION 2 — Notification Center (locked, Day 54 chase #7)
+  ═══════════════════════════════════════════════════════════════════ */
+  .nc-label {
+    margin: 32px 4px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .nc-label__title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .nc-label__sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    letter-spacing: 1.4px;
+  }
+
+  /* Master tiles */
+  .masters {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 6px; margin-bottom: 4px;
+  }
+  .master {
+    background: #FFFFFF; border-radius: 12px;
+    padding: 12px 8px 10px; box-shadow: var(--shadow-raised);
+    text-align: center; cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 150ms ease, transform 120ms ease;
+    position: relative;
+  }
+  .master--active {
+    border-color: var(--shell-ink);
+    transform: translateY(-1px);
+  }
+  .master__count {
+    font-size: 26px; font-weight: 700;
+    line-height: 1; letter-spacing: -0.5px;
+    color: var(--accent);
+  }
+  .master[data-cat="incoming"]   { --accent: var(--inc-accent); }
+  .master[data-cat="system"]     { --accent: var(--sys-accent); }
+  .master[data-cat="outgoing"]   { --accent: var(--out-accent); }
+  .master[data-cat="maintenance"]{ --accent: var(--mnt-accent); }
+  .master__lbl {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--shell-ink); margin-top: 6px; font-weight: 700;
+  }
+  .master__sub {
+    font-family: var(--mono); font-size: 8px;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--ink-muted); margin-top: 3px;
+  }
+  .master__pulse {
+    position: absolute; top: 8px; right: 10px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #EC4899; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.2); }
+  }
+
+  /* Sub-tiles */
+  .subs-wrap { margin: 10px 0 14px; }
+  .subs { display: grid; gap: 6px; }
+  .subs[hidden] { display: none; }
+  .subs--3 { grid-template-columns: 1fr 1fr 1fr; }
+  .subs--2 { grid-template-columns: 1fr 1fr; }
+  .sub {
+    background: #FFFFFF; border-radius: 10px;
+    padding: 10px 12px; cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 120ms ease; text-align: left;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: var(--shadow-soft);
+  }
+  .sub--active {
+    border-color: var(--row-accent);
+    background: var(--row-accent-pale);
+  }
+  .sub__lbl {
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--shell-ink);
+  }
+  .sub__count {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    color: var(--ink-muted);
+  }
+  .sub--active .sub__count { color: var(--row-accent); }
+
+  /* Items list — D-430 row style, no header */
+  .items {
+    background: #FFFFFF; border-radius: 14px;
+    box-shadow: var(--shadow-raised); overflow: hidden;
+  }
+  .row {
+    padding: 14px 18px 10px;
+    border-top: 1px solid var(--hairline);
+    cursor: pointer; transition: background 120ms ease;
+  }
+  .row:first-child { border-top: none; }
+  .row:hover { background: var(--shell-bg); }
+  .row__top {
+    display: grid; grid-template-columns: 22px 1fr auto;
+    gap: 10px; align-items: center;
+  }
+  .row__num {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-soft); font-weight: 600;
+  }
+  .row__title {
+    font-size: 15px; font-weight: 700; color: var(--shell-ink);
+    line-height: 1.3; letter-spacing: -0.1px;
+  }
+  .row__actions {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700;
+  }
+  .row__action-btn {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--ink-muted); padding: 2px 0;
+    font-family: inherit; font-size: inherit;
+    letter-spacing: inherit; text-transform: inherit; font-weight: inherit;
+  }
+  .row__action-btn--primary { color: var(--row-accent); }
+  .row__bar {
+    height: 4px; margin-top: 10px; border-radius: 2px;
+    background: var(--row-accent); opacity: 0.32;
+  }
+  .row--seen .row__bar { opacity: 0.8; }
+  .row--seen .row__title {
+    text-decoration: line-through; color: var(--ink-muted);
+  }
+
+  /* Expanded view */
+  .row__expanded {
+    display: none;
+    padding: 8px 0 6px;
+  }
+  .row--open .row__expanded { display: block; }
+  .row--open .row__top { grid-template-columns: 1fr; gap: 0; }
+  .row--open .row__num { display: none; }
+  .row--open .row__actions { display: none; }
+  .row--open .row__title {
+    font-size: 22px;
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+  }
+  .row--open .row__bar { display: none; }
+
+  .ex-author {
+    padding: 0;
+    margin-bottom: 0;
+  }
+  .ex-author__name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    line-height: 1.3;
+    letter-spacing: -0.1px;
+  }
+  .ex-author__source {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    line-height: 1.3;
+    letter-spacing: -0.1px;
+    margin-top: 2px;
+  }
+  .ex-bar {
+    height: 4px;
+    margin: 14px 0;
+    border-radius: 2px;
+    background: var(--row-accent);
+    opacity: 0.7;
+  }
+
+  .ex-pill {
+    background: #FFFFFF;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .ex-pill--note { min-height: 116px; }
+  .ex-pill__body {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--shell-ink);
+  }
+  .ex-pill__meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .ex-attach {
+    background: var(--row-accent-pale);
+    border: 1px solid var(--row-accent);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--row-accent);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    transition: padding 150ms ease;
+    margin-bottom: 12px;
+  }
+  .ex-attach__icon {
+    width: 14px; height: 14px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+  }
+  .ex-attach__thumb {
+    display: none;
+    width: 100%;
+    aspect-ratio: 5 / 3;
+    background: linear-gradient(135deg, #D9C8B5, #B8A085);
+    border-radius: 8px;
+    margin-top: 12px;
+    cursor: zoom-in;
+    place-items: center;
+    color: rgba(255,255,255,0.85);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+  }
+  .ex-attach__head { display: contents; }
+  .ex-attach--open {
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: 16px;
+  }
+  .ex-attach--open .ex-attach__head {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+  }
+  .ex-attach--open .ex-attach__thumb { display: grid; }
+  .ex-attach__caret { margin-left: auto; }
+  .ex-attach__caret::before { content: "+"; font-weight: 700; }
+  .ex-attach--open .ex-attach__caret::before { content: "−"; }
+
+  .ex-cta {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-top: 4px;
+  }
+  .ex-cta button {
+    font-family: var(--mono);
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.4px; text-transform: uppercase;
+    padding: 12px 10px; border-radius: 10px;
+    cursor: pointer; border: none;
+  }
+  .ex-cta__assign {
+    background: var(--shell-ink); color: #FFFFFF;
+  }
+  .ex-cta__seen {
+    background: transparent; color: var(--ink-muted);
+    border: 1.5px solid var(--ink-faint);
+  }
+
+  /* Accent injection per active master */
+  .nc[data-active="incoming"]    { --row-accent: var(--inc-accent); --row-accent-pale: var(--inc-tint); }
+  .nc[data-active="system"]      { --row-accent: var(--sys-accent); --row-accent-pale: var(--sys-tint); }
+  .nc[data-active="outgoing"]    { --row-accent: var(--out-accent); --row-accent-pale: var(--out-tint); }
+  .nc[data-active="maintenance"] { --row-accent: var(--mnt-accent); --row-accent-pale: var(--mnt-tint); }
+
+  /* ════════════════════════════════════════════════════════════════
+     PLACEHOLDER for the next-section redesign (TBD)
+  ═══════════════════════════════════════════════════════════════════ */
+  .next-section {
+    margin-top: 32px;
+    padding: 24px 18px;
+    border: 1.5px dashed var(--hairline-strong);
+    border-radius: 14px;
+    text-align: center;
+  }
+  .next-section__label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.8px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .next-section__hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+
+  .footnote {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- Greeting -->
+  <header class="greeting">
+    <h1>Hi, Courtney.</h1>
+    <div class="date">Tuesday · May 12</div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 1 — DAILY BRIEF (locked)
+  ══════════════════════════════════════════════════════════════════ -->
+  <section class="brief">
+    <div class="brief__head">
+      <div class="brief__label">Daily Brief</div>
+      <div class="brief__date">Tue · May 12</div>
+    </div>
+    <div class="brief__sep"></div>
+    <div class="brief__grid">
+
+      <!-- Row 1 — ResNexus + clock-in -->
+      <div class="brief__cell">
+        <span class="brief__lbl">Arrivals</span>
+        <span class="brief__val">4</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Departures</span>
+        <span class="brief__val">6</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">On Shift</span>
+        <span class="brief__val">1</span>
+      </div>
+
+      <div class="brief__row-sep"></div>
+
+      <!-- Row 2 — Google stubs + Table -->
+      <div class="brief__cell">
+        <span class="brief__lbl">Weather</span>
+        <span class="brief__val--small">72&deg;F<br>Sunny</span>
+      </div>
+      <div class="brief__cell">
+        <span class="brief__lbl">Events</span>
+        <span class="brief__val--small">Dueling Pianos<br>Balsam</span>
+      </div>
+      <a href="#table" class="brief__cell brief__cell--tap">
+        <span class="brief__lbl">Table</span>
+        <svg class="brief__tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SECTION 2 — NOTIFICATION CENTER (locked)
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="nc-label">
+    <span class="nc-label__title">Notification Center</span>
+    <span class="nc-label__sub">Flow of the Building</span>
+  </div>
+
+  <div class="nc" data-active="incoming">
+
+    <!-- Master tiles (fixed 4) -->
+    <div class="masters">
+      <div class="master master--active" data-cat="incoming">
+        <span class="master__pulse" aria-hidden></span>
+        <div class="master__count">4</div>
+        <div class="master__lbl">Incoming</div>
+        <div class="master__sub">Inbox</div>
+      </div>
+      <div class="master" data-cat="system">
+        <span class="master__pulse" aria-hidden></span>
+        <div class="master__count">2</div>
+        <div class="master__lbl">System</div>
+        <div class="master__sub">2 Action</div>
+      </div>
+      <div class="master" data-cat="outgoing">
+        <div class="master__count">3</div>
+        <div class="master__lbl">Outgoing</div>
+        <div class="master__sub">Push</div>
+      </div>
+      <div class="master" data-cat="maintenance">
+        <div class="master__count">5</div>
+        <div class="master__lbl">Maint</div>
+        <div class="master__sub">5 Active</div>
+      </div>
+    </div>
+
+    <!-- Sub-tiles (prerendered per master) -->
+    <div class="subs-wrap">
+
+      <div class="subs subs--3" data-for="incoming">
+        <button class="sub" data-sub="admin"><span class="sub__lbl">Admin</span><span class="sub__count">1</span></button>
+        <button class="sub sub--active" data-sub="guest"><span class="sub__lbl">Guest</span><span class="sub__count">2</span></button>
+        <button class="sub" data-sub="supply"><span class="sub__lbl">Supply</span><span class="sub__count">1</span></button>
+      </div>
+
+      <div class="subs subs--3" data-for="system" hidden>
+        <button class="sub sub--active" data-sub="employee"><span class="sub__lbl">Employee</span><span class="sub__count">1</span></button>
+        <button class="sub" data-sub="schedule"><span class="sub__lbl">Schedule</span><span class="sub__count">0</span></button>
+        <button class="sub" data-sub="today"><span class="sub__lbl">Today</span><span class="sub__count">1</span></button>
+      </div>
+
+      <div class="subs subs--2" data-for="outgoing" hidden>
+        <button class="sub sub--active" data-sub="history"><span class="sub__lbl">History</span><span class="sub__count">1</span></button>
+        <button class="sub" data-sub="scheduled"><span class="sub__lbl">Scheduled</span><span class="sub__count">2</span></button>
+      </div>
+
+      <div class="subs subs--2" data-for="maintenance" hidden>
+        <button class="sub sub--active" data-sub="outgoing"><span class="sub__lbl">Outgoing</span><span class="sub__count">2</span></button>
+        <button class="sub" data-sub="incoming"><span class="sub__lbl">Incoming</span><span class="sub__count">3</span></button>
+      </div>
+
+    </div>
+
+    <!-- Items list — no header. First row sits at top of the white card. -->
+    <div class="items">
+
+      <div class="row">
+        <div class="row__top">
+          <div class="row__num">1</div>
+          <div class="row__title">Late checkout request — Room 12</div>
+          <div class="row__actions">
+            <button class="row__action-btn row__action-btn--primary">Assign ›</button>
+            <button class="row__action-btn">Seen</button>
+          </div>
+        </div>
+        <div class="row__bar"></div>
+      </div>
+
+      <div class="row row--open">
+        <div class="row__top">
+          <div class="row__num">2</div>
+          <div class="row__title">Pet allergy — incoming R28</div>
+          <div class="row__actions">
+            <button class="row__action-btn row__action-btn--primary">Assign ›</button>
+            <button class="row__action-btn">Seen</button>
+          </div>
+        </div>
+        <div class="row__bar"></div>
+
+        <div class="row__expanded">
+          <div class="ex-author">
+            <div class="ex-author__name">Lizzie Larson</div>
+            <div class="ex-author__source">Arrivals - R28</div>
+          </div>
+
+          <div class="ex-bar" aria-hidden></div>
+
+          <div class="ex-pill ex-pill--note">
+            <div class="ex-pill__body">
+              Guest called ahead — has cat allergy. Last guest in R28 had a service animal. Needs hypoallergenic linens swap + full Pet Clean turnover before 2 PM check-in. Vendor allergy spray in supply closet (3rd shelf).
+            </div>
+            <div class="ex-pill__meta">
+              <span>Concierge · Guest</span>
+              <span>14 min ago</span>
+            </div>
+          </div>
+
+          <div class="ex-attach" data-attach>
+            <div class="ex-attach__head">
+              <svg class="ex-attach__icon" viewBox="0 0 24 24" aria-hidden>
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+              <span class="ex-attach__label">Image attached</span>
+              <span class="ex-attach__caret" aria-hidden></span>
+            </div>
+            <div class="ex-attach__thumb" aria-hidden>Photo · tap for full view</div>
+          </div>
+
+          <div class="ex-cta">
+            <button class="ex-cta__assign">Assign</button>
+            <button class="ex-cta__seen">Seen</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Placeholder for the next section we'll tackle -->
+  <div class="next-section">
+    <div class="next-section__label">Next Section · TBD</div>
+    <div class="next-section__hint">(Staff · Tasks · Maintenance lanes — redesign next)</div>
+  </div>
+
+  <div class="footnote">The Dispatch Co · Admin · Locked Sections</div>
+</div>
+
+<!-- Interaction script -->
+<script>
+(function() {
+  document.addEventListener('click', function(e) {
+    var attach = e.target.closest('.ex-attach');
+    if (attach) {
+      attach.classList.toggle('ex-attach--open');
+      return;
+    }
+    var row = e.target.closest('.row');
+    if (row && !e.target.closest('.row__action-btn')) {
+      var items = row.closest('.items');
+      if (items) {
+        items.querySelectorAll('.row--open').forEach(function(r) {
+          if (r !== row) r.classList.remove('row--open');
+        });
+      }
+      row.classList.toggle('row--open');
+      return;
+    }
+    var master = e.target.closest('.master');
+    if (master) {
+      var nc = master.closest('.nc');
+      if (!nc) return;
+      var cat = master.getAttribute('data-cat');
+      nc.querySelectorAll('.master').forEach(function(m) { m.classList.remove('master--active'); });
+      master.classList.add('master--active');
+      nc.setAttribute('data-active', cat);
+      nc.querySelectorAll('.subs').forEach(function(s) {
+        if (s.getAttribute('data-for') === cat) s.removeAttribute('hidden');
+        else s.setAttribute('hidden', '');
+      });
+      return;
+    }
+    var sub = e.target.closest('.sub');
+    if (sub) {
+      var subContainer = sub.closest('.subs');
+      if (!subContainer) return;
+      subContainer.querySelectorAll('.sub').forEach(function(s) { s.classList.remove('sub--active'); });
+      sub.classList.add('sub--active');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

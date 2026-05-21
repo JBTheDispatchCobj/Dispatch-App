@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390, initial-scale=1, viewport-fit=cover">
+<title>Dispatch — Admin Notification Center (Day 54 chase #7)</title>
+<style>
+  :root {
+    --page-bg: #E6DFCD;
+    --shell-bg: #F5F0E6;
+    --shell-ink: #2C1608;
+    --ink-muted: rgba(44, 22, 8, 0.62);
+    --ink-soft: rgba(44, 22, 8, 0.42);
+    --ink-faint: rgba(44, 22, 8, 0.20);
+    --hairline: rgba(44, 22, 8, 0.10);
+    --hairline-strong: rgba(44, 22, 8, 0.20);
+    --shadow-raised: 0 1px 1px rgba(30, 20, 10, 0.04), 0 2px 6px rgba(30, 20, 10, 0.06);
+
+    /* Avatar gradients (per existing palette) */
+    --avatar-cm: linear-gradient(135deg, #F5D8B8, #D9A87C);
+    --avatar-cm-ink: #7A4A2E;
+    --avatar-ll: linear-gradient(135deg, #CDE0E4, #7FA3A8);
+    --avatar-ll-ink: #2C4F54;
+    --avatar-al: linear-gradient(135deg, #F5C8A8, #C68B64);
+    --avatar-al-ink: #5C3320;
+    --avatar-mp: linear-gradient(135deg, #DAE0C2, #9BA67C);
+    --avatar-mp-ink: #3C4728;
+
+    /* Watchlist (inbox) — warm peach */
+    --watch-bg: #FAF1E5;
+    --watch-accent: #D9A87C;
+
+    /* System (console) — charcoal accent for tech feel */
+    --sys-bg: #1F1A14;
+    --sys-ink: #E6DBC6;
+    --sys-warn: #FFD000;
+    --sys-info: #7FA3A8;
+    --sys-ok: #00C853;
+
+    /* To Do (priority lanes) — six priority colors */
+    --pri-emergency: #EC4899;
+    --pri-guest:     #FF5722;
+    --pri-staff:     #FFD000;
+    --pri-maint:     #2563EB;
+    --pri-vendor:    #00C853;
+    --pri-building:  #9CA3AF;
+
+    /* Notes (bulletin) — soft saturation, multiple tile colors */
+    --notes-bg: #EFE8D3;
+    --note-tile-1: #FFF8E0;   /* yellow sticky */
+    --note-tile-2: #DCEBF4;   /* cool blue */
+    --note-tile-3: #EADDF5;   /* lavender */
+    --note-tile-4: #F4DEDC;   /* coral */
+
+    --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--page-bg);
+    color: var(--shell-ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    padding: 32px 8px 80px;
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(255,255,255,0.4), transparent 40%),
+      radial-gradient(circle at 80% 60%, rgba(0,0,0,0.02), transparent 40%);
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ─── Daily Brief stub (for context) ─────────────────────────────── */
+  .brief {
+    background: #FFFFFF;
+    border-radius: 14px;
+    box-shadow: var(--shadow-raised);
+    padding: 14px 18px;
+    margin-top: 18px;
+  }
+  .brief__head {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+  .brief__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--hairline);
+  }
+  .brief__cell {
+    padding: 6px 4px;
+  }
+  .brief__lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.3px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .brief__val { font-size: 20px; font-weight: 600; line-height: 1.05; }
+
+  /* ─── Notification Center parent ─────────────────────────────────── */
+  .nc-parent-label {
+    margin: 36px 4px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .nc-parent-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    letter-spacing: 1.4px;
+  }
+
+  /* All four sub-section cards share these base styles */
+  .nc-section {
+    background: #FFFFFF;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-raised);
+  }
+  .nc-section__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px 10px;
+  }
+  .nc-section__title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--shell-ink);
+  }
+  .nc-section__sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SUB-SECTION 1 — TEAM WATCHLIST · Inbox treatment
+     Warm peach top band, message rows with avatars + category chips.
+  ═══════════════════════════════════════════════════════════════════ */
+  .watch {
+    border-top: 4px solid var(--watch-accent);
+  }
+  .watch__head {
+    background: var(--watch-bg);
+    padding: 14px 18px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .watch__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    letter-spacing: -0.2px;
+  }
+  .watch__title small {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-left: 8px;
+  }
+  .watch__filter {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    background: #FFFFFF;
+    border: 1px solid var(--ink-faint);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-weight: 600;
+  }
+  .watch__row {
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .watch__row:last-child { border-bottom: none; }
+  .watch__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .watch__avatar--ll { background: var(--avatar-ll); color: var(--avatar-ll-ink); }
+  .watch__avatar--al { background: var(--avatar-al); color: var(--avatar-al-ink); }
+  .watch__avatar--mp { background: var(--avatar-mp); color: var(--avatar-mp-ink); }
+  .watch__body { min-width: 0; }
+  .watch__sender {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .watch__chip {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .watch__chip--note      { background: rgba(168, 85, 247, 0.14); color: #2E0B5C; }
+  .watch__chip--supply    { background: rgba(255, 87, 34, 0.14); color: #3A1502; }
+  .watch__chip--hr        { background: rgba(37, 99, 235, 0.12); color: #0A1C5C; }
+  .watch__chip--concierge { background: rgba(0, 200, 83, 0.14); color: #003D14; }
+  .watch__msg {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+  .watch__time {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin-top: 6px;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SUB-SECTION 2 — SYSTEM NOTIFICATIONS · Console / Log treatment
+     Dark band header, monospace rows, action items get amber edge.
+  ═══════════════════════════════════════════════════════════════════ */
+  .sys {
+    overflow: hidden;
+  }
+  .sys__head {
+    background: var(--sys-bg);
+    color: var(--sys-ink);
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+  }
+  .sys__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--sys-ink);
+  }
+  .sys__title-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--sys-warn);
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: sys-pulse 2s infinite;
+  }
+  @keyframes sys-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .sys__counter {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.6px;
+    color: var(--sys-warn);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .sys__row {
+    display: grid;
+    grid-template-columns: 4px 70px 1fr auto;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 14px 10px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .sys__row:last-child { border-bottom: none; }
+  .sys__edge { background: transparent; }
+  .sys__row--action .sys__edge { background: var(--sys-warn); }
+  .sys__time {
+    color: var(--ink-soft);
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding-top: 2px;
+    padding-left: 6px;
+  }
+  .sys__msg {
+    color: var(--shell-ink);
+    min-width: 0;
+  }
+  .sys__row--action .sys__msg { font-weight: 700; }
+  .sys__row--info .sys__msg   { color: var(--ink-muted); font-weight: 500; }
+  .sys__row--ok .sys__msg     { color: var(--ink-soft); font-weight: 500; }
+  .sys__tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .sys__tag--action { background: rgba(255, 208, 0, 0.18); color: #3B1F00; }
+  .sys__tag--info   { background: rgba(127, 163, 168, 0.18); color: #2C4F54; }
+  .sys__tag--ok     { background: rgba(0, 200, 83, 0.18); color: #003D14; }
+  .sys__cta {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    background: var(--sys-warn);
+    color: #3B1F00;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 14px;
+    align-self: center;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     SUB-SECTION 3 — TO DO LIST · Priority lanes treatment
+     Each row has a colored stripe for priority category.
+  ═══════════════════════════════════════════════════════════════════ */
+  .todo__head { padding: 14px 18px 10px; }
+  .todo__title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+  .todo__sub {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .todo__list { padding-bottom: 4px; }
+  .todo__row {
+    display: grid;
+    grid-template-columns: 8px 28px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .todo__row:last-child { border-bottom: none; }
+  .todo__stripe { background: var(--pri); height: 100%; }
+  .todo__row[data-pri="emergency"] { --pri: var(--pri-emergency); }
+  .todo__row[data-pri="guest"]     { --pri: var(--pri-guest); }
+  .todo__row[data-pri="staff"]     { --pri: var(--pri-staff); }
+  .todo__row[data-pri="maint"]     { --pri: var(--pri-maint); }
+  .todo__row[data-pri="vendor"]    { --pri: var(--pri-vendor); }
+  .todo__row[data-pri="building"]  { --pri: var(--pri-building); }
+  .todo__check {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1.6px solid var(--ink-faint);
+    background: transparent;
+    justify-self: center;
+  }
+  .todo__body { min-width: 0; }
+  .todo__txt {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--shell-ink);
+    line-height: 1.3;
+  }
+  .todo__meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+  .todo__pri-chip {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    letter-spacing: 1.2px;
+    color: #FFFFFF;
+    text-transform: uppercase;
+    background: var(--pri);
+  }
+  .todo__action {
+    margin-right: 14px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    background: transparent;
+    border: none;
+  }
+
+  /* GM Prep — separated, softer */
+  .todo__gm-divider {
+    border-top: 1.5px dashed var(--hairline-strong);
+    margin: 8px 16px 0;
+    padding-top: 10px;
+  }
+  .todo__gm-caption {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 0 16px 6px;
+  }
+  .todo__row--gm {
+    grid-template-columns: 8px 1fr auto;
+    background: var(--shell-bg);
+    padding: 10px 16px 10px 0;
+  }
+  .todo__row--gm .todo__check { display: none; }
+  .todo__row--gm .todo__stripe { background: var(--ink-faint); }
+  .todo__row--gm .todo__txt { font-weight: 500; color: var(--ink-muted); }
+
+  /* ════════════════════════════════════════════════════════════════
+     SUB-SECTION 4 — NOTES · Bulletin Board treatment
+     2-column tile grid of small note cards.
+  ═══════════════════════════════════════════════════════════════════ */
+  .notes-board {
+    background: var(--notes-bg);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-raised);
+  }
+  .notes-board__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px 4px;
+  }
+  .notes-board__title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .notes-board__add {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    background: #FFFFFF;
+    color: var(--shell-ink);
+    border: 1px solid var(--ink-faint);
+    border-radius: 999px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .notes-board__filters {
+    padding: 6px 18px 12px;
+    display: flex;
+    gap: 6px;
+  }
+  .notes-board__filter {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1px solid var(--ink-faint);
+    cursor: pointer;
+  }
+  .notes-board__filter--active {
+    background: var(--shell-ink);
+    color: #FFFFFF;
+    border-color: var(--shell-ink);
+  }
+  .notes-board__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 14px 14px;
+  }
+  .note-tile {
+    background: var(--note-bg, var(--note-tile-1));
+    border-radius: 10px;
+    padding: 12px 12px 10px;
+    box-shadow: var(--shadow-raised);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 110px;
+    transform: rotate(var(--note-rotate, 0deg));
+    transition: transform 200ms ease;
+  }
+  .note-tile:nth-child(4n+1) { --note-bg: var(--note-tile-1); --note-rotate: -0.6deg; }
+  .note-tile:nth-child(4n+2) { --note-bg: var(--note-tile-2); --note-rotate: 0.4deg; }
+  .note-tile:nth-child(4n+3) { --note-bg: var(--note-tile-3); --note-rotate: -0.3deg; }
+  .note-tile:nth-child(4n+4) { --note-bg: var(--note-tile-4); --note-rotate: 0.5deg; }
+  .note-tile__title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--shell-ink);
+    line-height: 1.25;
+  }
+  .note-tile__body {
+    font-size: 11px;
+    color: var(--ink-muted);
+    line-height: 1.35;
+    flex: 1;
+  }
+  .note-tile__foot {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .note-tile--new {
+    background: transparent;
+    border: 1.5px dashed var(--hairline-strong);
+    box-shadow: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    --note-rotate: 0deg;
+  }
+  .note-tile--archived {
+    opacity: 0.55;
+  }
+
+  /* Footer + dividers */
+  .footnote {
+    margin-top: 40px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 2.4px;
+  }
+  .section-divider {
+    max-width: 390px;
+    margin: 64px auto 28px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ""; position: absolute; top: 50%;
+    width: 60px; height: 1px; background: var(--hairline-strong);
+  }
+  .section-divider::before { left: 16px; }
+  .section-divider::after { right: 16px; }
+  .annotation {
+    max-width: 390px;
+    margin: 14px auto 0;
+    padding: 0 24px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     PRIMARY MOCKUP — Admin Notification Center, 4 distinct sub-sections
+══════════════════════════════════════════════════════════════════ -->
+<div class="phone">
+
+  <!-- Daily Brief stub for orientation -->
+  <section class="brief">
+    <div class="brief__head"><span>Daily Brief</span><span>Tue · May 12</span></div>
+    <div class="brief__grid">
+      <div class="brief__cell"><div class="brief__lbl">Arrivals</div><div class="brief__val">4</div></div>
+      <div class="brief__cell"><div class="brief__lbl">Departures</div><div class="brief__val">6</div></div>
+      <div class="brief__cell"><div class="brief__lbl">On Shift</div><div class="brief__val">1</div></div>
+    </div>
+  </section>
+
+  <!-- Notification Center parent caption -->
+  <div class="nc-parent-label">
+    <span>Notification Center</span>
+    <span class="nc-parent-sub">Flow of the Building</span>
+  </div>
+
+  <!-- ═══ SUB 1: TEAM WATCHLIST (inbox) ════════════════════════════ -->
+  <section class="nc-section watch">
+    <div class="watch__head">
+      <div class="watch__title">
+        Team Watchlist <small>4 Items</small>
+      </div>
+      <button class="watch__filter">All ▾</button>
+    </div>
+    <div class="watch__row">
+      <div class="watch__avatar watch__avatar--ll">LL</div>
+      <div class="watch__body">
+        <div class="watch__sender">
+          Lizzie Larson
+          <span class="watch__chip watch__chip--concierge">Concierge</span>
+        </div>
+        <div class="watch__msg">Guest in R12 asking for late checkout — David Adams.</div>
+      </div>
+      <div class="watch__time">3 min</div>
+    </div>
+    <div class="watch__row">
+      <div class="watch__avatar watch__avatar--mp">MP</div>
+      <div class="watch__body">
+        <div class="watch__sender">
+          Mark Parry
+          <span class="watch__chip watch__chip--supply">Supply</span>
+        </div>
+        <div class="watch__msg">Need new shower curtain rods — lobby restroom, 2 spare.</div>
+      </div>
+      <div class="watch__time">42 min</div>
+    </div>
+    <div class="watch__row">
+      <div class="watch__avatar watch__avatar--ll">LL</div>
+      <div class="watch__body">
+        <div class="watch__sender">
+          Lizzie Larson
+          <span class="watch__chip watch__chip--note">Note</span>
+        </div>
+        <div class="watch__msg">Linens delivered 1:30 — two sets short, laundry restock by 2 PM.</div>
+      </div>
+      <div class="watch__time">1 hr</div>
+    </div>
+    <div class="watch__row">
+      <div class="watch__avatar watch__avatar--al">AL</div>
+      <div class="watch__body">
+        <div class="watch__sender">
+          Angie Lopez
+          <span class="watch__chip watch__chip--hr">HR</span>
+        </div>
+        <div class="watch__msg">Paid time off request — June 14 through June 21.</div>
+      </div>
+      <div class="watch__time">2 hr</div>
+    </div>
+  </section>
+
+  <!-- ═══ SUB 2: SYSTEM NOTIFICATIONS (console) ════════════════════ -->
+  <section class="nc-section sys">
+    <div class="sys__head">
+      <div class="sys__title"><span class="sys__title-dot"></span>System</div>
+      <div class="sys__counter">2 Need Action · 3 Info</div>
+    </div>
+    <div class="sys__row sys__row--action">
+      <div class="sys__edge"></div>
+      <div class="sys__time">14:02</div>
+      <div class="sys__msg">
+        <span class="sys__tag sys__tag--action">Action</span>
+        ResNexus sync stalled — manual reconciliation needed for 3 reservations.
+      </div>
+      <button class="sys__cta">Resolve</button>
+    </div>
+    <div class="sys__row sys__row--action">
+      <div class="sys__edge"></div>
+      <div class="sys__time">13:30</div>
+      <div class="sys__msg">
+        <span class="sys__tag sys__tag--action">Action</span>
+        Daily reconciliation due — 4 task variances need approval.
+      </div>
+      <button class="sys__cta">Resolve</button>
+    </div>
+    <div class="sys__row sys__row--info">
+      <div class="sys__edge"></div>
+      <div class="sys__time">11:48</div>
+      <div class="sys__msg">
+        <span class="sys__tag sys__tag--info">Info</span>
+        Orchestrator generated 14 tasks for today's shift.
+      </div>
+      <div></div>
+    </div>
+    <div class="sys__row sys__row--info">
+      <div class="sys__edge"></div>
+      <div class="sys__time">11:30</div>
+      <div class="sys__msg">
+        <span class="sys__tag sys__tag--info">Info</span>
+        3 new reservations imported from ResNexus.
+      </div>
+      <div></div>
+    </div>
+    <div class="sys__row sys__row--ok">
+      <div class="sys__edge"></div>
+      <div class="sys__time">06:00</div>
+      <div class="sys__msg">
+        <span class="sys__tag sys__tag--ok">OK</span>
+        Nightly orchestrator run completed without errors.
+      </div>
+      <div></div>
+    </div>
+  </section>
+
+  <!-- ═══ SUB 3: TO DO LIST (priority lanes) ═══════════════════════ -->
+  <section class="nc-section">
+    <div class="todo__head">
+      <div class="todo__title">To Do</div>
+      <div class="todo__sub">5 Active · 1 GM Prep · Priority-Sorted</div>
+    </div>
+    <div class="todo__list">
+      <div class="todo__row" data-pri="emergency">
+        <div class="todo__stripe"></div>
+        <div class="todo__check"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Confirm plumber for R18 leaking sink — before noon</div>
+          <div class="todo__meta">
+            <span class="todo__pri-chip">Emergency</span>
+            <span>Due 11:00 AM</span>
+          </div>
+        </div>
+        <button class="todo__action">Open ›</button>
+      </div>
+      <div class="todo__row" data-pri="guest">
+        <div class="todo__stripe"></div>
+        <div class="todo__check"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Pet allergy accommodation — R28 incoming guest</div>
+          <div class="todo__meta">
+            <span class="todo__pri-chip">Guest</span>
+            <span>Check-in 2 PM</span>
+          </div>
+        </div>
+        <button class="todo__action">Open ›</button>
+      </div>
+      <div class="todo__row" data-pri="staff">
+        <div class="todo__stripe"></div>
+        <div class="todo__check"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Approve shift swap — Mark for Friday</div>
+          <div class="todo__meta">
+            <span class="todo__pri-chip">Staff</span>
+            <span>By EOD</span>
+          </div>
+        </div>
+        <button class="todo__action">Open ›</button>
+      </div>
+      <div class="todo__row" data-pri="maint">
+        <div class="todo__stripe"></div>
+        <div class="todo__check"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Order parts for AC unit — R34</div>
+          <div class="todo__meta">
+            <span class="todo__pri-chip">Maintenance</span>
+            <span>This week</span>
+          </div>
+        </div>
+        <button class="todo__action">Open ›</button>
+      </div>
+      <div class="todo__row" data-pri="vendor">
+        <div class="todo__stripe"></div>
+        <div class="todo__check"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Lawn care follow-up call</div>
+          <div class="todo__meta">
+            <span class="todo__pri-chip">Vendor</span>
+            <span>This week</span>
+          </div>
+        </div>
+        <button class="todo__action">Open ›</button>
+      </div>
+
+      <div class="todo__gm-divider"></div>
+      <div class="todo__gm-caption">GM Prep · Above &amp; Beyond</div>
+      <div class="todo__row todo__row--gm" data-pri="building">
+        <div class="todo__stripe"></div>
+        <div class="todo__body">
+          <div class="todo__txt">Q2 review prep — schedule with Bryan</div>
+          <div class="todo__meta"><span>Next month</span></div>
+        </div>
+        <button class="todo__action">View ›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SUB 4: NOTES · FACILITY WIDE (bulletin board) ════════════ -->
+  <section class="notes-board">
+    <div class="notes-board__head">
+      <div class="notes-board__title">Notes</div>
+      <button class="notes-board__add">+ Add</button>
+    </div>
+    <div class="notes-board__filters">
+      <button class="notes-board__filter notes-board__filter--active">Active · 3</button>
+      <button class="notes-board__filter">Archived · 12</button>
+    </div>
+    <div class="notes-board__grid">
+      <div class="note-tile">
+        <div class="note-tile__title">Dueling Pianos tonight</div>
+        <div class="note-tile__body">Extra towels staged in lobby. Expect late checkouts.</div>
+        <div class="note-tile__foot"><span>Courtney</span><span>Today</span></div>
+      </div>
+      <div class="note-tile">
+        <div class="note-tile__title">Friday weather: rainy</div>
+        <div class="note-tile__body">Stock umbrella basket. Brief front desk.</div>
+        <div class="note-tile__foot"><span>Courtney</span><span>2 days</span></div>
+      </div>
+      <div class="note-tile">
+        <div class="note-tile__title">Long-term: R44</div>
+        <div class="note-tile__body">Kowalski 14-night stay. Sheet change every 7th day.</div>
+        <div class="note-tile__foot"><span>Lizzie</span><span>3 days</span></div>
+      </div>
+      <div class="note-tile note-tile--new">
+        + New<br>Note
+      </div>
+    </div>
+  </section>
+
+  <div class="footnote">The Dispatch Co · Admin</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCROLL DOWN FOR 4 MORE OPTIONS — B, C, D, E
+══════════════════════════════════════════════════════════════════ -->
+<div class="section-divider">Option A · Distinct Sub-sections</div>
+<div class="annotation">Above. Each section a different vocabulary —<br>inbox / console / priority lanes / corkboard.</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OPTION B — UNIFIED PRIORITY STREAM
+     Single combined feed, category-coded by left dot. Filter pills.
+══════════════════════════════════════════════════════════════════ -->
+<style>
+  .stream-shell {
+    background: #FFFFFF;
+    border-radius: 16px;
+    box-shadow: var(--shadow-raised);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .stream-head {
+    padding: 14px 18px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .stream-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+  .stream-filters {
+    padding: 0 14px 12px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stream-pill {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--ink-faint);
+    background: transparent;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+  .stream-pill--active {
+    background: var(--shell-ink);
+    color: #FFFFFF;
+    border-color: var(--shell-ink);
+  }
+  .stream-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 12px 18px 12px 14px;
+    border-top: 1px solid var(--hairline);
+  }
+  .stream-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 6px;
+  }
+  .stream-row[data-cat="watch"]  .stream-dot { background: var(--watch-accent); }
+  .stream-row[data-cat="sys"]    .stream-dot { background: var(--sys-warn); }
+  .stream-row[data-cat="todo"]   .stream-dot { background: var(--pri-emergency); }
+  .stream-row[data-cat="notes"]  .stream-dot { background: var(--pri-maint); }
+  .stream-body { min-width: 0; }
+  .stream-msg {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--shell-ink);
+  }
+  .stream-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+  .stream-cat-chip {
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    color: #FFFFFF;
+  }
+  .stream-row[data-cat="watch"] .stream-cat-chip  { background: var(--watch-accent); color: #2C1608; }
+  .stream-row[data-cat="sys"]   .stream-cat-chip  { background: var(--sys-warn); color: #3B1F00; }
+  .stream-row[data-cat="todo"]  .stream-cat-chip  { background: var(--pri-emergency); }
+  .stream-row[data-cat="notes"] .stream-cat-chip  { background: var(--pri-maint); }
+  .stream-time { color: var(--ink-soft); }
+  .stream-action {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    background: transparent;
+    border: none;
+    align-self: center;
+  }
+</style>
+
+<div class="section-divider">Option B · Unified Priority Stream</div>
+<div class="annotation">All four categories merged into one feed. Color-coded dot + chip.<br>Filter pills to slice by category.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="nc-parent-label"><span>Notification Center</span></div>
+  <div class="stream-shell">
+    <div class="stream-head">
+      <div class="stream-title">All Activity</div>
+      <span style="font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--ink-muted);text-transform:uppercase;">14 Items</span>
+    </div>
+    <div class="stream-filters">
+      <button class="stream-pill stream-pill--active">All · 14</button>
+      <button class="stream-pill">Watchlist · 4</button>
+      <button class="stream-pill">System · 5</button>
+      <button class="stream-pill">To Do · 5</button>
+      <button class="stream-pill">Notes · 3</button>
+    </div>
+
+    <div class="stream-row" data-cat="todo">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Confirm plumber for R18 leaking sink — before noon</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">To Do</span>
+          <span>Emergency</span>
+          <span class="stream-time">Due 11 AM</span>
+        </div>
+      </div>
+      <button class="stream-action">Open ›</button>
+    </div>
+    <div class="stream-row" data-cat="sys">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">ResNexus sync stalled — 3 reservations need reconciliation</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">System</span>
+          <span>Action</span>
+          <span class="stream-time">14:02</span>
+        </div>
+      </div>
+      <button class="stream-action">Resolve ›</button>
+    </div>
+    <div class="stream-row" data-cat="watch">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Lizzie · Concierge — Guest in R12 asking for late checkout</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">Watchlist</span>
+          <span class="stream-time">3 min</span>
+        </div>
+      </div>
+      <button class="stream-action">Reply ›</button>
+    </div>
+    <div class="stream-row" data-cat="todo">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Pet allergy accommodation — R28 incoming guest</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">To Do</span>
+          <span>Guest</span>
+          <span class="stream-time">Check-in 2 PM</span>
+        </div>
+      </div>
+      <button class="stream-action">Open ›</button>
+    </div>
+    <div class="stream-row" data-cat="watch">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Mark · Supply — Need new shower curtain rods, lobby</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">Watchlist</span>
+          <span class="stream-time">42 min</span>
+        </div>
+      </div>
+      <button class="stream-action">Reply ›</button>
+    </div>
+    <div class="stream-row" data-cat="notes">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Note · Dueling Pianos tonight — extra towels staged in lobby</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">Note</span>
+          <span class="stream-time">Today</span>
+        </div>
+      </div>
+      <button class="stream-action">View ›</button>
+    </div>
+    <div class="stream-row" data-cat="sys">
+      <div class="stream-dot"></div>
+      <div class="stream-body">
+        <div class="stream-msg">Orchestrator generated 14 tasks for today's shift</div>
+        <div class="stream-meta">
+          <span class="stream-cat-chip">System</span>
+          <span>Info</span>
+          <span class="stream-time">11:48</span>
+        </div>
+      </div>
+      <span style="width:50px"></span>
+    </div>
+  </div>
+  <div class="footnote">Option B · Unified Stream</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OPTION C — 2×2 QUADRANT GRID
+     Four mini cards in 2x2 layout. Each shows top 2-3 items + view-all.
+══════════════════════════════════════════════════════════════════ -->
+<style>
+  .quad-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .quad-card {
+    background: #FFFFFF;
+    border-radius: 14px;
+    padding: 12px 12px 10px;
+    box-shadow: var(--shadow-raised);
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+  }
+  .quad-card[data-cat="watch"]  { border-top: 3px solid var(--watch-accent); }
+  .quad-card[data-cat="sys"]    { border-top: 3px solid var(--sys-warn); }
+  .quad-card[data-cat="todo"]   { border-top: 3px solid var(--pri-emergency); }
+  .quad-card[data-cat="notes"]  { border-top: 3px solid var(--pri-maint); }
+  .quad-card__head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .quad-card__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+  }
+  .quad-card__count {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .quad-card__sub {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .quad-card__items {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quad-card__item {
+    font-size: 11px;
+    line-height: 1.3;
+    color: var(--shell-ink);
+    padding-left: 8px;
+    border-left: 2px solid var(--ink-faint);
+  }
+  .quad-card[data-cat="watch"] .quad-card__item  { border-left-color: var(--watch-accent); }
+  .quad-card[data-cat="sys"]   .quad-card__item  { border-left-color: var(--sys-warn); }
+  .quad-card[data-cat="todo"]  .quad-card__item  { border-left-color: var(--pri-emergency); }
+  .quad-card[data-cat="notes"] .quad-card__item  { border-left-color: var(--pri-maint); }
+  .quad-card__viewall {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    text-align: right;
+  }
+</style>
+
+<div class="section-divider">Option C · 2×2 Quadrant Grid</div>
+<div class="annotation">Four mini-cards in a 2×2. Top 2-3 items per category,<br>"view all" to drill in. Compact dashboard feel.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="nc-parent-label"><span>Notification Center</span></div>
+  <div class="quad-grid">
+
+    <div class="quad-card" data-cat="watch">
+      <div class="quad-card__head">
+        <div class="quad-card__title">Team Watchlist</div>
+        <div class="quad-card__count">4</div>
+      </div>
+      <div class="quad-card__sub">Inbox</div>
+      <div class="quad-card__items">
+        <div class="quad-card__item">Lizzie · Late checkout R12</div>
+        <div class="quad-card__item">Mark · Shower curtain rods</div>
+        <div class="quad-card__item">Lizzie · Linen delivery short</div>
+      </div>
+      <div class="quad-card__viewall">View all ›</div>
+    </div>
+
+    <div class="quad-card" data-cat="sys">
+      <div class="quad-card__head">
+        <div class="quad-card__title">System</div>
+        <div class="quad-card__count">5</div>
+      </div>
+      <div class="quad-card__sub">2 Need Action</div>
+      <div class="quad-card__items">
+        <div class="quad-card__item">⚠ ResNexus sync stalled</div>
+        <div class="quad-card__item">⚠ Daily reconciliation due</div>
+        <div class="quad-card__item">ℹ 14 tasks generated</div>
+      </div>
+      <div class="quad-card__viewall">View all ›</div>
+    </div>
+
+    <div class="quad-card" data-cat="todo">
+      <div class="quad-card__head">
+        <div class="quad-card__title">To Do</div>
+        <div class="quad-card__count">5</div>
+      </div>
+      <div class="quad-card__sub">Priority Sorted</div>
+      <div class="quad-card__items">
+        <div class="quad-card__item">🔴 Plumber R18 — before noon</div>
+        <div class="quad-card__item">🟠 R28 pet allergy</div>
+        <div class="quad-card__item">🟡 Shift swap Mark · Fri</div>
+      </div>
+      <div class="quad-card__viewall">View all ›</div>
+    </div>
+
+    <div class="quad-card" data-cat="notes">
+      <div class="quad-card__head">
+        <div class="quad-card__title">Notes</div>
+        <div class="quad-card__count">3</div>
+      </div>
+      <div class="quad-card__sub">Facility Wide</div>
+      <div class="quad-card__items">
+        <div class="quad-card__item">Dueling Pianos tonight</div>
+        <div class="quad-card__item">Friday weather: rainy</div>
+        <div class="quad-card__item">Long-term R44 Kowalski</div>
+      </div>
+      <div class="quad-card__viewall">View all ›</div>
+    </div>
+
+  </div>
+  <div class="footnote">Option C · 2×2 Quadrant</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OPTION D — MAGAZINE LAYOUT (Hero + Support)
+     One big "lead story" (most urgent item) up top. Support cards below.
+══════════════════════════════════════════════════════════════════ -->
+<style>
+  .mag-hero {
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFF3DC 100%);
+    border-radius: 18px;
+    padding: 18px 20px 16px;
+    box-shadow: var(--shadow-raised);
+    border-left: 6px solid var(--pri-emergency);
+    margin-bottom: 12px;
+  }
+  .mag-hero__eyebrow {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--pri-emergency);
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .mag-hero__headline {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .mag-hero__lede {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+  .mag-hero__actions {
+    display: flex;
+    gap: 8px;
+  }
+  .mag-hero__cta-primary {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--shell-ink);
+    color: #FFFFFF;
+    border: none;
+    cursor: pointer;
+  }
+  .mag-hero__cta-secondary {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1px solid var(--ink-faint);
+    cursor: pointer;
+  }
+  .mag-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .mag-card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: var(--shadow-raised);
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+  }
+  .mag-card__cat {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .mag-card[data-cat="watch"]  .mag-card__cat { color: var(--watch-accent); }
+  .mag-card[data-cat="sys"]    .mag-card__cat { color: var(--sys-warn); }
+  .mag-card[data-cat="notes"]  .mag-card__cat { color: var(--pri-maint); }
+  .mag-card__title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    flex: 1;
+  }
+  .mag-card__meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--ink-soft);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+</style>
+
+<div class="section-divider">Option D · Magazine Layout</div>
+<div class="annotation">One big "lead story" card surfaces the most urgent item.<br>Support cards below in a 2-col grid.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="nc-parent-label"><span>Notification Center</span></div>
+
+  <!-- HERO — the single most urgent item, dominantly rendered -->
+  <div class="mag-hero">
+    <div class="mag-hero__eyebrow">⚠ Action Needed · Emergency</div>
+    <div class="mag-hero__headline">R18 leaking sink — confirm plumber before noon.</div>
+    <div class="mag-hero__lede">
+      Lizzie reported at 11:30 AM. Vendor on standby. Guest checking out at 11 AM tomorrow.
+    </div>
+    <div class="mag-hero__actions">
+      <button class="mag-hero__cta-primary">Open Card</button>
+      <button class="mag-hero__cta-secondary">Snooze 1 hr</button>
+    </div>
+  </div>
+
+  <!-- SUPPORT GRID — 2 cols of smaller summary cards -->
+  <div class="mag-row">
+    <div class="mag-card" data-cat="watch">
+      <div class="mag-card__cat">Watchlist · 4</div>
+      <div class="mag-card__title">Lizzie: Late checkout R12</div>
+      <div class="mag-card__meta">+ 3 more · 3 min</div>
+    </div>
+    <div class="mag-card" data-cat="sys">
+      <div class="mag-card__cat">System · 2 Action</div>
+      <div class="mag-card__title">ResNexus reconcile</div>
+      <div class="mag-card__meta">+ 1 more · 14:02</div>
+    </div>
+  </div>
+  <div class="mag-row">
+    <div class="mag-card" data-cat="watch">
+      <div class="mag-card__cat">To Do · 4 Left</div>
+      <div class="mag-card__title">R28 pet allergy</div>
+      <div class="mag-card__meta">+ 3 more · 2 PM</div>
+    </div>
+    <div class="mag-card" data-cat="notes">
+      <div class="mag-card__cat">Notes · 3 Active</div>
+      <div class="mag-card__title">Dueling Pianos tonight</div>
+      <div class="mag-card__meta">+ 2 more · Today</div>
+    </div>
+  </div>
+  <div class="footnote">Option D · Magazine Layout</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OPTION E — MISSION CONTROL TILES + FEED
+     Top row of 4 small KPI tiles. Tap a tile to filter feed below.
+══════════════════════════════════════════════════════════════════ -->
+<style>
+  .mc-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .mc-tile {
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 12px 8px;
+    box-shadow: var(--shadow-raised);
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 150ms ease;
+  }
+  .mc-tile--active { border-color: var(--shell-ink); }
+  .mc-tile__count {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .mc-tile[data-cat="watch"]  .mc-tile__count { color: var(--watch-accent); }
+  .mc-tile[data-cat="sys"]    .mc-tile__count { color: var(--sys-warn); }
+  .mc-tile[data-cat="todo"]   .mc-tile__count { color: var(--pri-emergency); }
+  .mc-tile[data-cat="notes"]  .mc-tile__count { color: var(--pri-maint); }
+  .mc-tile__lbl {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    font-weight: 600;
+  }
+  .mc-tile__sub {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+  .mc-feed {
+    background: #FFFFFF;
+    border-radius: 14px;
+    box-shadow: var(--shadow-raised);
+    overflow: hidden;
+  }
+  .mc-feed-head {
+    padding: 12px 16px 8px;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mc-row {
+    display: grid;
+    grid-template-columns: 4px 1fr auto;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 16px 10px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mc-row:last-child { border-bottom: none; }
+  .mc-edge { background: var(--c, var(--ink-faint)); }
+  .mc-row[data-cat="watch"]  { --c: var(--watch-accent); }
+  .mc-row[data-cat="sys"]    { --c: var(--sys-warn); }
+  .mc-row[data-cat="todo"]   { --c: var(--pri-emergency); }
+  .mc-row[data-cat="notes"]  { --c: var(--pri-maint); }
+  .mc-msg { font-size: 13px; font-weight: 600; color: var(--shell-ink); line-height: 1.35; }
+  .mc-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .mc-time { margin-right: 12px; font-family: var(--mono); font-size: 9px; color: var(--ink-soft); align-self: center; letter-spacing: 1.2px; }
+</style>
+
+<div class="section-divider">Option E · Mission Control Tiles</div>
+<div class="annotation">Top row of 4 KPI tiles. Tap a tile to filter the unified feed below.<br>Operational / dashboard feel — quick visual scan of pressure points.</div>
+
+<div class="phone" style="margin-top: 24px;">
+  <div class="nc-parent-label"><span>Notification Center</span></div>
+
+  <!-- TILES -->
+  <div class="mc-tiles">
+    <div class="mc-tile" data-cat="watch">
+      <div class="mc-tile__count">4</div>
+      <div class="mc-tile__lbl">Watch</div>
+      <div class="mc-tile__sub">Inbox</div>
+    </div>
+    <div class="mc-tile mc-tile--active" data-cat="sys">
+      <div class="mc-tile__count">2</div>
+      <div class="mc-tile__lbl">System</div>
+      <div class="mc-tile__sub">Action</div>
+    </div>
+    <div class="mc-tile" data-cat="todo">
+      <div class="mc-tile__count">5</div>
+      <div class="mc-tile__lbl">To Do</div>
+      <div class="mc-tile__sub">Active</div>
+    </div>
+    <div class="mc-tile" data-cat="notes">
+      <div class="mc-tile__count">3</div>
+      <div class="mc-tile__lbl">Notes</div>
+      <div class="mc-tile__sub">Active</div>
+    </div>
+  </div>
+
+  <!-- FEED — shows everything; active tile (System) implies the lens -->
+  <div class="mc-feed">
+    <div class="mc-feed-head">
+      <span>All Notifications</span>
+      <span style="color:var(--shell-ink);font-weight:700;">14 Items</span>
+    </div>
+    <div class="mc-row" data-cat="todo">
+      <div class="mc-edge"></div>
+      <div>
+        <div class="mc-msg">Confirm plumber for R18 — before noon</div>
+        <div class="mc-meta"><span>To Do · Emergency</span></div>
+      </div>
+      <div class="mc-time">11:00</div>
+    </div>
+    <div class="mc-row" data-cat="sys">
+      <div class="mc-edge"></div>
+      <div>
+        <div class="mc-msg">ResNexus sync stalled — 3 reservations</div>
+        <div class="mc-meta"><span>System · Action</span></div>
+      </div>
+      <div class="mc-time">14:02</div>
+    </div>
+    <div class="mc-row" data-cat="watch">
+      <div class="mc-edge"></div>
+      <div>
+        <div class="mc-msg">Lizzie · Late checkout request R12</div>
+        <div class="mc-meta"><span>Watchlist · Concierge</span></div>
+      </div>
+      <div class="mc-time">3 min</div>
+    </div>
+    <div class="mc-row" data-cat="todo">
+      <div class="mc-edge"></div>
+      <div>
+        <div class="mc-msg">Pet allergy accommodation — R28</div>
+        <div class="mc-meta"><span>To Do · Guest</span></div>
+      </div>
+      <div class="mc-time">2 PM</div>
+    </div>
+    <div class="mc-row" data-cat="notes">
+      <div class="mc-edge"></div>
+      <div>
+        <div class="mc-msg">Dueling Pianos tonight — towels staged</div>
+        <div class="mc-meta"><span>Note · Today</span></div>
+      </div>
+      <div class="mc-time">Today</div>
+    </div>
+  </div>
+  <div class="footnote">Option E · Mission Control</div>
+</div>
+
+<div class="section-divider">5 Options Total</div>
+<div class="annotation">
+  A · Distinct Sub-sections (top of page)<br>
+  B · Unified Priority Stream<br>
+  C · 2×2 Quadrant Grid<br>
+  D · Magazine Layout (hero + support)<br>
+  E · Mission Control Tiles
+</div>
+
+</body>
+</html>
