@@ -306,6 +306,10 @@ export default function DeparturesCard({
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const [openDeepCleanDetail, setOpenDeepCleanDetail] = useState<string | null>(null);
+  // Per-room work collapsible cards (D-430 artifact) + maintenance compose drawer.
+  const [deepCleanOpen, setDeepCleanOpen] = useState(false);
+  const [maintOpen, setMaintOpen] = useState(false);
+  const [maintDrawerOpen, setMaintDrawerOpen] = useState(false);
   // Day 48 — Notes compose moved into a popout modal triggered by the
   // topstrip-right + button; replaces the previous inline NoteComposeForm
   // mount inside .setstat. State scoped to this card; opens/closes locally.
@@ -586,20 +590,37 @@ export default function DeparturesCard({
             </div>
           </section>
 
-          {/* Per-room work — Deep Clean tray (D-430 R34-R36). Rolling monthly
-              clock per item; checking an item logs to deep_clean_history and
-              resets that item's clock. Items can be done ad-hoc on any
-              departure. Details opens the KB procedure. */}
+          {/* Per-room work — Deep Clean + Maintenance as collapsible exrow
+              cards (D-430 artifact). Deep Clean expands to the 7-item tray;
+              Maintenance expands to the issue list + Log New Issue drawer. */}
           <section className="section">
             <header className="section__head">
               <span className="section__label">Per-room work</span>
-              <span className="section__count">
-                Deep Clean ·{" "}
-                {deepCleanItems.filter((i) => i.doneThisTask).length} of{" "}
-                {deepCleanItems.length} done
-              </span>
+              <span className="section__count">Deep Clean &middot; Maintenance</span>
             </header>
 
+            {/* Deep Clean — collapsible */}
+            <div className="exrow" data-open={deepCleanOpen ? "true" : "false"}>
+              <button
+                type="button"
+                className="exrow__head"
+                onClick={() => setDeepCleanOpen((o) => !o)}
+                aria-expanded={deepCleanOpen}
+              >
+                <span className="exrow__icon">DC</span>
+                <div className="exrow__text">
+                  <div className="exrow__title">Deep Clean</div>
+                  <div className="exrow__sub">
+                    {deepCleanItems.filter((i) => i.doneThisTask).length} of{" "}
+                    {deepCleanItems.length} done
+                  </div>
+                </div>
+                <span className="exrow__count">{deepCleanItems.length}</span>
+                <span className="exrow__chev">›</span>
+              </button>
+              <div className="exrow__expand">
+                <div className="exrow__expand-inner">
+                  <div className="exrow__expand-pad">
             <div className="deepclean">
               {deepCleanItems.map((item) => {
                 const busy = deepCleanBusy === item.key;
@@ -659,95 +680,169 @@ export default function DeparturesCard({
                 );
               })}
             </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Maintenance — collapsible. Issue rows per the D-430 artifact;
+                "Log New Issue" opens the compose drawer below. */}
+            <div className="exrow" data-open={maintOpen ? "true" : "false"}>
+              <button
+                type="button"
+                className="exrow__head"
+                onClick={() => setMaintOpen((o) => !o)}
+                aria-expanded={maintOpen}
+              >
+                <span className="exrow__icon">MX</span>
+                <div className="exrow__text">
+                  <div className="exrow__title">Maintenance</div>
+                  <div className="exrow__sub">
+                    {maintenanceItems.length === 0
+                      ? "No issues"
+                      : `${maintenanceItems.length} open · ${
+                          maintenanceItems.filter((m) => m.severity === "High").length
+                        } high · ${
+                          maintenanceItems.filter((m) => m.severity === "Normal").length
+                        } normal · ${
+                          maintenanceItems.filter((m) => m.severity === "Low").length
+                        } low`}
+                  </div>
+                </div>
+                <span className="exrow__count">{maintenanceItems.length}</span>
+                <span className="exrow__chev">›</span>
+              </button>
+              <div className="exrow__expand">
+                <div className="exrow__expand-inner">
+                  <div className="exrow__expand-pad">
+                    <div className="issues">
+                      {maintenanceItems.length === 0 ? (
+                        <div
+                          style={{
+                            padding: "10px 4px",
+                            fontSize: 12,
+                            opacity: 0.55,
+                          }}
+                        >
+                          No issues logged yet.
+                        </div>
+                      ) : (
+                        maintenanceItems.map((m) => {
+                          const sev =
+                            m.severity === "High"
+                              ? "high"
+                              : m.severity === "Low"
+                                ? "low"
+                                : "normal";
+                          const img = m.image_url;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              className="issue"
+                              onClick={
+                                img
+                                  ? () => window.open(img, "_blank", "noopener")
+                                  : undefined
+                              }
+                            >
+                              <span className={`issue__sev issue__sev--${sev}`} />
+                              <div className="issue__main">
+                                <div className="issue__title">
+                                  {m.item} · {m.type}
+                                </div>
+                                <div className="issue__loc">
+                                  {task.room_number
+                                    ? `${m.location} · Room ${task.room_number}`
+                                    : m.location}
+                                </div>
+                              </div>
+                              <div className="issue__right">
+                                <span className="issue__status issue__status--open">
+                                  Open
+                                </span>
+                                <span className="issue__time">
+                                  {new Date(m.created_at).toLocaleTimeString(
+                                    undefined,
+                                    { hour: "numeric", minute: "2-digit" },
+                                  )}
+                                </span>
+                                {img ? (
+                                  <span className="issue__photo">📎</span>
+                                ) : null}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                    {!taskDone ? (
+                      <button
+                        type="button"
+                        className="issue-add"
+                        onClick={() => setMaintDrawerOpen(true)}
+                      >
+                        <span className="issue-add__plus">+</span> Log New Issue
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
 
-          {/* Maintenance compose drawer — master plan III.B (Day 33). Replaces
-              the locked MX exrow placeholder. Issue list above + compose form
-              below. Issues persist on archived cards forever per Global Rules R21. */}
-          <section className="section">
-            <header className="section__head">
-              <span className="section__label">Maintenance</span>
-              <span className="section__count">
-                {maintenanceItems.length === 0
-                  ? "Report an issue"
-                  : `${maintenanceItems.length} issue${maintenanceItems.length !== 1 ? "s" : ""}`}
-              </span>
-            </header>
-            {maintenanceItems.length > 0 ? (
-              <ul className="maint-list" role="list">
-                {maintenanceItems.map((m) => (
-                  <li key={m.id} className="maint-row">
-                    <div className="maint-row__head">
-                      <span className="maint-row__author">
-                        {m.author_display_name || "Team"}
-                      </span>
-                      <time
-                        className="maint-row__time"
-                        dateTime={m.created_at}
-                      >
-                        {new Date(m.created_at).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </div>
-                    <div className="maint-row__chips">
-                      <span className="maint-row__chip">{m.location}</span>
-                      <span className="maint-row__chip">{m.item}</span>
-                      <span className="maint-row__chip">{m.type}</span>
-                      <span
-                        className={
-                          m.severity === "High"
-                            ? "maint-row__chip maint-row__chip--severity-high"
-                            : "maint-row__chip"
-                        }
-                      >
-                        {m.severity}
-                      </span>
-                    </div>
-                    {m.body ? (
-                      <p className="maint-row__body">{m.body}</p>
-                    ) : null}
-                    {m.image_url ? (
-                      <a
-                        href={m.image_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="staff-photo-thumb-link"
-                      >
-                        <img
-                          src={m.image_url}
-                          alt=""
-                          className="staff-photo-thumb"
-                        />
-                      </a>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {!taskDone ? (
-              <MaintenanceComposeForm
-                body={maintBody}
-                setBody={setMaintBody}
-                location={maintLocation}
-                setLocation={setMaintLocation}
-                item={maintItem}
-                setItem={setMaintItem}
-                type={maintType}
-                setType={setMaintType}
-                severity={maintSeverity}
-                setSeverity={setMaintSeverity}
-                file={maintFile}
-                setFile={setMaintFile}
-                onSubmit={onPostMaintenance}
-                busy={maintBusy}
-                className="maint-compose--card"
-              />
-            ) : null}
-          </section>
+          {/* Maintenance compose drawer — opens from "Log New Issue". Reuses the
+              note-modal chrome around MaintenanceComposeForm. */}
+          {maintDrawerOpen ? (
+            <div
+              className="note-modal__overlay"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setMaintDrawerOpen(false);
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="maint-modal-title"
+            >
+              <div
+                className="note-modal__dialog"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <header className="note-modal__head">
+                  <h2 id="maint-modal-title" className="note-modal__title">
+                    Log New Issue
+                  </h2>
+                  <button
+                    type="button"
+                    className="note-modal__close"
+                    onClick={() => setMaintDrawerOpen(false)}
+                    aria-label="Close"
+                    disabled={maintBusy}
+                  >
+                    ×
+                  </button>
+                </header>
+                <div className="note-modal__body">
+                  <MaintenanceComposeForm
+                    body={maintBody}
+                    setBody={setMaintBody}
+                    location={maintLocation}
+                    setLocation={setMaintLocation}
+                    item={maintItem}
+                    setItem={setMaintItem}
+                    type={maintType}
+                    setType={setMaintType}
+                    severity={maintSeverity}
+                    setSeverity={setMaintSeverity}
+                    file={maintFile}
+                    setFile={setMaintFile}
+                    onSubmit={onPostMaintenance}
+                    busy={maintBusy}
+                    className="maint-compose--card"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* CTAs */}
           <div className="cta">

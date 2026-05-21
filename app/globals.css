@@ -7131,3 +7131,182 @@ main.wrap--wide {
   color: var(--shell-ink);
   margin: 0;
 }
+
+/* ── Per-room work collapsible cards on the LIVE D-430 staff card ────────────
+   The .exrow / .issue / .issue-add styling existed only under .preview-d-430
+   (dev artifact), so it never applied on the live .staff-task-exec card — which
+   is why the live Deep Clean/Maintenance UI didn't match the artifact. These
+   port that styling into the live scope, themed to the departures bucket. */
+.staff-task-exec .exrow {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+.staff-task-exec .exrow + .exrow { margin-top: 8px; }
+.staff-task-exec .exrow__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  transition: background 0.15s;
+}
+.staff-task-exec .exrow__head:hover { background: var(--departures-accent-tint); }
+.staff-task-exec .exrow__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--departures-accent-tint);
+  display: grid;
+  place-items: center;
+  color: var(--departures-accent-ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.staff-task-exec .exrow__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.staff-task-exec .exrow__title {
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  letter-spacing: -0.012em;
+  line-height: 1.18;
+}
+.staff-task-exec .exrow__sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.staff-task-exec .exrow__count {
+  font-family: var(--sans);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  letter-spacing: -0.014em;
+  line-height: 1;
+}
+.staff-task-exec .exrow__chev {
+  font-family: var(--sans);
+  font-size: 18px;
+  color: var(--ink-soft);
+  transition: transform 0.28s ease;
+  display: inline-block;
+}
+.staff-task-exec .exrow[data-open="true"] .exrow__chev { transform: rotate(90deg); }
+.staff-task-exec .exrow__expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.staff-task-exec .exrow[data-open="true"] .exrow__expand { grid-template-rows: 1fr; }
+.staff-task-exec .exrow__expand-inner { overflow: hidden; min-height: 0; }
+.staff-task-exec .exrow__expand-pad {
+  padding: 14px 12px;
+  border-top: 1px solid var(--hairline);
+}
+.staff-task-exec .issues { display: flex; flex-direction: column; gap: 6px; }
+.staff-task-exec .issue {
+  background: #ffffff;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 12px 14px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+.staff-task-exec .issue__sev {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.staff-task-exec .issue__sev--high { background: var(--alert); box-shadow: 0 0 0 3px rgba(255, 0, 68, 0.18); }
+.staff-task-exec .issue__sev--normal { background: var(--warn); box-shadow: 0 0 0 3px rgba(255, 208, 0, 0.20); }
+.staff-task-exec .issue__sev--low { background: var(--departures-accent); box-shadow: 0 0 0 3px var(--departures-accent-tint); }
+.staff-task-exec .issue__main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.staff-task-exec .issue__title {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  letter-spacing: -0.008em;
+  line-height: 1.18;
+}
+.staff-task-exec .issue__loc {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.staff-task-exec .issue__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.staff-task-exec .issue__status {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.staff-task-exec .issue__status--open { color: var(--alert); }
+.staff-task-exec .issue__time {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.staff-task-exec .issue__photo {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.staff-task-exec .issue-add {
+  background: var(--departures-accent-tint);
+  border: 1.5px dashed var(--departures-accent);
+  border-radius: 12px;
+  padding: 14px;
+  width: 100%;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--departures-accent-ink);
+  text-transform: uppercase;
+  font-weight: 700;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.staff-task-exec .issue-add__plus { font-family: var(--sans); font-size: 16px; line-height: 1; }
