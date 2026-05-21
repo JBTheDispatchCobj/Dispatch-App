@@ -111,6 +111,56 @@ export async function getDeepCleanStatus(
   return base;
 }
 
+export type OverdueDeepClean = {
+  room: string;
+  itemName: string;
+  lastCompletedOn: string;
+  daysSince: number;
+};
+
+/**
+ * Property-wide overdue deep-clean items — for each (room, item) pair that has
+ * history, the most-recent completion that's now past the rolling cycle.
+ * Powers the Notification Center System push. (Items that were NEVER logged for
+ * a room don't appear — surfacing those needs a room roster, deferred.)
+ * Sorted most-overdue first.
+ */
+export async function getOverdueDeepCleanItems(
+  client: SupabaseClient,
+): Promise<OverdueDeepClean[]> {
+  const { data, error } = await client
+    .from("deep_clean_history")
+    .select("room_number, task_name, completed_on")
+    .order("completed_on", { ascending: false })
+    .limit(500);
+  if (error || !data) return [];
+
+  const rows = data as Array<{
+    room_number: string;
+    task_name: string;
+    completed_on: string;
+  }>;
+  const today = todayYmd();
+  const seen = new Set<string>(); // room|item — first seen = most recent (desc order)
+  const overdue: OverdueDeepClean[] = [];
+  for (const r of rows) {
+    const key = `${r.room_number}|${r.task_name}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const days = daysBetween(r.completed_on, today);
+    if (days >= DEEP_CLEAN_CYCLE_DAYS) {
+      overdue.push({
+        room: r.room_number,
+        itemName: r.task_name,
+        lastCompletedOn: r.completed_on,
+        daysSince: days,
+      });
+    }
+  }
+  overdue.sort((a, b) => b.daysSince - a.daysSince);
+  return overdue;
+}
+
 /** Log a deep-clean item completion for a room — resets that item's clock. */
 export async function logDeepCleanItem(
   client: SupabaseClient,

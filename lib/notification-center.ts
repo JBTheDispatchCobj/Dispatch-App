@@ -27,6 +27,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getActivityFeed } from "./activity-feed";
 import { taskEventType } from "./task-events";
+import { getOverdueDeepCleanItems } from "./deep-clean";
 
 export type MasterKey = "incoming" | "system" | "outgoing" | "maintenance";
 
@@ -182,7 +183,7 @@ export async function getNotificationCenterData(
   const out = masters[2].items;
   const mnt = masters[3].items;
 
-  const [notesRes, exceptions, maintRes, critical, manualRes] =
+  const [notesRes, exceptions, maintRes, critical, manualRes, overdueDeepClean] =
     await Promise.all([
       client
         .from("notes")
@@ -226,6 +227,7 @@ export async function getNotificationCenterData(
         .eq("source", "manual")
         .order("created_at", { ascending: false })
         .limit(40),
+      getOverdueDeepCleanItems(client).catch(() => []),
     ]);
 
   // --- Notes → Incoming (Admin/Guest/Supply) + Maint/Incoming
@@ -310,6 +312,18 @@ export async function getNotificationCenterData(
       source: r.room_number ? `RM ${r.room_number}` : bucket || undefined,
       metaCategory: r.status === "blocked" ? "Blocked" : "High priority",
       timeAgo: timeAgo(r.created_at),
+    });
+  }
+
+  // --- overdue deep-clean items → System/Today (the "system push")
+  for (const dc of overdueDeepClean) {
+    sys.today.push({
+      id: `dc:${dc.room}:${dc.itemName}`,
+      title: `Deep Clean due — ${dc.itemName}`,
+      source: `RM ${dc.room}`,
+      noteBody: `${dc.itemName} was last deep-cleaned ${timeAgo(dc.lastCompletedOn)} (${dc.daysSince} days ago) — past the monthly cycle, needs a deep clean.`,
+      metaCategory: "Deep Clean · Overdue",
+      timeAgo: timeAgo(dc.lastCompletedOn),
     });
   }
 
