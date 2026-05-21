@@ -14,7 +14,9 @@ import { supabase } from "@/lib/supabase";
 import ProfileLoadError from "@/app/profile-load-error";
 
 /**
- * Email -> 6-digit code sign-in.
+ * Email -> one-time code sign-in (Supabase OTP; length is whatever the
+ * project is configured for — currently 8 digits — so the input is
+ * length-flexible, not hardcoded).
  *
  * We email a one-time code (Supabase OTP) and verify it in-app instead of
  * having the user click a magic link. Magic-link clicks were unreliable on
@@ -155,19 +157,19 @@ function LoginForm() {
       <main className="wrap login-screen">
         <h1>Enter your code</h1>
         <p className="subtitle">
-          We emailed a 6-digit code to <strong>{email}</strong>. Enter it below
-          to sign in.
+          We emailed a sign-in code to <strong>{email}</strong>. Enter the whole
+          code below to sign in.
         </p>
         <form className="stack" onSubmit={onVerifyCode}>
           <label>
-            6-digit code
+            Sign-in code
             <input
               type="text"
               name="code"
               autoComplete="one-time-code"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={6}
+              maxLength={10}
               value={code}
               onChange={(ev) => setCode(ev.target.value.replace(/\D/g, ""))}
               required
@@ -205,7 +207,7 @@ function LoginForm() {
     <main className="wrap login-screen">
       <h1>Sign in</h1>
       <p className="subtitle">
-        Enter your work email. We will email you a 6-digit code to sign in—no
+        Enter your work email. We will email you a one-time sign-in code—no
         password needed.
       </p>
       <form className="stack" onSubmit={onSendCode}>
