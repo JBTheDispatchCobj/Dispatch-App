@@ -774,8 +774,10 @@ export default function StaffHomePage() {
                     {leftCluster}
                     <div className="bucket__right">{rightCluster}</div>
                   </Link>
-                ) : isDirectLink ? (
-                  /* ── Mode: DIRECT_LINK but inert (EOD locked, or zero tasks) ── */
+                ) : isDirectLink || state.isEmpty ? (
+                  /* ── Mode: inert (direct-link with zero tasks / EOD locked,
+                     OR any empty bucket like an empty Dailys) — greyed via
+                     .bucket--empty, no click target, no expand. ── */
                   <div className="bucket__header bucket__header--inert">
                     {leftCluster}
                     <div className="bucket__right">{rightCluster}</div>
