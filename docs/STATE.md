@@ -481,6 +481,8 @@ Three multipliers held throughout: (1) batching cross-cutters that unblock multi
 
 📊 Day 55: login OTP fix + Notification Center port (5 regions) + Deep Clean (tray/toggle/RLS/NC push) + beta data load (21 reservations, roster, 12+fixed cards) + guest-context cards (`d921d32`) + empty-bucket fix (`872af9a`) | HEAD `d921d32` (docs/handoff commit sits on top)
 
+📊 Day 55 hotfix (`21fe445`, UNPUSHED — Bryan pushes from Mac): first-login redirect-loop fix. Brand-new logins default to role `manager` (`handle_new_user_profile` trigger); root `/` sent every non-admin to `/staff` and the `/staff` guard bounced manager-likes back to `/`, looping forever (presents as the page blinking aggressively). Now `/` routes manager-likes (admin OR manager) to `/admin` via `shouldUseManagerHome`, and the `/admin` guard accepts manager-likes instead of admin-only; true staff still route to `/staff`. Surfaced by Angie's beta login blinking on Chrome mobile (she was the default `manager` between first login and her section-5 role set). 2 files (`app/page.tsx`, `app/admin/page.tsx`); `tsc --noEmit` clean; no new deps. **Bryan's product call (Day 55):** Jennifer/Courtney → admin, Angie → staff, NO holding screen; the residual "a brand-new staff hire briefly lands on the admin home during the pre-provision `manager` window" is **deferred to post-beta** (staff onboarding flow out of beta scope). RLS still governs data regardless of which shell renders.
+
 ---
 
 ## Last session close (Day 54, 2026-05-12)
