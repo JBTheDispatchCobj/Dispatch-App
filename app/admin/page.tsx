@@ -11,7 +11,6 @@ import {
 } from "@/lib/dev-auth-bypass";
 import ProfileLoadError from "../profile-load-error";
 import AddTaskModal from "@/components/admin/AddTaskModal";
-import ActivityFeed from "@/components/admin/ActivityFeed";
 import NotificationCenter from "@/components/admin/NotificationCenter";
 import {
   getCurrentWeather,
@@ -24,236 +23,27 @@ import { getTodaysReservationCounts } from "@/lib/reservations";
 import styles from "./page.module.css";
 
 /* ------------------------------------------------------------------ */
-/* Types                                                               */
-/* ------------------------------------------------------------------ */
-
-type DotColor = "green" | "amber" | "red" | "blue" | "mute";
-
-type LaneItem = { id: string; title: string; body: string; chip: string; href?: string };
-
-// Day 54 chase #6 — replaced the old BriefStat single-row stats with a
-// 2x3 grid driven by live data + Google stubs. The BriefStat type stays
-// dead code for one chase in case other admin surfaces import it; check
-// before removing.
-type BriefStat = {
-  label: string;
-  value: string;
-  unit: string;
-  compact?: boolean;
-};
-
-// FeedItem / FeedTagType + FEED_ITEMS hardcoded data removed Day 29 III.D
-// Phase 3 — replaced with the live <ActivityFeed/> component sourced from
-// lib/activity-feed.ts (task_events + notes union with severity boost).
-
-/* ------------------------------------------------------------------ */
-/* BRIEF_STATS — retired in Day 54 chase #6; replaced by live 2x3      */
-/* grid sourced from reservations + staff + admin-brief stubs.         */
-/* ------------------------------------------------------------------ */
-
-// Voided so the old constant doesn't accidentally get re-imported.
-const BRIEF_STATS: BriefStat[] = [];
-void BRIEF_STATS;
-
-/* ------------------------------------------------------------------ */
-/* Lane fetchers — Day 36 chase #1 derives                              */
+/* Helpers                                                             */
 /*                                                                      */
-/* All four lane types share the LaneItem shape so the rendering loop   */
-/* doesn't care about source. Each fetcher returns LaneItem[] and       */
-/* degrades gracefully on error (logs + empty array).                   */
+/* NC Region 3 (Day 55): the Watchlist / Scheduling / Critical / Notes  */
+/* lanes + the Activity Feed were retired — the Notification Center now  */
+/* sits under the Daily Brief and carries all of that. The only surviving*/
+/* lane fetcher is the watchlist count, still used by the Maintenance    */
+/* OVERVIEW nav lane subtitle.                                           */
 /* ------------------------------------------------------------------ */
 
-function excerpt(s: string | null | undefined, max = 70): string {
-  if (!s) return "";
-  const trimmed = s.trim();
-  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
-}
-
-/** WATCHLIST — unresolved maintenance issues, severity desc → newest first. */
-async function fetchWatchlistItems(): Promise<LaneItem[]> {
-  const { data, error } = await supabase
+/** Open (unresolved) maintenance issue count for the Maintenance nav lane. */
+async function fetchOpenMaintenanceCount(): Promise<number> {
+  const { count, error } = await supabase
     .from("maintenance_issues")
-    .select("id, location, item, type, severity, body, room_number, created_at, resolved_at")
-    .is("resolved_at", null)
-    .order("created_at", { ascending: false })
-    .limit(20);
+    .select("id", { count: "exact", head: true })
+    .is("resolved_at", null);
   if (error) {
-    console.warn("[admin-home] watchlist fetch failed:", error.message);
-    return [];
+    console.warn("[admin-home] open maintenance count failed:", error.message);
+    return 0;
   }
-  const rows = (data ?? []) as Array<{
-    id: string;
-    location: string;
-    item: string;
-    type: string;
-    severity: string;
-    body: string | null;
-    room_number: string | null;
-  }>;
-  // Severity sort client-side: High → Normal → Low (mirrors UI severity order).
-  const SEV_RANK: Record<string, number> = { High: 0, Normal: 1, Low: 2 };
-  rows.sort((a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9));
-  return rows.slice(0, 5).map((r) => ({
-    id: `mnt-${r.id}`,
-    title: `${r.location} — ${r.item}`,
-    body:
-      excerpt(r.body) ||
-      [r.type, r.severity, r.room_number ? `RM ${r.room_number}` : null]
-        .filter(Boolean)
-        .join(" · "),
-    chip: "MAINTENANCE",
-    href: `/admin/maintenance/${r.id}`,
-  }));
+  return count ?? 0;
 }
-
-/** SCHEDULING — clock-in snapshot from public.staff. Honest substrate
- *  (not II.K Calendar) — on-shift staff first, then off-shift, then inactive. */
-async function fetchSchedulingItems(): Promise<LaneItem[]> {
-  const { data, error } = await supabase
-    .from("staff")
-    .select("id, name, role, status, clocked_in_at")
-    .order("name", { ascending: true });
-  if (error) {
-    console.warn("[admin-home] scheduling fetch failed:", error.message);
-    return [];
-  }
-  const rows = (data ?? []) as Array<{
-    id: string;
-    name: string;
-    role: string | null;
-    status: string | null;
-    clocked_in_at: string | null;
-  }>;
-  // Sort: on-shift first, then active off-shift, then inactive.
-  const sortKey = (r: typeof rows[number]): number => {
-    if (r.clocked_in_at) return 0;
-    if ((r.status ?? "active") === "active") return 1;
-    return 2;
-  };
-  rows.sort((a, b) => sortKey(a) - sortKey(b));
-  return rows.slice(0, 8).map((r) => {
-    const onShift = Boolean(r.clocked_in_at);
-    const since = r.clocked_in_at
-      ? new Date(r.clocked_in_at).toLocaleTimeString("en-US", {
-          hour:   "numeric",
-          minute: "2-digit",
-          hour12: true,
-          timeZone: "America/Chicago",
-        })
-      : null;
-    const isInactive = (r.status ?? "active") === "inactive";
-    const body = onShift
-      ? `On shift since ${since}`
-      : isInactive
-        ? `Inactive`
-        : `Off shift${r.role ? ` · ${r.role}` : ""}`;
-    return {
-      id: `sch-${r.id}`,
-      title: r.name,
-      body,
-      chip: onShift ? "ON SHIFT" : isInactive ? "INACTIVE" : "OFF",
-    };
-  });
-}
-
-/** CRITICAL — high-priority open tasks + any blocked tasks. */
-async function fetchCriticalItems(): Promise<LaneItem[]> {
-  // Two queries, merge — Postgres OR across (priority + status) needs `.or()`
-  // syntax and we'd still need to filter status != 'done' on one side. Two
-  // narrow queries are easier to read and keep the limit math sane.
-  const [highRes, blockedRes] = await Promise.all([
-    supabase
-      .from("tasks")
-      .select("id, title, priority, status, card_type, room_number, assignee_name, context")
-      .eq("priority", "high")
-      .neq("status", "done")
-      .order("created_at", { ascending: false })
-      .limit(10),
-    supabase
-      .from("tasks")
-      .select("id, title, priority, status, card_type, room_number, assignee_name, context")
-      .eq("status", "blocked")
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
-  if (highRes.error) console.warn("[admin-home] critical/high fetch failed:", highRes.error.message);
-  if (blockedRes.error) console.warn("[admin-home] critical/blocked fetch failed:", blockedRes.error.message);
-  const seen = new Set<string>();
-  const merged: Array<{
-    id: string; title: string; priority: string | null; status: string;
-    card_type: string; room_number: string | null; assignee_name: string | null;
-    context: Record<string, unknown> | null;
-  }> = [];
-  for (const r of [...(highRes.data ?? []), ...(blockedRes.data ?? [])] as Array<{
-    id: string; title: string; priority: string | null; status: string;
-    card_type: string; room_number: string | null; assignee_name: string | null;
-    context: Record<string, unknown> | null;
-  }>) {
-    if (seen.has(r.id)) continue;
-    seen.add(r.id);
-    merged.push(r);
-  }
-  return merged.slice(0, 5).map((r) => {
-    const bucket =
-      r.context && typeof r.context === "object"
-        ? String((r.context as Record<string, unknown>).staff_home_bucket ?? r.card_type)
-        : r.card_type;
-    const bodyParts = [
-      r.assignee_name?.trim() || "Unassigned",
-      bucket,
-      r.room_number?.trim() ? `RM ${r.room_number.trim()}` : null,
-    ].filter(Boolean);
-    return {
-      id: `crit-${r.id}`,
-      title: r.title || "(untitled)",
-      body: bodyParts.join(" · "),
-      chip: r.status === "blocked" ? "BLOCKED" : (r.priority ?? "HIGH").toUpperCase(),
-    };
-  });
-}
-
-/** NOTES — recent rows from public.notes. */
-async function fetchNotesItems(): Promise<LaneItem[]> {
-  const { data, error } = await supabase
-    .from("notes")
-    .select("id, body, note_type, note_status, author_display_name, room_number, created_at")
-    .order("created_at", { ascending: false })
-    .limit(10);
-  if (error) {
-    console.warn("[admin-home] notes fetch failed:", error.message);
-    return [];
-  }
-  const rows = (data ?? []) as Array<{
-    id: string;
-    body: string;
-    note_type: string;
-    note_status: string;
-    author_display_name: string;
-    room_number: string | null;
-  }>;
-  return rows.slice(0, 5).map((r) => ({
-    id: `note-${r.id}`,
-    title: excerpt(r.body) || `[${r.note_type}]`,
-    body: [
-      r.note_type,
-      r.author_display_name,
-      r.room_number ? `RM ${r.room_number}` : null,
-    ].filter(Boolean).join(" · "),
-    chip: (r.note_status || r.note_type || "NOTE").toUpperCase(),
-  }));
-}
-
-/* ------------------------------------------------------------------ */
-/* Lookup maps                                                         */
-/* ------------------------------------------------------------------ */
-
-const SDOT_CLASS: Record<DotColor, string> = {
-  green: styles.sdotGreen,
-  amber: styles.sdotAmber,
-  red:   styles.sdotRed,
-  blue:  styles.sdotBlue,
-  mute:  styles.sdotMute,
-};
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
@@ -264,16 +54,9 @@ export default function AdminHomePage() {
   const [profileFailure, setProfileFailure] = useState<ProfileFetchFailure | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [staffExpanded, setStaffExpanded] = useState(false);
-  const [watchlistExpanded, setWatchlistExpanded] = useState(false);
-  const [schedulingExpanded, setSchedulingExpanded] = useState(false);
-  const [criticalExpanded, setCriticalExpanded] = useState(false);
-  const [notesExpanded, setNotesExpanded] = useState(false);
 
-  // Live lane state.
-  const [watchlistItems, setWatchlistItems]   = useState<LaneItem[]>([]);
-  const [schedulingItems, setSchedulingItems] = useState<LaneItem[]>([]);
-  const [criticalItems, setCriticalItems]     = useState<LaneItem[]>([]);
-  const [notesItems, setNotesItems]           = useState<LaneItem[]>([]);
+  // Maintenance nav lane count.
+  const [openMaintCount, setOpenMaintCount] = useState<number>(0);
 
   // Day 54 chase #6 — Daily Brief 2x3 grid state.
   const [briefArrivals, setBriefArrivals]     = useState<number>(0);
@@ -311,16 +94,13 @@ export default function AdminHomePage() {
     };
   }, []);
 
-  // Fan-out lane fetches in parallel once auth resolves.
+  // Daily Brief + Maintenance count fetches once auth resolves.
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
     void (async () => {
-      const [watch, sched, crit, notes, reservations, onShift, weather, events] = await Promise.all([
-        fetchWatchlistItems(),
-        fetchSchedulingItems(),
-        fetchCriticalItems(),
-        fetchNotesItems(),
+      const [maintCount, reservations, onShift, weather, events] = await Promise.all([
+        fetchOpenMaintenanceCount(),
         getTodaysReservationCounts().catch((err) => {
           console.warn("[admin-home] reservation counts fetch failed:", err);
           return { arrivals: 0, departures: 0, stayovers: 0 };
@@ -330,10 +110,7 @@ export default function AdminHomePage() {
         getTownEventsToday(),
       ]);
       if (cancelled) return;
-      setWatchlistItems(watch);
-      setSchedulingItems(sched);
-      setCriticalItems(crit);
-      setNotesItems(notes);
+      setOpenMaintCount(maintCount);
       setBriefArrivals(reservations.arrivals);
       setBriefDepartures(reservations.departures);
       setBriefOnShift(onShift);
@@ -444,268 +221,9 @@ export default function AdminHomePage() {
           </div>
         </div>
 
-        {/* Watchlist lane */}
-        {watchlistExpanded ? (
-          <>
-            <div
-              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
-              onClick={() => setWatchlistExpanded(false)}
-              role="button"
-              tabIndex={0}
-            >
-              <span>WATCHLIST &middot; {watchlistItems.length} ITEMS</span>
-              <span className={styles.collapseHint}>
-                TAP TO COLLAPSE
-                <span className={styles.chevDown}>&#9662;</span>
-              </span>
-            </div>
-            <div
-              className={styles.laneItemGrid}
-              style={{ "--lchip-bg": "rgba(217,168,44,0.18)", "--lchip-text": "#8A6A1C" } as React.CSSProperties}
-            >
-              {watchlistItems.length === 0 && (
-                <div className={styles.laneItem}>
-                  <div className={styles.laneItemBody}>No open maintenance issues.</div>
-                </div>
-              )}
-              {watchlistItems.slice(0, 5).map((item) =>
-                item.href ? (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className={styles.laneItem}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <div className={styles.laneItemHead}>
-                      <div className={styles.laneItemTitle}>{item.title}</div>
-                      <span className={styles.laneItemChip}>{item.chip}</span>
-                    </div>
-                    <div className={styles.laneItemBody}>{item.body}</div>
-                  </Link>
-                ) : (
-                  <div key={item.id} className={styles.laneItem}>
-                    <div className={styles.laneItemHead}>
-                      <div className={styles.laneItemTitle}>{item.title}</div>
-                      <span className={styles.laneItemChip}>{item.chip}</span>
-                    </div>
-                    <div className={styles.laneItemBody}>{item.body}</div>
-                  </div>
-                ),
-              )}
-              {watchlistItems.length > 0 && (
-                <Link
-                  href="/admin/maintenance"
-                  className={styles.laneItemMore}
-                  style={{ textDecoration: "none", color: "inherit", display: "block" }}
-                >
-                  {watchlistItems.length > 5
-                    ? `VIEW ALL · +${watchlistItems.length - 5} MORE`
-                    : "VIEW ALL OPEN ISSUES"}
-                </Link>
-              )}
-            </div>
-          </>
-        ) : (
-          <div
-            className={styles.lane}
-            onClick={() => setWatchlistExpanded(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className={`${styles.laneIcon} ${styles.laneIconWatchlist}`}>&#9651;</div>
-            <div>
-              <div className={styles.laneTitle}>Watchlist</div>
-              <div className={styles.laneSub}>
-                <span className={styles.sdotAmber} />
-                {watchlistItems.length} items
-              </div>
-            </div>
-            <div className={styles.chev}>&rsaquo;</div>
-          </div>
-        )}
-
-        {/* Scheduling lane — clock-in snapshot until II.K Calendar lands */}
-        {schedulingExpanded ? (
-          <>
-            <div
-              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
-              onClick={() => setSchedulingExpanded(false)}
-              role="button"
-              tabIndex={0}
-            >
-              <span>SCHEDULING &middot; {schedulingItems.length} ITEMS</span>
-              <span className={styles.collapseHint}>
-                TAP TO COLLAPSE
-                <span className={styles.chevDown}>&#9662;</span>
-              </span>
-            </div>
-            <div
-              className={styles.laneItemGrid}
-              style={{ "--lchip-bg": "rgba(46,123,84,0.16)", "--lchip-text": "#1F5C3C" } as React.CSSProperties}
-            >
-              {schedulingItems.length === 0 && (
-                <div className={styles.laneItem}>
-                  <div className={styles.laneItemBody}>No staff records.</div>
-                </div>
-              )}
-              {schedulingItems.slice(0, 5).map((item) => (
-                <div key={item.id} className={styles.laneItem}>
-                  <div className={styles.laneItemHead}>
-                    <div className={styles.laneItemTitle}>{item.title}</div>
-                    <span className={styles.laneItemChip}>{item.chip}</span>
-                  </div>
-                  <div className={styles.laneItemBody}>{item.body}</div>
-                </div>
-              ))}
-              {schedulingItems.length > 5 && (
-                <div className={styles.laneItemMore}>+{schedulingItems.length - 5} more</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div
-            className={styles.lane}
-            onClick={() => setSchedulingExpanded(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className={`${styles.laneIcon} ${styles.laneIconScheduling}`}>&#9681;</div>
-            <div>
-              <div className={styles.laneTitle}>Scheduling</div>
-              <div className={styles.laneSub}>
-                <span className={styles.sdotGreen} />
-                {schedulingItems.length} on roster
-              </div>
-            </div>
-            <div className={styles.chev}>&rsaquo;</div>
-          </div>
-        )}
-
-        {/* Critical lane */}
-        {criticalExpanded ? (
-          <>
-            <div
-              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
-              onClick={() => setCriticalExpanded(false)}
-              role="button"
-              tabIndex={0}
-            >
-              <span>CRITICAL &middot; {criticalItems.length} ITEMS</span>
-              <span className={styles.collapseHint}>
-                TAP TO COLLAPSE
-                <span className={styles.chevDown}>&#9662;</span>
-              </span>
-            </div>
-            <div
-              className={styles.laneItemGrid}
-              style={{ "--lchip-bg": "rgba(199,95,95,0.18)", "--lchip-text": "#8A3A3A" } as React.CSSProperties}
-            >
-              {criticalItems.length === 0 && (
-                <div className={styles.laneItem}>
-                  <div className={styles.laneItemBody}>Nothing critical.</div>
-                </div>
-              )}
-              {criticalItems.slice(0, 5).map((item) => (
-                <div key={item.id} className={styles.laneItem}>
-                  <div className={styles.laneItemHead}>
-                    <div className={styles.laneItemTitle}>{item.title}</div>
-                    <span className={styles.laneItemChip}>{item.chip}</span>
-                  </div>
-                  <div className={styles.laneItemBody}>{item.body}</div>
-                </div>
-              ))}
-              {criticalItems.length > 5 && (
-                <div className={styles.laneItemMore}>+{criticalItems.length - 5} more</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div
-            className={styles.lane}
-            onClick={() => setCriticalExpanded(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className={`${styles.laneIcon} ${styles.laneIconCritical}`}>&#9650;</div>
-            <div>
-              <div className={styles.laneTitle}>Critical</div>
-              <div className={styles.laneSub}>
-                <span className={styles.sdotRed} />
-                {criticalItems.length} active
-              </div>
-            </div>
-            <div className={styles.chev}>&rsaquo;</div>
-          </div>
-        )}
-
-        {/* Notes lane */}
-        {notesExpanded ? (
-          <>
-            <div
-              className={`${styles.sectionLabel} ${styles.sectionLabelExpanded}`}
-              onClick={() => setNotesExpanded(false)}
-              role="button"
-              tabIndex={0}
-            >
-              <span>NOTES &middot; {notesItems.length} ITEMS</span>
-              <span className={styles.collapseHint}>
-                TAP TO COLLAPSE
-                <span className={styles.chevDown}>&#9662;</span>
-              </span>
-            </div>
-            <div
-              className={styles.laneItemGrid}
-              style={{ "--lchip-bg": "rgba(74,127,168,0.18)", "--lchip-text": "#2B6C8A" } as React.CSSProperties}
-            >
-              {notesItems.length === 0 && (
-                <div className={styles.laneItem}>
-                  <div className={styles.laneItemBody}>No recent notes.</div>
-                </div>
-              )}
-              {notesItems.slice(0, 5).map((item) => (
-                <div key={item.id} className={styles.laneItem}>
-                  <div className={styles.laneItemHead}>
-                    <div className={styles.laneItemTitle}>{item.title}</div>
-                    <span className={styles.laneItemChip}>{item.chip}</span>
-                  </div>
-                  <div className={styles.laneItemBody}>{item.body}</div>
-                </div>
-              ))}
-              {notesItems.length > 5 && (
-                <div className={styles.laneItemMore}>+{notesItems.length - 5} more</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div
-            className={styles.lane}
-            onClick={() => setNotesExpanded(true)}
-            role="button"
-            tabIndex={0}
-          >
-            <div className={`${styles.laneIcon} ${styles.laneIconNotes}`}>&#9678;</div>
-            <div>
-              <div className={styles.laneTitle}>Notes</div>
-              <div className={styles.laneSub}>
-                <span className={styles.sdotBlue} />
-                {notesItems.length} items
-              </div>
-            </div>
-            <div className={styles.chev}>&rsaquo;</div>
-          </div>
-        )}
-
-        {/* Activity feed — Day 29 III.D Phase 3.
-            Live <ActivityFeed/> component replaces the hardcoded FEED_ITEMS
-            array that's been sitting here since the original Phase 3 UI
-            build. Sources task_events + notes via lib/activity-feed.ts. */}
-        <ActivityFeed />
-
-        {/* Notification Center — Day 55, NC Region 1. Locked v2 design ported
-            with PLACEHOLDER data, mounted here below the Activity Feed per
-            Bryan's field-by-field migration plan. Region 2 wires live data
-            (lanes -> NC tiles); Region 3 retires the old lanes and lifts this
-            up under the Daily Brief (see design/admin-home-locked.html). */}
+        {/* Notification Center — Day 55, NC Region 3. Lifted directly under the
+            Daily Brief; replaces the retired Watchlist / Scheduling / Critical /
+            Notes lanes + Activity Feed (see design/admin-home-locked.html). */}
         <NotificationCenter />
 
         {/* Staff — expanded inline or minimized lane */}
@@ -817,7 +335,7 @@ export default function AdminHomePage() {
             <div className={styles.laneTitle}>Maintenance</div>
             <div className={styles.laneSub}>
               <span className={styles.sdotAmber} />
-              {watchlistItems.length} open
+              {openMaintCount} open
             </div>
           </div>
           <div className={styles.chev}>&rsaquo;</div>
