@@ -67,6 +67,28 @@ values
   ('Service Room 27','stayover','open','medium','pms','27','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb),
   ('Service Room 37','stayover','open','medium','pms','37','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"stayovers"}'::jsonb);
 
+-- Fixed standing daily cards (NOT reservation-derived): SOD, Dailys, EOD.
+-- These don't change day-to-day except by manual override. card_type 'dailys'
+-- does NOT auto-seed a checklist, so the Dailys items are inserted explicitly.
+insert into public.tasks
+  (title, card_type, status, priority, source, assignee_name, staff_id, is_staff_report, created_by_user_id, context)
+values
+  ('Start of Day','start_of_day','open','medium','pms','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"start_of_day"}'::jsonb),
+  ('Wrap Shift','eod','open','medium','pms','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"eod"}'::jsonb);
+
+insert into public.tasks
+  (id, title, card_type, status, priority, source, assignee_name, staff_id, is_staff_report, created_by_user_id, context)
+values
+  ('da11ca5e-0000-4000-8000-000000000001','Property Round','dailys','open','medium','pms','Angie','a0c1e000-0000-4000-8000-000000000001',false,'380edc3d-ab42-4aed-aff7-940d9d6f8c2a','{"staff_home_bucket":"dailys"}'::jsonb);
+
+insert into public.task_checklist_items (task_id, title, sort_order, done) values
+  ('da11ca5e-0000-4000-8000-000000000001','Restock Cart',     1, false),
+  ('da11ca5e-0000-4000-8000-000000000001','Public Restrooms', 2, false),
+  ('da11ca5e-0000-4000-8000-000000000001','Dust Pictures',    3, false),
+  ('da11ca5e-0000-4000-8000-000000000001','Trash Pickup',     4, false),
+  ('da11ca5e-0000-4000-8000-000000000001','Wash Windows',     5, false),
+  ('da11ca5e-0000-4000-8000-000000000001','Vacuum Hallways',  6, false);
+
 -- =========================================================================
 -- 5. Jennifer / Courtney / Angie — RUN/RE-RUN AFTER each has logged in once
 --    (login creates their auth.users + a default 'manager' profile). Safe to
