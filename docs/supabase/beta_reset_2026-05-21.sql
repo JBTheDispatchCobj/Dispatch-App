@@ -56,9 +56,19 @@ insert into public.tasks
   (title, card_type, status, priority, source, room_number,
    assignee_name, staff_id, is_staff_report, created_by_user_id, context)
 -- Departures (turnover) — Departs = today
+-- context carries outgoing_guest so the staff-home expansion row renders
+-- "Room <n> · <type>" / "<guest>" instead of falling back to an em-dash.
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'housekeeping_turn', 'open', 'medium', 'pms',
        r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"departures"}'::jsonb
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid,
+       jsonb_build_object(
+         'staff_home_bucket', 'departures',
+         'outgoing_guest', jsonb_build_object(
+           'name',       r.guest_name,
+           'room_type',  substring(r.raw_payload->>'rooms' from '^[0-9]+\s+(.+?)\s*:'),
+           'clean_type', 'Standard'
+         )
+       )
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.departure_date = current_date
@@ -66,7 +76,15 @@ union all
 -- Arrivals (prep) — Arrives = today
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'arrival', 'open', 'medium', 'pms',
        r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"arrivals"}'::jsonb
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid,
+       jsonb_build_object(
+         'staff_home_bucket', 'arrivals',
+         'incoming_guest', jsonb_build_object(
+           'name',         r.guest_name,
+           'room_type',    substring(r.raw_payload->>'rooms' from '^[0-9]+\s+(.+?)\s*:'),
+           'checkin_time', to_char(r.arrival_time, 'HH24:MI')
+         )
+       )
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.arrival_date = current_date
@@ -74,7 +92,16 @@ union all
 -- Stayovers (service) — arrival < today < departure
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'stayover', 'open', 'medium', 'pms',
        r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"stayovers"}'::jsonb
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid,
+       jsonb_build_object(
+         'staff_home_bucket', 'stayovers',
+         'current_guest', jsonb_build_object(
+           'name',         r.guest_name,
+           'room_type',    substring(r.raw_payload->>'rooms' from '^[0-9]+\s+(.+?)\s*:'),
+           'night_n',      (current_date - r.arrival_date),
+           'total_nights', greatest(1, r.departure_date - r.arrival_date)
+         )
+       )
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.arrival_date < current_date and r.departure_date > current_date;
