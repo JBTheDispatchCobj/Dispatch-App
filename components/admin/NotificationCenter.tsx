@@ -153,7 +153,8 @@ export default function NotificationCenter() {
             })}
           </div>
 
-          {/* SUB-TILES (active master) */}
+          {/* SUB-TILES (active master) — hidden when a master has a single category */}
+          {(activeMasterDef?.subTiles.length ?? 0) > 1 && (
           <div className={styles.subsWrap}>
             <div
               className={[
@@ -182,6 +183,7 @@ export default function NotificationCenter() {
               })}
             </div>
           </div>
+          )}
 
           {/* ITEM LIST */}
           <div className={styles.items}>

@@ -114,11 +114,10 @@ function emptyMasters(): NcMaster[] {
     {
       key: "outgoing",
       label: "Outgoing",
-      subTiles: [
-        { key: "history", label: "History" },
-        { key: "scheduled", label: "Scheduled" },
-      ],
-      items: { history: [], scheduled: [] },
+      // Single category for beta — "Scheduled" (admin-sent cards still pending).
+      // The full history ("all") lives in the View-all archive, not inline.
+      subTiles: [{ key: "scheduled", label: "Scheduled" }],
+      items: { scheduled: [] },
     },
     {
       key: "maintenance",
@@ -314,32 +313,20 @@ export async function getNotificationCenterData(
     });
   }
 
-  // --- manual (admin-sent) tasks → Outgoing/History (this week) + Outgoing/Scheduled (pending)
-  // Inline History is trimmed to the last 7 days; the full log lives behind the
-  // "View all" archive (/admin/notifications). Scheduled = still-open subset
-  // regardless of age (light beta heuristic; evolves with the agent).
+  // --- manual (admin-sent) tasks → Outgoing/Scheduled (still-pending, open)
+  // Outgoing inline shows ONLY Scheduled (admin-scheduled-to-team cards). The
+  // full history ("all") lives in the View-all archive (/admin/notifications).
   if (!manualRes.error && manualRes.data) {
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const r of manualRes.data as TaskRow[]) {
-      const base: NcItem = {
-        id: `task:${r.id}`,
+      if (r.status !== "open") continue;
+      out.scheduled.push({
+        id: `sched:${r.id}`,
         title: r.title || "(untitled)",
         authorName: r.assignee_name || "Team",
         source: r.room_number ? `RM ${r.room_number}` : undefined,
-        metaCategory: `Sent · ${r.status || "open"}`,
+        metaCategory: "Scheduled",
         timeAgo: timeAgo(r.created_at),
-      };
-      const createdMs = new Date(r.created_at).getTime();
-      if (Number.isNaN(createdMs) || createdMs >= weekAgo) {
-        out.history.push(base);
-      }
-      if (r.status === "open") {
-        out.scheduled.push({
-          ...base,
-          id: `sched:${r.id}`,
-          metaCategory: "Scheduled",
-        });
-      }
+      });
     }
   }
 
