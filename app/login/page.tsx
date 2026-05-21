@@ -2,36 +2,60 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent, Suspense } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   fetchProfile,
   shouldUseManagerHome,
   type ProfileFetchFailure,
+  type ProfileRow,
 } from "@/lib/profile";
 import { resolveAuthUser } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
 import ProfileLoadError from "@/app/profile-load-error";
 
+/**
+ * Email -> 6-digit code sign-in.
+ *
+ * We email a one-time code (Supabase OTP) and verify it in-app instead of
+ * having the user click a magic link. Magic-link clicks were unreliable on
+ * mobile: tapping the link inside a mail app opens an in-app browser that does
+ * NOT carry the PKCE code-verifier the requesting browser stored, so the
+ * code-for-session exchange failed and the user fell back to whatever session
+ * the device already had (e.g. an admin), landing them on the wrong home.
+ * Typing the code happens in the same browser, so there is no cross-context
+ * verifier dependency.
+ *
+ * NOTE: requires the Supabase "Magic Link" email template to surface the code
+ * via {{ .Token }}; otherwise the email arrives with no code to type.
+ */
+
+/** Where to send a freshly-authed user. Matches the already-signed-in gate. */
+function routeForProfile(p: ProfileRow): "/" | "/staff" {
+  return shouldUseManagerHome(p) ? "/" : "/staff";
+}
+
 function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [linkSent, setLinkSent] = useState(false);
   const [profileGateFailure, setProfileGateFailure] =
     useState<ProfileFetchFailure | null>(null);
 
   useEffect(() => {
     const paramError = searchParams.get("error");
-    if (paramError === "callback") {
-      setError("Sign-in link expired or was invalid. Try again.");
+    if (paramError === "callback" || paramError === "auth_callback_failed") {
+      setError("That sign-in link expired or was invalid. Enter your email to get a new code.");
     }
   }, [searchParams]);
 
+  // Already signed in? Route by role (no sign-in step needed).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (cancelled) return;
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -45,18 +69,7 @@ function LoginForm() {
           setCheckingSession(false);
           return;
         }
-        const p = result.profile;
-        const managerLike = shouldUseManagerHome(p);
-        const target = managerLike ? "/" : "/staff";
-        console.log("[login-routing]", {
-          authUserId: user.id,
-          authEmail: user.email,
-          profileId: p.id,
-          role: p.role,
-          staffId: p.staff_id,
-          decision: `replace(${target})`,
-        });
-        window.location.replace(target);
+        window.location.replace(routeForProfile(result.profile));
         return;
       }
       setCheckingSession(false);
@@ -66,16 +79,27 @@ function LoginForm() {
     };
   }, []);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function routeAfterAuth(user: User) {
+    const result = await fetchProfile(supabase, user);
+    if (!result.ok) {
+      setProfileGateFailure(result.failure);
+      setLoading(false);
+      return;
+    }
+    window.location.replace(routeForProfile(result.profile));
+    // Keep `loading` true through the redirect so the form stays disabled.
+  }
+
+  async function onSendCode(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    setLinkSent(false);
     setLoading(true);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    // emailRedirectTo is harmless here; if a link is also present in the
+    // template it stays valid, but the code path is what we rely on.
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     setLoading(false);
@@ -83,7 +107,35 @@ function LoginForm() {
       setError(otpError.message);
       return;
     }
-    setLinkSent(true);
+    setStep("code");
+  }
+
+  async function onVerifyCode(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    const { data, error: verifyError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "email",
+    });
+    if (verifyError) {
+      setLoading(false);
+      setError(verifyError.message);
+      return;
+    }
+    if (!data.user) {
+      setLoading(false);
+      setError("Could not complete sign-in. Request a new code and try again.");
+      return;
+    }
+    await routeAfterAuth(data.user);
+  }
+
+  function backToEmail() {
+    setStep("email");
+    setCode("");
+    setError(null);
   }
 
   if (checkingSession) {
@@ -98,14 +150,65 @@ function LoginForm() {
     return <ProfileLoadError failure={profileGateFailure} />;
   }
 
+  if (step === "code") {
+    return (
+      <main className="wrap login-screen">
+        <h1>Enter your code</h1>
+        <p className="subtitle">
+          We emailed a 6-digit code to <strong>{email}</strong>. Enter it below
+          to sign in.
+        </p>
+        <form className="stack" onSubmit={onVerifyCode}>
+          <label>
+            6-digit code
+            <input
+              type="text"
+              name="code"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={code}
+              onChange={(ev) => setCode(ev.target.value.replace(/\D/g, ""))}
+              required
+              disabled={loading}
+            />
+          </label>
+          {error ? <p className="error">{error}</p> : null}
+          <button type="submit" disabled={loading || code.trim().length < 6}>
+            {loading ? "Verifying…" : "Verify & sign in"}
+          </button>
+        </form>
+        <button
+          type="button"
+          onClick={backToEmail}
+          disabled={loading}
+          style={{
+            marginTop: 16,
+            background: "none",
+            border: "none",
+            padding: 0,
+            color: "inherit",
+            textDecoration: "underline",
+            cursor: "pointer",
+            font: "inherit",
+            opacity: 0.8,
+          }}
+        >
+          Use a different email or resend a code
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main className="wrap login-screen">
       <h1>Sign in</h1>
       <p className="subtitle">
-        Enter your work email. We will send you a link to sign in—no password
-        needed.
+        Enter your work email. We will email you a 6-digit code to sign in—no
+        password needed.
       </p>
-      <form className="stack" onSubmit={onSubmit}>
+      <form className="stack" onSubmit={onSendCode}>
         <label>
           Email
           <input
@@ -120,13 +223,8 @@ function LoginForm() {
           />
         </label>
         {error ? <p className="error">{error}</p> : null}
-        {linkSent ? (
-          <p className="success">
-            Check your email for the sign-in link. You can close this tab.
-          </p>
-        ) : null}
         <button type="submit" disabled={loading}>
-          {loading ? "Sending link…" : "Email me a link"}
+          {loading ? "Sending code…" : "Email me a code"}
         </button>
       </form>
     </main>
