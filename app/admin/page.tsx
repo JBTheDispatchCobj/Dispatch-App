@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { STAFF } from "./staff/data";
-import { fetchProfile, type ProfileFetchFailure } from "@/lib/profile";
+import { fetchProfile, shouldUseManagerHome, type ProfileFetchFailure } from "@/lib/profile";
 import {
   resolveAuthUser,
   redirectToLoginUnlessLocalDevBypass,
@@ -83,7 +83,11 @@ export default function AdminHomePage() {
         setProfileFailure(profileResult.failure);
         return;
       }
-      if (profileResult.profile.role !== "admin") {
+      // Accept manager-likes (admin OR manager), not admin-only. The "/" router
+      // sends manager-likes here; rejecting non-admins used to bounce them back
+      // to "/", which re-sent them here — the first-login blink loop. Staff are
+      // still sent home to /staff.
+      if (!shouldUseManagerHome(profileResult.profile)) {
         window.location.replace("/");
         return;
       }

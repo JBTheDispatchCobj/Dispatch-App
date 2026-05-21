@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { fetchProfile } from "@/lib/profile";
+import { fetchProfile, shouldUseManagerHome } from "@/lib/profile";
 import {
   resolveAuthUser,
   redirectToLoginUnlessLocalDevBypass,
@@ -27,7 +27,11 @@ export default function RootRedirect() {
         redirectToLoginUnlessLocalDevBypass();
         return;
       }
-      const dest = result.profile.role === "admin" ? "/admin" : "/staff";
+      // Manager-likes (admin OR manager) use the admin home; only true staff
+      // go to /staff. Routing the "manager" default here (instead of /staff,
+      // which bounces manager-likes straight back to /) is what breaks the
+      // first-login redirect loop. Must stay in lockstep with the /admin guard.
+      const dest = shouldUseManagerHome(result.profile) ? "/admin" : "/staff";
       window.location.replace(dest);
     })();
     return () => {
