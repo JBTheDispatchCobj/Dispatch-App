@@ -291,7 +291,12 @@
   padding: 14px 16px;
   margin-bottom: 8px;
 }
-.exPillNote { min-height: 116px; }
+.exPillNote {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* note body at top, meta pinned to bottom */
+}
 .exPillBody {
   font-size: 13px;
   line-height: 1.55;
@@ -303,7 +308,7 @@
   letter-spacing: 1.4px;
   color: var(--ink-soft);
   text-transform: uppercase;
-  margin-top: 8px;
+  margin-top: 18px; /* breathing room between note body and meta line */
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -369,7 +374,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 24px; /* clear, proportional gap above Assign/Seen buttons */
 }
 .exCta button {
   font-family: var(--mono);
