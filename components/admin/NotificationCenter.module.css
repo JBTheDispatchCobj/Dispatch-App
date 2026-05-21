@@ -1,0 +1,393 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Notification Center — ported from design/admin-notification-center-v2.html
+   (locked Day 54 chase #7). Region 1: faithful visual/interactive port with
+   placeholder data, mounted below the Activity Feed.
+
+   Base cream tokens (--page-bg, --shell-bg, --shell-ink, --ink-*, --hairline*,
+   --shadow-raised, --mono, --sans) already live in app/globals.css and are
+   referenced here. Only the four master accents + --shadow-soft are new and
+   are defined locally on .nc so they stay scoped to this component.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Section parent label ──────────────────────────────────────────────── */
+.ncLabel {
+  margin: 32px 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.ncLabelTitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.ncLabelSub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  letter-spacing: 1.4px;
+}
+
+/* ─── Container + per-master accent injection ───────────────────────────── */
+.nc {
+  --inc-accent: #D9A87C;
+  --sys-accent: #FFD000;
+  --out-accent: #2563EB;
+  --mnt-accent: #7FA3A8;
+  --inc-tint: rgba(217, 168, 124, 0.18);
+  --sys-tint: rgba(255, 208, 0, 0.18);
+  --out-tint: rgba(37, 99, 235, 0.14);
+  --mnt-tint: rgba(127, 163, 168, 0.18);
+  --shadow-soft: 0 1px 2px rgba(30, 20, 10, 0.05);
+  /* sensible default before a master is active */
+  --row-accent: var(--inc-accent);
+  --row-accent-pale: var(--inc-tint);
+}
+.nc[data-active="incoming"]    { --row-accent: var(--inc-accent); --row-accent-pale: var(--inc-tint); }
+.nc[data-active="system"]      { --row-accent: var(--sys-accent); --row-accent-pale: var(--sys-tint); }
+.nc[data-active="outgoing"]    { --row-accent: var(--out-accent); --row-accent-pale: var(--out-tint); }
+.nc[data-active="maintenance"] { --row-accent: var(--mnt-accent); --row-accent-pale: var(--mnt-tint); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   MASTER TILES — fixed 4
+   ════════════════════════════════════════════════════════════════════════ */
+.masters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.master {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 12px 8px 10px;
+  box-shadow: var(--shadow-raised);
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 150ms ease, transform 120ms ease;
+  position: relative;
+}
+.masterActive {
+  border-color: var(--shell-ink);
+  transform: translateY(-1px);
+}
+.master[data-cat="incoming"]    { --accent: var(--inc-accent); }
+.master[data-cat="system"]      { --accent: var(--sys-accent); }
+.master[data-cat="outgoing"]    { --accent: var(--out-accent); }
+.master[data-cat="maintenance"] { --accent: var(--mnt-accent); }
+.masterCount {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+}
+.masterLbl {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--shell-ink);
+  margin-top: 6px;
+  font-weight: 700;
+}
+.masterSub {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 3px;
+}
+.masterPulse {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EC4899;
+  animation: ncPulse 2s infinite;
+}
+@keyframes ncPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.2); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SUB-TILES
+   ════════════════════════════════════════════════════════════════════════ */
+.subsWrap { margin: 10px 0 14px; }
+.subs { display: grid; gap: 6px; }
+.subs3 { grid-template-columns: 1fr 1fr 1fr; }
+.subs2 { grid-template-columns: 1fr 1fr; }
+.sub {
+  background: #FFFFFF;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 120ms ease;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-soft);
+}
+.subActive {
+  border-color: var(--row-accent);
+  background: var(--row-accent-pale);
+}
+.subLbl {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--shell-ink);
+}
+.subCount {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.subActive .subCount { color: var(--row-accent); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   ITEM LIST — no header. Top of section = top of first row.
+   ════════════════════════════════════════════════════════════════════════ */
+.items {
+  background: #FFFFFF;
+  border-radius: 14px;
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+.empty {
+  padding: 22px 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.row {
+  padding: 14px 18px 10px;
+  border-top: 1px solid var(--hairline);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.row:first-child { border-top: none; }
+.row:hover { background: var(--shell-bg); }
+.rowTop {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+.rowNum {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.rowTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+}
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.rowActionBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-muted);
+  padding: 2px 0;
+  font-family: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  font-weight: inherit;
+}
+.rowActionBtnPrimary { color: var(--row-accent); }
+.rowBar {
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--row-accent);
+  opacity: 0.32;
+}
+.rowSeen .rowBar { opacity: 0.8; }
+.rowSeen .rowTitle {
+  text-decoration: line-through;
+  color: var(--ink-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   EXPANDED VIEW — D-430 maintenance pill-box vocabulary
+   ════════════════════════════════════════════════════════════════════════ */
+.rowExpanded {
+  display: none;
+  padding: 8px 0 6px;
+}
+.rowOpen .rowExpanded { display: block; }
+.rowOpen .rowTop { grid-template-columns: 1fr; gap: 0; }
+.rowOpen .rowNum { display: none; }
+.rowOpen .rowActions { display: none; }
+.rowOpen .rowTitle {
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.rowOpen .rowBar { display: none; }
+
+.exAuthor {
+  padding: 0;
+  margin-bottom: 0;
+}
+.exAuthorName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+}
+.exAuthorSource {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shell-ink);
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+  margin-top: 2px;
+}
+.exBar {
+  height: 4px;
+  margin: 14px 0;
+  border-radius: 2px;
+  background: var(--row-accent);
+  opacity: 0.7;
+}
+
+.exPill {
+  background: #FFFFFF;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+.exPillNote { min-height: 116px; }
+.exPillBody {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--shell-ink);
+}
+.exPillMeta {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.exAttach {
+  background: var(--row-accent-pale);
+  border: 1px solid var(--row-accent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--row-accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  transition: padding 150ms ease;
+  margin-bottom: 12px;
+}
+.exAttachIcon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+.exAttachThumb {
+  display: none;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  background: linear-gradient(135deg, #D9C8B5, #B8A085);
+  border-radius: 8px;
+  margin-top: 12px;
+  cursor: zoom-in;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.exAttachHead { display: contents; }
+.exAttachOpen {
+  flex-direction: column;
+  align-items: stretch;
+  padding-bottom: 16px;
+}
+.exAttachOpen .exAttachHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.exAttachOpen .exAttachThumb { display: grid; }
+.exAttachCaret { margin-left: auto; }
+
+.exCta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.exCta button {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding: 12px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: none;
+}
+.exCtaAssign {
+  background: var(--shell-ink);
+  color: #FFFFFF;
+}
+.exCtaSeen {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1.5px solid var(--ink-faint);
+}

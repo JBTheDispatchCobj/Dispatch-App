@@ -12,6 +12,7 @@ import {
 import ProfileLoadError from "../profile-load-error";
 import AddTaskModal from "@/components/admin/AddTaskModal";
 import ActivityFeed from "@/components/admin/ActivityFeed";
+import NotificationCenter from "@/components/admin/NotificationCenter";
 import {
   getCurrentWeather,
   getOnShiftCount,
@@ -699,6 +700,13 @@ export default function AdminHomePage() {
             array that's been sitting here since the original Phase 3 UI
             build. Sources task_events + notes via lib/activity-feed.ts. */}
         <ActivityFeed />
+
+        {/* Notification Center — Day 55, NC Region 1. Locked v2 design ported
+            with PLACEHOLDER data, mounted here below the Activity Feed per
+            Bryan's field-by-field migration plan. Region 2 wires live data
+            (lanes -> NC tiles); Region 3 retires the old lanes and lifts this
+            up under the Daily Brief (see design/admin-home-locked.html). */}
+        <NotificationCenter />
 
         {/* Staff — expanded inline or minimized lane */}
         {staffExpanded && (
