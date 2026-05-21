@@ -57,24 +57,24 @@ insert into public.tasks
    assignee_name, staff_id, is_staff_report, created_by_user_id, context)
 -- Departures (turnover) — Departs = today
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'housekeeping_turn', 'open', 'medium', 'pms',
-       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"departures"}'::jsonb
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"departures"}'::jsonb
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.departure_date = current_date
 union all
 -- Arrivals (prep) — Arrives = today
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'arrival', 'open', 'medium', 'pms',
-       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"arrivals"}'::jsonb
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"arrivals"}'::jsonb
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.arrival_date = current_date
 union all
 -- Stayovers (service) — arrival < today < departure
 select 'Room ' || r.room_number || ' - ' || r.guest_name, 'stayover', 'open', 'medium', 'pms',
-       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001', false,
-       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a', '{"staff_home_bucket":"stayovers"}'::jsonb
+       r.room_number, 'Angie', 'a0c1e000-0000-4000-8000-000000000001'::uuid, false,
+       '380edc3d-ab42-4aed-aff7-940d9d6f8c2a'::uuid, '{"staff_home_bucket":"stayovers"}'::jsonb
   from public.reservations r
   where r.external_id like 'rx-%' and r.status in ('confirmed','arrived')
     and r.arrival_date < current_date and r.departure_date > current_date;
