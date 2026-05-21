@@ -83,6 +83,12 @@ import {
   getLastStayoverStatusForRoom,
   type LastStayoverStatus,
 } from "@/lib/stayover-history";
+import {
+  getDeepCleanStatus,
+  logDeepCleanItem,
+  DEEP_CLEAN_ITEMS,
+  type DeepCleanItemStatus,
+} from "@/lib/deep-clean";
 
 function roomFromTitle(title: string | null): string | null {
   if (!title) return null;
@@ -157,6 +163,8 @@ export default function StaffTaskExecutionPage() {
 
   const [task, setTask] = useState<TaskCard | null>(null);
   const [checklist, setChecklist] = useState<ExecutionChecklistItem[]>([]);
+  const [deepClean, setDeepClean] = useState<DeepCleanItemStatus[]>([]);
+  const [deepCleanBusy, setDeepCleanBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [maintenanceItems, setMaintenanceItems] = useState<
     MaintenanceIssueRow[]
@@ -335,6 +343,7 @@ export default function StaffTaskExecutionPage() {
       currentRes,
       incomingRes,
       lastStayoverStat,
+      deepCleanRows,
     ] = await Promise.all([
       listNotesForTask(supabase, id),
       listMaintenanceIssuesForTask(supabase, id),
@@ -360,6 +369,12 @@ export default function StaffTaskExecutionPage() {
             return null;
           })
         : Promise.resolve(null),
+      isDeparture && room
+        ? getDeepCleanStatus(supabase, room, id).catch((e: Error) => {
+            console.warn("[staff-task-exec deep-clean]", e.message);
+            return [] as DeepCleanItemStatus[];
+          })
+        : Promise.resolve([] as DeepCleanItemStatus[]),
     ]);
 
     setNotes(noteRows);
@@ -368,6 +383,7 @@ export default function StaffTaskExecutionPage() {
     setCurrentReservation(currentRes);
     setIncomingReservation(incomingRes);
     setLastStayoverStatus(lastStayoverStat);
+    setDeepClean(deepCleanRows);
 
     setReady(true);
   }, [id]);
@@ -430,6 +446,38 @@ export default function StaffTaskExecutionPage() {
       );
     },
     [task, userId],
+  );
+
+  // Deep Clean tray (D-430). Checking an item appends a deep_clean_history row
+  // (append-only by staff) and resets that item's rolling monthly clock. Can be
+  // done ad-hoc on any departure; staff can't un-log (admin corrects).
+  const onToggleDeepClean = useCallback(
+    async (itemKey: string) => {
+      if (!task || !userId) return;
+      const room = task.room_number?.trim();
+      if (!room) return;
+      const item = DEEP_CLEAN_ITEMS.find((i) => i.key === itemKey);
+      if (!item) return;
+      setDeepCleanBusy(itemKey);
+      setInlineError(null);
+      const r = await logDeepCleanItem(supabase, {
+        roomNumber: room,
+        taskName: item.name,
+        details: item.details,
+        sourceTaskId: task.id,
+        userId,
+        displayName,
+      });
+      if (!r.ok) {
+        setInlineError(r.message);
+        setDeepCleanBusy(null);
+        return;
+      }
+      const next = await getDeepCleanStatus(supabase, room, task.id);
+      setDeepClean(next);
+      setDeepCleanBusy(null);
+    },
+    [task, userId, displayName],
   );
 
   const onNeedHelp = useCallback(async () => {
@@ -1057,6 +1105,9 @@ export default function StaffTaskExecutionPage() {
         outgoingReservation={currentReservation}
         incomingReservation={incomingReservation}
         managerNote={managerNote}
+        deepCleanItems={deepClean}
+        onToggleDeepClean={onToggleDeepClean}
+        deepCleanBusy={deepCleanBusy}
       />
     );
   }

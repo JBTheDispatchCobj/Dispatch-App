@@ -16,6 +16,15 @@ import {
 import { resolveChecklist } from "@/lib/checklists/resolve";
 import ChecklistDrillDown from "./ChecklistDrillDown";
 import { lookupSeasonalScent } from "@/lib/dispatch-config";
+import { type DeepCleanItemStatus } from "@/lib/deep-clean";
+
+/** YYYY-MM-DD → "Apr 15"; null/empty → "Never done". */
+function formatDeepCleanDate(ymd: string | null): string {
+  if (!ymd) return "Never done";
+  const d = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
 
 // ---------------------------------------------------------------------------
 // Departure-specific types
@@ -234,6 +243,10 @@ export type DeparturesCardProps = {
   // Day 47 — free-text note authored by manager via AddTaskModal,
   // stored at task.context.notes. Surfaced inline via .manager-note.
   managerNote?: string | null;
+  // Deep Clean tray (D-430 R34-R36) — per-room monthly deep-clean items.
+  deepCleanItems?: DeepCleanItemStatus[];
+  onToggleDeepClean?: (itemKey: string) => void;
+  deepCleanBusy?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -287,8 +300,12 @@ export default function DeparturesCard({
   outgoingReservation = null,
   incomingReservation = null,
   managerNote = null,
+  deepCleanItems = [],
+  onToggleDeepClean,
+  deepCleanBusy = null,
 }: DeparturesCardProps) {
   const [showChecklist, setShowChecklist] = useState(false);
+  const [openDeepCleanDetail, setOpenDeepCleanDetail] = useState<string | null>(null);
   // Day 48 — Notes compose moved into a popout modal triggered by the
   // topstrip-right + button; replaces the previous inline NoteComposeForm
   // mount inside .setstat. State scoped to this card; opens/closes locally.
@@ -569,22 +586,78 @@ export default function DeparturesCard({
             </div>
           </section>
 
-          {/* Per-room work — Deep Clean placeholder (beta scope gap 3) */}
+          {/* Per-room work — Deep Clean tray (D-430 R34-R36). Rolling monthly
+              clock per item; checking an item logs to deep_clean_history and
+              resets that item's clock. Items can be done ad-hoc on any
+              departure. Details opens the KB procedure. */}
           <section className="section">
             <header className="section__head">
               <span className="section__label">Per-room work</span>
-              <span className="section__count">Deep Clean</span>
+              <span className="section__count">
+                Deep Clean ·{" "}
+                {deepCleanItems.filter((i) => i.doneThisTask).length} of{" "}
+                {deepCleanItems.length} done
+              </span>
             </header>
 
-            <div className="exrow" data-open="false">
-              <div className="exrow__head" style={{ cursor: "default", opacity: 0.55 }}>
-                <span className="exrow__icon">DC</span>
-                <div className="exrow__text">
-                  <div className="exrow__title">Deep Clean</div>
-                  <div className="exrow__sub">Coming soon</div>
-                </div>
-                <span className="exrow__chev">›</span>
-              </div>
+            <div className="deepclean">
+              {deepCleanItems.map((item) => {
+                const busy = deepCleanBusy === item.key;
+                const due = !item.doneThisTask && item.dueStatus !== "ok";
+                const detailOpen = openDeepCleanDetail === item.key;
+                return (
+                  <div
+                    key={item.key}
+                    className={[
+                      "deepclean__item",
+                      item.doneThisTask ? "deepclean__item--done" : "",
+                      due ? "deepclean__item--due" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <div className="deepclean__top">
+                      <span className="deepclean__name">{item.name}</span>
+                      <button
+                        type="button"
+                        className="deepclean__check"
+                        aria-pressed={item.doneThisTask}
+                        aria-label={`Mark ${item.name} done`}
+                        disabled={
+                          item.doneThisTask ||
+                          busy ||
+                          taskDone ||
+                          !onToggleDeepClean
+                        }
+                        onClick={() => onToggleDeepClean?.(item.key)}
+                      >
+                        {item.doneThisTask ? "✓" : busy ? "…" : ""}
+                      </button>
+                    </div>
+                    <div className="deepclean__meta">
+                      <span className="deepclean__last">
+                        {item.lastCompletedBy
+                          ? `${item.lastCompletedBy} · ${formatDeepCleanDate(item.lastCompletedOn)}`
+                          : "Never done"}
+                      </span>
+                      {due ? <span className="deepclean__due">Due</span> : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="deepclean__details"
+                      aria-expanded={detailOpen}
+                      onClick={() =>
+                        setOpenDeepCleanDetail(detailOpen ? null : item.key)
+                      }
+                    >
+                      {detailOpen ? "Hide" : "Details ›"}
+                    </button>
+                    {detailOpen ? (
+                      <p className="deepclean__detailtext">{item.details}</p>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
