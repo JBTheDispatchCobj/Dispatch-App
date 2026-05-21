@@ -185,3 +185,22 @@ export async function logDeepCleanItem(
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
+
+/**
+ * Un-log a deep-clean item for the CURRENT task (uncheck) — deletes the
+ * history row(s) this task created for the item. Staff can only delete their
+ * own current-task rows (RLS); admin can correct anything.
+ */
+export async function unlogDeepCleanItem(
+  client: SupabaseClient,
+  args: { roomNumber: string; taskName: string; sourceTaskId: string },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await client
+    .from("deep_clean_history")
+    .delete()
+    .eq("room_number", args.roomNumber)
+    .eq("task_name", args.taskName)
+    .eq("source_task_id", args.sourceTaskId);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}

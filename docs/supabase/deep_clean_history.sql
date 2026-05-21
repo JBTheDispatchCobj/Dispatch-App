@@ -71,10 +71,21 @@ create policy deep_clean_history_update on public.deep_clean_history
   using (auth_profile_role() in ('admin','manager'))
   with check (auth_profile_role() in ('admin','manager'));
 
+-- Delete: admin/manager can correct anything; staff can un-log (uncheck) their
+-- OWN deep-clean completions for a task they can read (mirrors the insert
+-- policy) — needed for the staff card's check/uncheck toggle.
 drop policy if exists deep_clean_history_delete on public.deep_clean_history;
 create policy deep_clean_history_delete on public.deep_clean_history
   for delete to authenticated
-  using (auth_profile_role() in ('admin','manager'));
+  using (
+    auth_profile_role() in ('admin','manager')
+    or (
+      auth_profile_role() = 'staff'
+      and completed_by_user_id = auth.uid()
+      and source_task_id is not null
+      and public.can_read_task(source_task_id)
+    )
+  );
 
 -- Verification:
 -- select count(*) from public.deep_clean_history;

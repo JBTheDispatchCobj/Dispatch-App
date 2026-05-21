@@ -624,7 +624,6 @@ export default function DeparturesCard({
             <div className="deepclean">
               {deepCleanItems.map((item) => {
                 const busy = deepCleanBusy === item.key;
-                const due = !item.doneThisTask && item.dueStatus !== "ok";
                 const detailOpen = openDeepCleanDetail === item.key;
                 return (
                   <div
@@ -632,7 +631,6 @@ export default function DeparturesCard({
                     className={[
                       "deepclean__item",
                       item.doneThisTask ? "deepclean__item--done" : "",
-                      due ? "deepclean__item--due" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -643,13 +641,8 @@ export default function DeparturesCard({
                         type="button"
                         className="deepclean__check"
                         aria-pressed={item.doneThisTask}
-                        aria-label={`Mark ${item.name} done`}
-                        disabled={
-                          item.doneThisTask ||
-                          busy ||
-                          taskDone ||
-                          !onToggleDeepClean
-                        }
+                        aria-label={`Toggle ${item.name} deep clean`}
+                        disabled={busy || taskDone || !onToggleDeepClean}
                         onClick={() => onToggleDeepClean?.(item.key)}
                       >
                         {item.doneThisTask ? "✓" : busy ? "…" : ""}
@@ -661,7 +654,6 @@ export default function DeparturesCard({
                           ? `${item.lastCompletedBy} · ${formatDeepCleanDate(item.lastCompletedOn)}`
                           : "Never done"}
                       </span>
-                      {due ? <span className="deepclean__due">Due</span> : null}
                     </div>
                     <button
                       type="button"

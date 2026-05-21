@@ -86,6 +86,7 @@ import {
 import {
   getDeepCleanStatus,
   logDeepCleanItem,
+  unlogDeepCleanItem,
   DEEP_CLEAN_ITEMS,
   type DeepCleanItemStatus,
 } from "@/lib/deep-clean";
@@ -458,16 +459,25 @@ export default function StaffTaskExecutionPage() {
       if (!room) return;
       const item = DEEP_CLEAN_ITEMS.find((i) => i.key === itemKey);
       if (!item) return;
+      // Toggle: if already done on this task, uncheck (delete); else log it.
+      const alreadyDone =
+        deepClean.find((d) => d.key === itemKey)?.doneThisTask ?? false;
       setDeepCleanBusy(itemKey);
       setInlineError(null);
-      const r = await logDeepCleanItem(supabase, {
-        roomNumber: room,
-        taskName: item.name,
-        details: item.details,
-        sourceTaskId: task.id,
-        userId,
-        displayName,
-      });
+      const r = alreadyDone
+        ? await unlogDeepCleanItem(supabase, {
+            roomNumber: room,
+            taskName: item.name,
+            sourceTaskId: task.id,
+          })
+        : await logDeepCleanItem(supabase, {
+            roomNumber: room,
+            taskName: item.name,
+            details: item.details,
+            sourceTaskId: task.id,
+            userId,
+            displayName,
+          });
       if (!r.ok) {
         setInlineError(r.message);
         setDeepCleanBusy(null);
@@ -477,7 +487,7 @@ export default function StaffTaskExecutionPage() {
       setDeepClean(next);
       setDeepCleanBusy(null);
     },
-    [task, userId, displayName],
+    [task, userId, displayName, deepClean],
   );
 
   const onNeedHelp = useCallback(async () => {
