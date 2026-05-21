@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {
   getNotificationCenterData,
@@ -325,6 +326,11 @@ export default function NotificationCenter() {
                   </div>
                 );
               })
+            )}
+            {activeMaster === "outgoing" && (
+              <Link href="/admin/notifications" className={styles.viewAllRow}>
+                View all &rsaquo;
+              </Link>
             )}
           </div>
         </div>

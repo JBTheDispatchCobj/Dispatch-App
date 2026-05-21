@@ -67,6 +67,8 @@ export type ActivityFeedItem = {
   related_task_id: string;
   related_task_title: string | null;
   related_room: string | null;
+  /** card_type of the related task — drives Notification-Center HK/Admin/Maint categorization. */
+  related_card_type: string | null;
 
   /** Human-readable summary line. Derived per kind + event_type / note_type. */
   message: string;
@@ -168,7 +170,7 @@ async function fetchTaskEventItems(
   let query = client
     .from("task_events")
     .select(
-      "id, task_id, user_id, event_type, detail, created_at, tasks(id, title, room_number)",
+      "id, task_id, user_id, event_type, detail, created_at, tasks(id, title, room_number, card_type)",
     )
     .order("created_at", { ascending: false })
     .limit(options.limit);
@@ -325,6 +327,7 @@ function normalizeTaskEventRow(
     related_task_id: String(raw.task_id),
     related_task_title: taskInfo.title,
     related_room: taskInfo.roomNumber,
+    related_card_type: taskInfo.cardType,
     message: composeTaskEventMessage(actorName, eventType, taskInfo.title, detail),
     detail,
     created_at: String(raw.created_at ?? ""),
@@ -354,6 +357,8 @@ function normalizeNoteRow(raw: Record<string, unknown>): ActivityFeedItem {
     related_task_title: taskInfo.title,
     related_room:
       (raw.room_number as string | null) ?? taskInfo.roomNumber ?? null,
+    related_card_type:
+      (raw.card_type as string | null) ?? taskInfo.cardType ?? null,
     message: composeNoteMessage(actorName, noteType, body),
     detail: { body, note_type: noteType, note_status: noteStatus, note_assigned_to: raw.note_assigned_to ?? null },
     created_at: String(raw.created_at ?? ""),
@@ -387,6 +392,8 @@ function normalizeMaintenanceIssueRow(
     related_task_title: taskInfo.title,
     related_room:
       (raw.room_number as string | null) ?? taskInfo.roomNumber ?? null,
+    related_card_type:
+      (raw.card_type as string | null) ?? taskInfo.cardType ?? null,
     message: composeMaintenanceIssueMessage(
       actorName,
       location,
@@ -401,14 +408,19 @@ function normalizeMaintenanceIssueRow(
 
 function readTaskJoin(
   raw: unknown,
-): { id: string | null; title: string | null; roomNumber: string | null } {
+): {
+  id: string | null;
+  title: string | null;
+  roomNumber: string | null;
+  cardType: string | null;
+} {
   let t: Record<string, unknown> | null = null;
   if (Array.isArray(raw) && raw[0]) {
     t = raw[0] as Record<string, unknown>;
   } else if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     t = raw as Record<string, unknown>;
   }
-  if (!t) return { id: null, title: null, roomNumber: null };
+  if (!t) return { id: null, title: null, roomNumber: null, cardType: null };
   return {
     id: t.id ? String(t.id) : null,
     title: t.title ? String(t.title) : null,
@@ -416,6 +428,10 @@ function readTaskJoin(
       t.room_number === null || t.room_number === undefined
         ? null
         : String(t.room_number),
+    cardType:
+      t.card_type === null || t.card_type === undefined
+        ? null
+        : String(t.card_type),
   };
 }
 

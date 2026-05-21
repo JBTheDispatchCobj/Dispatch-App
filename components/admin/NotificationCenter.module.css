@@ -176,6 +176,23 @@
   color: var(--ink-soft);
   text-align: center;
 }
+
+/* "View all" footer row — opens the full searchable archive (/admin/notifications) */
+.viewAllRow {
+  display: block;
+  text-align: center;
+  padding: 13px 18px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--row-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.viewAllRow:hover { background: var(--shell-bg); }
 .row {
   padding: 14px 18px 10px;
   border-top: 1px solid var(--hairline);

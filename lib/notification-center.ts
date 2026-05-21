@@ -314,8 +314,12 @@ export async function getNotificationCenterData(
     });
   }
 
-  // --- manual (admin-sent) tasks → Outgoing/History (all) + Outgoing/Scheduled (pending)
+  // --- manual (admin-sent) tasks → Outgoing/History (this week) + Outgoing/Scheduled (pending)
+  // Inline History is trimmed to the last 7 days; the full log lives behind the
+  // "View all" archive (/admin/notifications). Scheduled = still-open subset
+  // regardless of age (light beta heuristic; evolves with the agent).
   if (!manualRes.error && manualRes.data) {
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     for (const r of manualRes.data as TaskRow[]) {
       const base: NcItem = {
         id: `task:${r.id}`,
@@ -325,8 +329,10 @@ export async function getNotificationCenterData(
         metaCategory: `Sent · ${r.status || "open"}`,
         timeAgo: timeAgo(r.created_at),
       };
-      out.history.push(base);
-      // Scheduled = still pending (open) — light beta heuristic; evolves with the agent.
+      const createdMs = new Date(r.created_at).getTime();
+      if (Number.isNaN(createdMs) || createdMs >= weekAgo) {
+        out.history.push(base);
+      }
       if (r.status === "open") {
         out.scheduled.push({
           ...base,
