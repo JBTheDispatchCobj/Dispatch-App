@@ -1,29 +1,32 @@
 // lib/notification-center.ts
 //
-// Notification Center live-data layer (NC Region 2). Fetches the property's
-// notes / task-event activity / staff roster / maintenance issues / tasks and
-// buckets them into the locked NC structure (4 masters → sub-tiles → items).
-// Returns the SAME shape the NotificationCenter component renders, so wiring it
-// up is a drop-in swap for the Region 1 placeholder array.
+// Notification Center live-data layer. Fetches the property's notes /
+// exception activity / maintenance issues / tasks and buckets them into the
+// locked NC structure (4 masters → sub-tiles → items). Returns the SAME shape
+// the NotificationCenter component renders.
 //
 // Mapping (signed off Day 55):
-//   Incoming · Admin    ← notes type ∈ {Admin, Team, Change/Update, Needed}
+//   Incoming · Admin    ← notes type ∈ {Admin, Team, Change/Update, Needed, Employee}
 //   Incoming · Guest    ← notes type ∈ {Guest Needs/Profile/Damage/Update}
 //   Incoming · Supply   ← notes type = Supply
-//   System   · Employee ← task_events activity stream + notes type = Employee
-//   System   · Schedule ← staff clock-in roster (Calendar is post-beta)
-//   System   · Today    ← high-priority open + blocked tasks (old Critical lane)
+//   System              ← EXCEPTIONS only ("what needed admin intervention"):
+//                         · Employee ← staff "needs help" flags
+//                         · Schedule ← assignment overrides + reassignments
+//                         · Today    ← blocked + high-priority tasks (+ deep-clean)
+//                         The raw activity firehose is NOT here — it folds into
+//                         the searchable View-all route (Region B). The staff
+//                         roster is not a notification, so it left System (the
+//                         Daily Brief's On-Shift count carries the summary).
+//                         This tile becomes the real orchestration-agent
+//                         exception feed once the agent is live (post-beta).
 //   Maint    · Incoming ← maintenance_issues, unresolved (old Watchlist)
 //   Maint    · Outgoing ← maintenance_issues, resolved
 //   Outgoing · History  ← all admin-sent (manual) cards
 //   Outgoing · Scheduled← manual cards still pending (light beta heuristic)
-//
-// "Outgoing" is intentionally light for beta and will be reworked once the
-// card-deploying agent ships (Bryan: "happy to keep it light for beta but it
-// will evolve quickly").
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getActivityFeed } from "./activity-feed";
+import { taskEventType } from "./task-events";
 
 export type MasterKey = "incoming" | "system" | "outgoing" | "maintenance";
 
@@ -54,6 +57,13 @@ const GUEST_NOTE_TYPES = new Set([
   "Guest Update",
 ]);
 
+/** Task-event types that read as scheduling/assignment exceptions. */
+const SCHEDULE_EXCEPTION_EVENTS = new Set<string>([
+  taskEventType.assignmentCrossHallOverride,
+  taskEventType.assignmentAboveStandardLoad,
+  taskEventType.reassigned,
+]);
+
 function excerpt(s: string | null | undefined, max = 64): string {
   if (!s) return "";
   const t = s.trim();
@@ -75,15 +85,6 @@ function timeAgo(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-  });
-}
-
-function clockTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "America/Chicago",
   });
 }
 
@@ -144,14 +145,6 @@ type NoteRow = {
   created_at: string;
 };
 
-type StaffRow = {
-  id: string;
-  name: string;
-  role: string | null;
-  status: string | null;
-  clocked_in_at: string | null;
-};
-
 type MaintRow = {
   id: string;
   body: string | null;
@@ -190,7 +183,7 @@ export async function getNotificationCenterData(
   const out = masters[2].items;
   const mnt = masters[3].items;
 
-  const [notesRes, events, staffRes, maintRes, critical, manualRes] =
+  const [notesRes, exceptions, maintRes, critical, manualRes] =
     await Promise.all([
       client
         .from("notes")
@@ -199,13 +192,13 @@ export async function getNotificationCenterData(
         )
         .order("created_at", { ascending: false })
         .limit(60),
-      getActivityFeed(client, { limit: 30, kindFilter: ["task_event"] }).catch(
-        () => [],
-      ),
-      client
-        .from("staff")
-        .select("id, name, role, status, clocked_in_at")
-        .order("name", { ascending: true }),
+      // System = exceptions: only critical/warn task-events (needs-help,
+      // blocked status changes, assignment overrides, reassignments, deep-clean).
+      getActivityFeed(client, {
+        limit: 40,
+        severityFilter: ["critical", "warn"],
+        kindFilter: ["task_event"],
+      }).catch(() => []),
       client
         .from("maintenance_issues")
         .select(
@@ -236,7 +229,7 @@ export async function getNotificationCenterData(
         .limit(40),
     ]);
 
-  // --- Notes → Incoming (Admin/Guest/Supply) + System/Employee + Maint/Incoming
+  // --- Notes → Incoming (Admin/Guest/Supply) + Maint/Incoming
   if (!notesRes.error && notesRes.data) {
     for (const r of notesRes.data as NoteRow[]) {
       const item: NcItem = {
@@ -253,42 +246,29 @@ export async function getNotificationCenterData(
       };
       if (GUEST_NOTE_TYPES.has(r.note_type)) inc.guest.push(item);
       else if (r.note_type === "Supply") inc.supply.push(item);
-      else if (r.note_type === "Employee") sys.employee.push(item);
       else if (r.note_type === "Maintenance") mnt.incoming.push(item);
-      else inc.admin.push(item); // Admin / Team / Change-Update / Needed / fallback
+      else inc.admin.push(item); // Admin / Team / Change-Update / Needed / Employee / fallback
     }
   }
 
-  // --- task_events activity stream → System/Employee
-  for (const ev of events) {
-    sys.employee.push({
+  // --- Exception task-events → System (Employee / Schedule / Today)
+  for (const ev of exceptions) {
+    const bucket =
+      ev.event_type === taskEventType.needsHelp
+        ? sys.employee
+        : ev.event_type && SCHEDULE_EXCEPTION_EVENTS.has(ev.event_type)
+          ? sys.schedule
+          : sys.today; // deep-clean + any other warn/critical task-event
+    bucket.push({
       id: ev.id,
       title: ev.message,
       authorName: ev.actor_name,
       source: ev.related_room
         ? `RM ${ev.related_room}`
         : ev.related_task_title || undefined,
-      metaCategory: "System · Employee",
+      metaCategory: ev.severity === "critical" ? "Needs attention" : "Exception",
       timeAgo: timeAgo(ev.created_at),
     });
-  }
-
-  // --- staff roster → System/Schedule (on-shift first)
-  if (!staffRes.error && staffRes.data) {
-    const rows = [...(staffRes.data as StaffRow[])];
-    rows.sort((a, b) => (a.clocked_in_at ? 0 : 1) - (b.clocked_in_at ? 0 : 1));
-    for (const s of rows) {
-      const onShift = Boolean(s.clocked_in_at);
-      const inactive = (s.status ?? "active") === "inactive";
-      sys.schedule.push({
-        id: `staff:${s.id}`,
-        title: s.name || "Staff",
-        source: s.role || undefined,
-        metaCategory: onShift ? "On shift" : inactive ? "Inactive" : "Off shift",
-        timeAgo:
-          onShift && s.clocked_in_at ? `since ${clockTime(s.clocked_in_at)}` : "",
-      });
-    }
   }
 
   // --- maintenance_issues → Maint/Incoming (open) + Maint/Outgoing (resolved)
