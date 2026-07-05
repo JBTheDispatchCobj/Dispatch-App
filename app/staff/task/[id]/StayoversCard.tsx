@@ -503,33 +503,8 @@ export default function StayoversCard({
 
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Auto-pause on exit /
+            resume on open is handled in page.tsx. */}
 
         <div className="shell">
 
@@ -578,18 +553,14 @@ export default function StayoversCard({
           <section className="statcard">
             <div className="statcard__head">
               <span>Status</span>
+              {/* QA: "N active" counter removed — status is not a task list.
+                  Only the in-flight save hint remains. */}
               <span className="statcard__sub">
-                {statusBusy
-                  ? "Saving…"
-                  : activeCount > 0
-                  ? `${activeCount} active`
-                  : "None active"}
+                {statusBusy ? "Saving…" : ""}
               </span>
             </div>
             <div className="statcard__pills">
               {STAYOVER_STATUS_OPTIONS.map((opt) => {
-                const target = STAYOVER_STATUS_TIME_TARGETS[STATUS_KEY_TO_CONFIG[opt.value]];
-                const targetLabel = formatTimeTarget(target);
                 const isActive = selectedStatuses.includes(opt.value);
                 return (
                   <button
@@ -604,8 +575,9 @@ export default function StayoversCard({
                         : "status-pill"
                     }
                   >
+                    {/* QA: time target removed — time should never show next
+                        to the status. */}
                     {opt.label}
-                    {targetLabel ? ` · ${targetLabel}` : null}
                   </button>
                 );
               })}
@@ -631,14 +603,19 @@ export default function StayoversCard({
               <span className="briefrow__label">Night</span>
               <span className="briefrow__value">{nightsDisplay}</span>
             </div>
-            <div className="briefrow">
-              <span className="briefrow__label">Last status</span>
-              <span className="briefrow__value">{formatLastStatus(lastStayoverStatus)}</span>
-            </div>
-            <div className="briefrow">
-              <span className="briefrow__label">Notes</span>
-              <span className="briefrow__value">{notesDisplay}</span>
-            </div>
+            {/* QA: hide Last status / Notes rows when empty (no "—" rows). */}
+            {formatLastStatus(lastStayoverStatus) !== "—" ? (
+              <div className="briefrow">
+                <span className="briefrow__label">Last status</span>
+                <span className="briefrow__value">{formatLastStatus(lastStayoverStatus)}</span>
+              </div>
+            ) : null}
+            {notesDisplay !== "—" ? (
+              <div className="briefrow">
+                <span className="briefrow__label">Notes</span>
+                <span className="briefrow__value">{notesDisplay}</span>
+              </div>
+            ) : null}
           </section>
 
           {inlineError ? <p className="error">{inlineError}</p> : null}
@@ -704,17 +681,13 @@ export default function StayoversCard({
             </div>
           </section>
 
-          {/* Notes section — A-430 pattern (Gap 6) */}
-          <section className="section">
-            <header className="section__head">
-              <span className="section__label">Notes</span>
-              <span className="section__count">
-                {notes.length > 0
-                  ? `${notes.length} left for you`
-                  : "no notes yet"}
-              </span>
-            </header>
-            {notes.length > 0 ? (
+          {/* Notes section — hidden when empty; "N left for you" counter
+              removed (QA: notes are not tasks). */}
+          {notes.length > 0 ? (
+            <section className="section">
+              <header className="section__head">
+                <span className="section__label">Notes</span>
+              </header>
               <div className="notes">
                 {notes.map((note) => (
                   <button key={note.id} className="note" type="button">
@@ -760,10 +733,8 @@ export default function StayoversCard({
                   </button>
                 ))}
               </div>
-            ) : null}
-            {/* Day 48 — inline NoteComposeForm removed; compose moved into
-                NoteComposeModal (topstrip-right + button trigger). */}
-          </section>
+            </section>
+          ) : null}
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). Replaces
               the locked MX exrow placeholder. Issue list above + compose form
@@ -771,9 +742,10 @@ export default function StayoversCard({
           <section className="section">
             <header className="section__head">
               <span className="section__label">Maintenance</span>
+              {/* QA: faded "Report an issue" corner text removed. */}
               <span className="section__count">
                 {maintenanceItems.length === 0
-                  ? "Report an issue"
+                  ? ""
                   : `${maintenanceItems.length} issue${maintenanceItems.length !== 1 ? "s" : ""}`}
               </span>
             </header>
@@ -869,7 +841,7 @@ export default function StayoversCard({
               onClick={onImDone}
               disabled={doneBusy || taskDone || paused}
             >
-              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+              {taskDone ? "Done" : doneBusy ? "…" : "Complete"}
             </button>
           </div>
 

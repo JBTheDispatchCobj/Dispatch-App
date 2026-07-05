@@ -46,6 +46,15 @@ export const taskEventType = {
   // observed, Guest OK confirmed, etc.) and key the percentages tracking
   // surface that's still post-beta.
   stayoverStatusChanged: "stayover_status_changed",
+  // Day 57 — staff-side toggle on the D-430 Departures status pills (Jennifer
+  // QA §3). Pills are multi-select <button>s writing context.departure_status
+  // (string[] of keys: open / stripped / odobanned / has_sheets / done). Fires
+  // from onToggleDepartureStatus in DeparturesCard.tsx. detail: { from, to }.
+  departureStatusChanged: "departure_status_changed",
+  // Day 57 — admin "Rollover" quick action on /admin (Jennifer QA §3 #31).
+  // Sets context.rolled_over = true on a departure task so it drops off
+  // Angie's staff list (the row is kept for history). detail: { room_number }.
+  departureRolledOver: "departure_rolled_over",
 } as const;
 
 /** Required on all `task_events.detail` payloads (see docs/TASK_EVENTS_CONTRACT.md). */

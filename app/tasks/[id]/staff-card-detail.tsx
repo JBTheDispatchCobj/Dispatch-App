@@ -13,6 +13,7 @@ import {
   resolveAuthUser,
 } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
+import { addNote, listNotesForTask } from "@/lib/notes";
 import {
   checklistProgress,
   displayAssignee,
@@ -102,24 +103,34 @@ export default function StaffCardDetail({ taskId }: { taskId: string }) {
     setTask(t);
     setStaffStatus(t.status);
 
-    const [{ data: ch }, { data: cm }, mt] = await Promise.all([
+    const [{ data: ch }, noteRows, mt] = await Promise.all([
       supabase
         .from("task_checklist_items")
         .select("id, task_id, title, sort_order, done")
         .eq("task_id", taskId)
         .order("sort_order", { ascending: true }),
-      supabase
-        .from("task_comments")
-        .select(
-          "id, task_id, user_id, author_display_name, body, image_url, checklist_item_id, created_at",
-        )
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: true }),
+      // Day 57 — comment thread reads from public.notes now. task_comments
+      // was dropped Day 51; listNotesForTask projects the same fields the
+      // thread renderer expects (checklist linkage is not stored on notes).
+      listNotesForTask(supabase, taskId),
       fetchMentionTargets(supabase),
     ]);
 
     setChecklist((ch as CheckRow[]) ?? []);
-    setComments((cm as CommentRow[]) ?? []);
+    setComments(
+      noteRows.map(
+        (n): CommentRow => ({
+          id: n.id,
+          task_id: n.task_id,
+          user_id: n.user_id,
+          author_display_name: n.author_display_name,
+          body: n.body,
+          image_url: n.image_url,
+          checklist_item_id: null,
+          created_at: n.created_at,
+        }),
+      ),
+    );
     setMentionTargets(mt);
 
     if (!openedLogged.current) {
@@ -187,20 +198,8 @@ export default function StaffCardDetail({ taskId }: { taskId: string }) {
       setDoneBusy(false);
       return;
     }
-    const { error: cErr } = await supabase.from("task_comments").insert({
-      task_id: task.id,
-      user_id: userId,
-      author_display_name: displayName,
-      body: "Marked done",
-    });
-    if (!cErr) {
-      void logTaskEvent(
-        task.id,
-        taskEventType.commentAdded,
-        { body: "Marked done" },
-        userId,
-      );
-    }
+    // Day 57 — removed the "Marked done" task_comments breadcrumb (that table
+    // was dropped Day 51). task_events already records the action.
     void logTaskEvent(task.id, taskEventType.markedDone, {}, userId);
     setDoneBusy(false);
     await load();
@@ -211,23 +210,8 @@ export default function StaffCardDetail({ taskId }: { taskId: string }) {
     setHelpBusy(true);
     setError(null);
     const prev = task.status;
-    const { error: cErr } = await supabase.from("task_comments").insert({
-      task_id: task.id,
-      user_id: userId,
-      author_display_name: displayName,
-      body: "Needs help",
-    });
-    if (cErr) {
-      setError(cErr.message);
-      setHelpBusy(false);
-      return;
-    }
-    void logTaskEvent(
-      task.id,
-      taskEventType.commentAdded,
-      { body: "Needs help" },
-      userId,
-    );
+    // Day 57 — removed the "Needs help" task_comments breadcrumb (that table
+    // was dropped Day 51 and was aborting this button). task_events records it.
 
     if (prev !== "done" && prev !== "blocked") {
       const { error: upErr } = await supabase
@@ -288,17 +272,20 @@ export default function StaffCardDetail({ taskId }: { taskId: string }) {
       }
       imageUrl = up.publicUrl;
     }
-    const { error: insErr } = await supabase.from("task_comments").insert({
-      task_id: task.id,
-      user_id: userId,
-      author_display_name: displayName,
+    // Day 57 — comment posts write to public.notes (task_comments dropped
+    // Day 51). Typed as a "Team" note; notes have no checklist linkage.
+    const result = await addNote(supabase, {
+      taskId: task.id,
+      authorUserId: userId,
+      authorDisplayName: displayName,
       body: body || "(image)",
-      image_url: imageUrl,
-      checklist_item_id: commentCheckId || null,
+      noteType: "Team",
+      noteAssignedTo: "Admin",
+      imageUrl,
     });
     setCommentBusy(false);
-    if (insErr) {
-      setError(insErr.message);
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
     void logTaskEvent(

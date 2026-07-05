@@ -179,33 +179,8 @@ export default function DailysCard({
       />
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Auto-pause on exit /
+            resume on open is handled in page.tsx. */}
 
         <div className="shell">
 
@@ -252,17 +227,13 @@ export default function DailysCard({
             <div className="team" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
           </section>
 
-          {/* Notes section — A-430 pattern (Gap 3): comment feed + inline compose */}
-          <section className="section">
-            <header className="section__head">
-              <span className="section__label">Notes</span>
-              <span className="section__count">
-                {notes.length > 0
-                  ? `${notes.length} left for you`
-                  : "no notes yet"}
-              </span>
-            </header>
-            {notes.length > 0 ? (
+          {/* Notes section — hidden when empty; "N left for you" counter
+              removed (QA: notes are not tasks). */}
+          {notes.length > 0 ? (
+            <section className="section">
+              <header className="section__head">
+                <span className="section__label">Notes</span>
+              </header>
               <div className="notes">
                 {notes.map((note) => (
                   <button key={note.id} className="note" type="button">
@@ -308,10 +279,8 @@ export default function DailysCard({
                   </button>
                 ))}
               </div>
-            ) : null}
-            {/* Day 48 — inline NoteComposeForm removed; compose moved into
-                NoteComposeModal (topstrip-right + button trigger). */}
-          </section>
+            </section>
+          ) : null}
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). */}
           <section className="section">
@@ -462,7 +431,7 @@ export default function DailysCard({
               onClick={onImDone}
               disabled={doneBusy || taskDone || paused}
             >
-              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+              {taskDone ? "Done" : doneBusy ? "…" : "Complete"}
             </button>
           </div>
 

@@ -14,6 +14,7 @@ import {
   resolveAuthUser,
 } from "@/lib/dev-auth-bypass";
 import { supabase } from "@/lib/supabase";
+import { addNote, listNotesForTask } from "@/lib/notes";
 import ReassignPanel from "@/components/admin/ReassignPanel";
 import StayoverStatusPanel from "@/components/admin/StayoverStatusPanel";
 import {
@@ -206,24 +207,33 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       setStaySpecialRequests("");
     }
 
-    const [{ data: ch }, { data: cm }, mt] = await Promise.all([
+    const [{ data: ch }, noteRows, mt] = await Promise.all([
       supabase
         .from("task_checklist_items")
         .select("id, task_id, title, sort_order, done")
         .eq("task_id", taskId)
         .order("sort_order", { ascending: true }),
-      supabase
-        .from("task_comments")
-        .select(
-          "id, task_id, user_id, author_display_name, body, image_url, checklist_item_id, created_at",
-        )
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: true }),
+      // Day 57 — comment thread reads from public.notes now. task_comments
+      // was dropped Day 51; checklist linkage is not stored on notes.
+      listNotesForTask(supabase, taskId),
       fetchMentionTargets(supabase),
     ]);
 
     setChecklist((ch as CheckRow[]) ?? []);
-    setComments((cm as CommentRow[]) ?? []);
+    setComments(
+      noteRows.map(
+        (n): CommentRow => ({
+          id: n.id,
+          task_id: n.task_id,
+          user_id: n.user_id,
+          author_display_name: n.author_display_name,
+          body: n.body,
+          image_url: n.image_url,
+          checklist_item_id: null,
+          created_at: n.created_at,
+        }),
+      ),
+    );
     setMentionTargets(mt);
 
     if (!openedLogged.current) {
@@ -483,17 +493,20 @@ export default function ManagerCardDetail({ taskId }: { taskId: string }) {
       }
       imageUrl = up.publicUrl;
     }
-    const { error: insErr } = await supabase.from("task_comments").insert({
-      task_id: task.id,
-      user_id: userId,
-      author_display_name: displayName,
+    // Day 57 — comment posts write to public.notes (task_comments dropped
+    // Day 51). Typed as a "Team" note; notes have no checklist linkage.
+    const result = await addNote(supabase, {
+      taskId: task.id,
+      authorUserId: userId,
+      authorDisplayName: displayName,
       body: body || "(image)",
-      image_url: imageUrl,
-      checklist_item_id: commentCheckId || null,
+      noteType: "Team",
+      noteAssignedTo: "Admin",
+      imageUrl,
     });
     setCommentBusy(false);
-    if (insErr) {
-      setError(insErr.message);
+    if (!result.ok) {
+      setError(result.message);
       return;
     }
     void logTaskEvent(

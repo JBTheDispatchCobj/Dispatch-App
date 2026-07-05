@@ -15,6 +15,7 @@ import {
 import ProfileLoadError from "@/app/profile-load-error";
 import { supabase } from "@/lib/supabase";
 import {
+  isRolledOver,
   partitionStaffHomeTasks,
   staffHomeBucketForTask,
   type StaffHomeBucket,
@@ -365,14 +366,17 @@ export default function StaffHomePage() {
       setLoadingTasks(false);
       return;
     }
-    const rows = ((data ?? []) as Record<string, unknown>[]).map((r) => ({
-      id: String(r.id),
-      title: String(r.title ?? ""),
-      status: String(r.status ?? "open"),
-      card_type: String(r.card_type ?? "housekeeping_turn"),
-      context: r.context,
-      room_number: r.room_number ? String(r.room_number) : null,
-    }));
+    const rows = ((data ?? []) as Record<string, unknown>[])
+      .map((r) => ({
+        id: String(r.id),
+        title: String(r.title ?? ""),
+        status: String(r.status ?? "open"),
+        card_type: String(r.card_type ?? "housekeeping_turn"),
+        context: r.context,
+        room_number: r.room_number ? String(r.room_number) : null,
+      }))
+      // Day 57 — drop departures an admin has rolled over (Jennifer QA §3 #31).
+      .filter((r) => !isRolledOver(r));
     setTasks(rows);
 
     // Day 54 chase #3 — fetch task_checklist_items for any Dailys task(s)

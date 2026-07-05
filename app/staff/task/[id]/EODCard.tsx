@@ -205,33 +205,8 @@ export default function EODCard({
       />
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Auto-pause on exit /
+            resume on open is handled in page.tsx. */}
 
         <div className="shell">
 

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { type TaskCard } from "@/app/tasks/[id]/task-card-shared";
 import { type NoteRow } from "@/lib/notes";
 import { type MaintenanceIssueRow } from "@/lib/maintenance";
 import { type Reservation } from "@/lib/reservations";
+import { logTaskEvent, taskEventType, withTaskEventSchema } from "@/lib/task-events";
+import { supabase } from "@/lib/supabase";
 import NoteComposeModal from "./NoteComposeModal";
 import MaintenanceComposeForm from "./MaintenanceComposeForm";
 import {
@@ -30,25 +32,55 @@ function formatDeepCleanDate(ymd: string | null): string {
 // Departure-specific types
 // ---------------------------------------------------------------------------
 
-type DepartureStatus = "open" | "stripped" | "sheets" | "done";
+// Day 57 — multi-select status model (Jennifer QA §3). Order is the room's
+// turnover arc: Open -> Stripped -> Odobanned -> Has Sheets -> Done. Several
+// can be lit at once (multi-select); a fresh card has NONE selected (no
+// auto-default). Replaces the old display-only single-value pills.
+type DepartureStatusKey =
+  | "open"
+  | "stripped"
+  | "odobanned"
+  | "has_sheets"
+  | "done";
 
-const DEPARTURE_STATUS_CHIPS: ReadonlyArray<{
-  value: DepartureStatus;
+const DEPARTURE_STATUS_OPTIONS: ReadonlyArray<{
+  value: DepartureStatusKey;
   label: string;
 }> = [
-  { value: "open",     label: "Open" },
-  { value: "sheets",   label: "Sheets" },
-  { value: "stripped", label: "Stripped" },
-  { value: "done",     label: "Done" },
+  { value: "open",       label: "Open" },
+  { value: "stripped",   label: "Stripped" },
+  { value: "odobanned",  label: "Odobanned" },
+  { value: "has_sheets", label: "Has Sheets" },
+  { value: "done",       label: "Done" },
 ];
+
+const VALID_DEPARTURE_STATUS_KEYS = new Set<string>([
+  "open",
+  "stripped",
+  "odobanned",
+  "has_sheets",
+  "done",
+]);
 
 // ---------------------------------------------------------------------------
 // Context parsers
 // ---------------------------------------------------------------------------
 
-function parseDepartureStatus(raw: unknown): DepartureStatus {
-  if (raw === "stripped" || raw === "sheets" || raw === "done") return raw;
-  return "open";
+// Multi-select, no auto-default: returns [] for a fresh card. Also tolerates a
+// legacy single-string value from the old display-only pills (maps the retired
+// "sheets" key to the new "has_sheets").
+function parseDepartureStatuses(raw: unknown): DepartureStatusKey[] {
+  if (Array.isArray(raw)) {
+    return raw.filter(
+      (v): v is DepartureStatusKey =>
+        typeof v === "string" && VALID_DEPARTURE_STATUS_KEYS.has(v),
+    );
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    const v = raw.trim() === "sheets" ? "has_sheets" : raw.trim();
+    return VALID_DEPARTURE_STATUS_KEYS.has(v) ? [v as DepartureStatusKey] : [];
+  }
+  return [];
 }
 
 type GuestRecord = {
@@ -255,12 +287,12 @@ export type DeparturesCardProps = {
 
 export default function DeparturesCard({
   task,
-  userId: _userId,
+  userId,
   displayName: _displayName,
   checklist,
   notes,
   inlineError,
-  setInlineError: _setInlineError,
+  setInlineError,
   noteBody,
   setNoteBody,
   noteType,
@@ -315,7 +347,13 @@ export default function DeparturesCard({
   // mount inside .setstat. State scoped to this card; opens/closes locally.
   const [noteModalOpen, setNoteModalOpen] = useState(false);
 
-  const departureStatus = parseDepartureStatus(task.context.departure_status);
+  // Day 57 — staff-writable multi-select status. Mirrors the StayoversCard
+  // pattern: local state seeded from context, merge-safe write to
+  // tasks.context.departure_status, audit event on every toggle.
+  const [selectedStatuses, setSelectedStatuses] = useState<DepartureStatusKey[]>(
+    parseDepartureStatuses(task.context.departure_status),
+  );
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const checklistTree = resolveChecklist("housekeeping_turn", task.room_number);
   const outgoingParsed = parseGuestRecord(task.context.outgoing_guest);
@@ -330,11 +368,52 @@ export default function DeparturesCard({
     isAllNull(incomingParsed) && incomingReservation
       ? guestRecordFromReservation(incomingReservation, "incoming")
       : incomingParsed;
+  // QA #32 — hide the "Incoming" column entirely when nobody arrives into this
+  // room today (no incoming context AND no matching incoming reservation). When
+  // hidden, the Outgoing column takes the full width (.cols--single).
+  const hasIncoming = !isAllNull(incoming);
 
   const taskDone   = task.status === "done";
   const inProgress = task.status === "in_progress";
   const paused     = task.status === "paused";
   const stepsLocked = checklistInteractionDisabled(task.status);
+
+  // Toggle a status chip. Disabled while a save is in flight, after the task
+  // is done, or before sign-in. Shows the raw Supabase error on failure.
+  const onToggleDepartureStatus = useCallback(
+    async (key: DepartureStatusKey) => {
+      if (!userId || statusBusy || taskDone) return;
+      const prev = selectedStatuses;
+      const next = prev.includes(key)
+        ? prev.filter((s) => s !== key)
+        : [...prev, key];
+
+      setStatusBusy(true);
+      setInlineError(null);
+
+      const { error: upErr } = await supabase
+        .from("tasks")
+        .update({ context: { ...task.context, departure_status: next } })
+        .eq("id", task.id);
+
+      if (upErr) {
+        setInlineError(upErr.message);
+        setStatusBusy(false);
+        return;
+      }
+
+      await logTaskEvent(
+        task.id,
+        taskEventType.departureStatusChanged,
+        withTaskEventSchema({ from: prev, to: next }),
+        userId,
+      );
+
+      setSelectedStatuses(next);
+      setStatusBusy(false);
+    },
+    [userId, statusBusy, taskDone, selectedStatuses, task, setInlineError],
+  );
 
   const descNote =
     task.description?.trim() && task.description.trim().length > 0
@@ -385,34 +464,8 @@ export default function DeparturesCard({
 
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused.
-            Back nav lives in the topstrip below; toolbar is action-only here. */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Auto-pause on exit /
+            resume on open is handled in page.tsx. */}
 
         <div className="shell">
 
@@ -442,14 +495,43 @@ export default function DeparturesCard({
             <div className="greet__date">{dueTime ? `Due ${dueTime}` : " "}</div>
           </header>
 
-          {/* Day 48 — manager note moved out of above-brief and into the
-              setstat container below as a setstat__row, between Room Spray
-              and Status (Bryan's spec). The standalone .manager-note block
-              is unused on this card. */}
+          {/* Day 57 — Status block relocated to the TOP, above guest details
+              (Jennifer QA §3). Multi-select chips, no auto-default. Staff tap
+              to record turnover progress; each toggle writes
+              context.departure_status (array) + emits departure_status_changed. */}
+          <section className="statcard">
+            <div className="statcard__head">
+              <span>Status</span>
+              <span className="statcard__sub">{statusBusy ? "Saving…" : ""}</span>
+            </div>
+            <div className="statcard__pills">
+              {DEPARTURE_STATUS_OPTIONS.map((opt) => {
+                const isActive = selectedStatuses.includes(opt.value);
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => onToggleDepartureStatus(opt.value)}
+                    disabled={!userId || statusBusy || taskDone}
+                    aria-pressed={isActive}
+                    className={
+                      isActive
+                        ? "status-pill status-pill--active"
+                        : "status-pill"
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-          {/* Brief — outgoing / incoming dual column */}
+          {/* Brief — outgoing / incoming dual column. QA #32: the Incoming
+              column is hidden and Outgoing spans full width when no one arrives
+              into this room today. */}
           <section className="brief">
-            <div className="cols">
+            <div className={hasIncoming ? "cols" : "cols cols--single"}>
               <div className="col">
                 <h3 className="col__heading">Outgoing</h3>
                 <div className="col__row">
@@ -465,28 +547,33 @@ export default function DeparturesCard({
                   <span className="col__value">{outgoing.clean_type ?? "—"}</span>
                 </div>
               </div>
-              <div className="col col--right">
-                <h3 className="col__heading">Incoming</h3>
-                <div className="col__row">
-                  <span className="col__label">Party</span>
-                  <span className="col__value">{incoming.party ?? "—"}</span>
+              {hasIncoming ? (
+                <div className="col col--right">
+                  <h3 className="col__heading">Incoming</h3>
+                  <div className="col__row">
+                    <span className="col__label">Party</span>
+                    <span className="col__value">{incoming.party ?? "—"}</span>
+                  </div>
+                  <div className="col__row">
+                    <span className="col__label">Nights</span>
+                    <span className="col__value">{incoming.nights ?? "—"}</span>
+                  </div>
+                  <div className="col__row">
+                    <span className="col__label">Notes</span>
+                    <span className="col__value col__value--small">{incoming.notes ?? "—"}</span>
+                  </div>
                 </div>
-                <div className="col__row">
-                  <span className="col__label">Nights</span>
-                  <span className="col__value">{incoming.nights ?? "—"}</span>
-                </div>
-                <div className="col__row">
-                  <span className="col__label">Notes</span>
-                  <span className="col__value col__value--small">{incoming.notes ?? "—"}</span>
-                </div>
-              </div>
+              ) : null}
             </div>
           </section>
 
-          {/* Setstat — setup (read-only display) + notes compose + status pills */}
+          {/* Setup group (Day 57 — Jennifer QA §3): Room Spray folded in under a
+              single "Setup" heading; the Status row was relocated to the top of
+              the card. */}
           <section className="setstat">
+            <div className="setstat__caption">Setup</div>
             <div className="setstat__row">
-              <div className="setstat__label">Setup</div>
+              <div className="setstat__label">Notes</div>
               <div className="setstat__input">{descNote ?? "—"}</div>
             </div>
             <div className="setstat__row">
@@ -494,8 +581,7 @@ export default function DeparturesCard({
               <div className="setstat__input">{seasonalScent}</div>
             </div>
             {/* Day 48 — Manager Note row. Renders only when AddTaskModal
-                wrote a non-empty task.context.notes string. Placed between
-                Room Spray and Status per Bryan's spec. Inline whitespace
+                wrote a non-empty task.context.notes string. Inline whitespace
                 styles preserve any line breaks in the note body. */}
             {managerNote ? (
               <div className="setstat__row">
@@ -508,23 +594,6 @@ export default function DeparturesCard({
                 </div>
               </div>
             ) : null}
-            <div className="setstat__row setstat__row--status">
-              <div className="setstat__label">Status</div>
-              <div className="setstat__pills" role="group" aria-label="Room turnover status">
-                {DEPARTURE_STATUS_CHIPS.map((chip) => (
-                  <span
-                    key={chip.value}
-                    className={
-                      departureStatus === chip.value
-                        ? "status-pill status-pill--active"
-                        : "status-pill"
-                    }
-                  >
-                    {chip.label}
-                  </span>
-                ))}
-              </div>
-            </div>
           </section>
 
           {inlineError ? <p className="error">{inlineError}</p> : null}
@@ -590,13 +659,11 @@ export default function DeparturesCard({
             </div>
           </section>
 
-          {/* Per-room work — Deep Clean + Maintenance as collapsible exrow
-              cards (D-430 artifact). Deep Clean expands to the 7-item tray;
-              Maintenance expands to the issue list + Log New Issue drawer. */}
+          {/* Deep Clean + Maintenance as collapsible exrow cards (D-430
+              artifact). Section renamed "Per-room work" → "Deep Clean" (QA). */}
           <section className="section">
             <header className="section__head">
-              <span className="section__label">Per-room work</span>
-              <span className="section__count">Deep Clean &middot; Maintenance</span>
+              <span className="section__label">Deep Clean</span>
             </header>
 
             {/* Deep Clean — collapsible */}
@@ -689,17 +756,8 @@ export default function DeparturesCard({
                 <span className="exrow__icon">MX</span>
                 <div className="exrow__text">
                   <div className="exrow__title">Maintenance</div>
-                  <div className="exrow__sub">
-                    {maintenanceItems.length === 0
-                      ? "No issues"
-                      : `${maintenanceItems.length} open · ${
-                          maintenanceItems.filter((m) => m.severity === "High").length
-                        } high · ${
-                          maintenanceItems.filter((m) => m.severity === "Normal").length
-                        } normal · ${
-                          maintenanceItems.filter((m) => m.severity === "Low").length
-                        } low`}
-                  </div>
+                  {/* QA: redundant breakdown count under the title removed when
+                      collapsed; the side count (exrow__count) is kept. */}
                 </div>
                 <span className="exrow__count">{maintenanceItems.length}</span>
                 <span className="exrow__chev">›</span>
@@ -852,7 +910,7 @@ export default function DeparturesCard({
               onClick={onImDone}
               disabled={doneBusy || taskDone || paused}
             >
-              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+              {taskDone ? "Done" : doneBusy ? "…" : "Complete"}
             </button>
           </div>
 

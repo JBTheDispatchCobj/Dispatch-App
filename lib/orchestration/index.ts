@@ -49,7 +49,11 @@ export async function openCard(
     return { ok: true };
   }
 
-  if (status === "open") {
+  // Day 57 — opening a card resumes it. "open" starts it; "paused" resumes
+  // it (the Pause/Resume buttons were removed, so opening is the only resume
+  // path). paused_at is cleared on resume. "blocked" and "in_progress" are
+  // left untouched.
+  if (status === "open" || status === "paused") {
     const startedAt =
       row.started_at ??
       new Date().toISOString();
@@ -58,13 +62,14 @@ export async function openCard(
       .update({
         status: "in_progress",
         started_at: startedAt,
+        paused_at: null,
       })
       .eq("id", taskId);
     if (upErr) return { ok: false, message: upErr.message };
     await logTaskEvent(
       taskId,
       taskEventType.statusChanged,
-      withTaskEventSchema({ from: "open", to: "in_progress", reason: "card_opened" }),
+      withTaskEventSchema({ from: status, to: "in_progress", reason: "card_opened" }),
       userId,
     );
   }
@@ -151,16 +156,12 @@ export async function requestHelp(
     authorDisplayName: string;
   },
 ): Promise<OrchestrationResult> {
-  const { taskId, userId, authorDisplayName } = input;
-  const note = await addTaskComment(client, {
-    taskId,
-    userId,
-    authorDisplayName,
-    body: "Needs help",
-    imageUrl: null,
-    checklistItemId: null,
-  });
-  if (!note.ok) return note;
+  // Day 57 — the legacy "Needs help" task_comments breadcrumb was removed.
+  // public.task_comments was dropped Day 51 (drop_task_comments.sql), so the
+  // insert errored and the early `if (!note.ok) return note;` aborted the
+  // entire Need Help action on every card. The needsHelp task_event emitted
+  // below is the real, RLS-correct record of this action.
+  const { taskId, userId } = input;
 
   const { data: row, error: fetchErr } = await client
     .from("tasks")
@@ -203,7 +204,7 @@ export async function completeCard(
     authorDisplayName: string;
   },
 ): Promise<OrchestrationResult> {
-  const { taskId, userId, authorDisplayName } = input;
+  const { taskId, userId } = input;
 
   const { data: task, error: tErr } = await client
     .from("tasks")
@@ -244,18 +245,11 @@ export async function completeCard(
     }
   }
 
-  const commentFirst = await addTaskComment(client, {
-    taskId,
-    userId,
-    authorDisplayName,
-    body: "Marked done",
-    imageUrl: null,
-    checklistItemId: null,
-  });
-  if (!commentFirst.ok) {
-    return { ok: false, message: commentFirst.message };
-  }
-
+  // Day 57 — removed the "Marked done" task_comments breadcrumb. That table
+  // was dropped Day 51 (drop_task_comments.sql); the failing insert here was
+  // aborting every "I'm Done" / "Start Shift" / "Wrap Shift" button before
+  // the status could flip to done. The markedDone + statusChanged task_events
+  // emitted below are the real record of completion.
   const now = new Date().toISOString();
   const { error: upErr } = await client
     .from("tasks")
@@ -317,50 +311,10 @@ export async function toggleChecklistItem(
   return { ok: true, data: { title } };
 }
 
-export async function addTaskComment(
-  client: SupabaseClient,
-  input: {
-    taskId: string;
-    userId: string;
-    authorDisplayName: string;
-    body: string;
-    imageUrl: string | null;
-    checklistItemId: string | null;
-  },
-): Promise<OrchestrationResult> {
-  const {
-    taskId,
-    userId,
-    authorDisplayName,
-    body,
-    imageUrl,
-    checklistItemId,
-  } = input;
-
-  const { error: insErr } = await client.from("task_comments").insert({
-    task_id: taskId,
-    user_id: userId,
-    author_display_name: authorDisplayName,
-    body,
-    image_url: imageUrl,
-    checklist_item_id: checklistItemId,
-  });
-  if (insErr) return { ok: false, message: insErr.message };
-
-  await logTaskEvent(
-    taskId,
-    taskEventType.commentAdded,
-    withTaskEventSchema({
-      body,
-      has_image: Boolean(imageUrl),
-      ...(checklistItemId
-        ? { checklist_item_id: checklistItemId }
-        : {}),
-    }),
-    userId,
-  );
-  return { ok: true };
-}
+/* Day 57 — addTaskComment() removed. It wrote to public.task_comments, which
+ * was dropped Day 51 (drop_task_comments.sql). Its two callers (requestHelp,
+ * completeCard) now rely on task_events for their audit record. Notes are
+ * authored separately via lib/notes.ts addNote(). */
 
 /**
  * Admin reassignment of a task between staff (master plan III.H / Global

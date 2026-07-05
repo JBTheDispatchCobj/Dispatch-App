@@ -261,6 +261,22 @@ export default function ArrivalsCard({
       ? incomingGuestFromReservation(incomingReservation)
       : null);
 
+  // QA #34 — nights. The daily batch writes a partial incoming_guest
+  // (name + room_type + checkin_time) but NOT nights, so parsedGuest.nights is
+  // null and the all-or-nothing reservation fallback above never fires. Prefer
+  // the context value, then fall back to the live reservation's generated
+  // nights (real: derived from arrival/departure dates in the CSV).
+  const effectiveNights =
+    guest?.nights ?? incomingReservation?.nights ?? null;
+
+  // QA #34 — return status. Rendered only when true (like the VIP banner), so
+  // nothing misleading shows for first-time guests. Sourced from the live
+  // reservation's return_guest column. NOTE: the current channel-manager CSV
+  // does not carry a returning-guest flag, so return_guest defaults to false
+  // today — this row stays dormant until the export (or a manual edit)
+  // populates it, then lights up with no further code change.
+  const isReturnGuest = Boolean(incomingReservation?.return_guest);
+
   const taskDone = task.status === "done";
   const inProgress = task.status === "in_progress";
   const paused = task.status === "paused";
@@ -281,9 +297,7 @@ export default function ArrivalsCard({
     : "—";
 
   const nightsDisplay =
-    guest?.nights !== null && guest?.nights !== undefined
-      ? String(guest.nights)
-      : "—";
+    effectiveNights !== null ? String(effectiveNights) : "—";
 
   const requestsDisplay = guest?.special_requests ?? "—";
 
@@ -296,8 +310,8 @@ export default function ArrivalsCard({
     : dueTime;
   const dateLine = [
     checkinStr ? `Check-in ${checkinStr}` : null,
-    guest?.nights != null
-      ? `${guest.nights} night${guest.nights !== 1 ? "s" : ""}`
+    effectiveNights != null
+      ? `${effectiveNights} night${effectiveNights !== 1 ? "s" : ""}`
       : null,
   ]
     .filter(Boolean)
@@ -338,33 +352,8 @@ export default function ArrivalsCard({
 
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Auto-pause on exit /
+            resume on open is handled in page.tsx. */}
 
         <div className="shell">
 
@@ -423,10 +412,22 @@ export default function ArrivalsCard({
               <span className="briefrow__label">Nights</span>
               <span className="briefrow__value">{nightsDisplay}</span>
             </div>
-            <div className="briefrow">
-              <span className="briefrow__label">Requests</span>
-              <span className="briefrow__value">{requestsDisplay}</span>
-            </div>
+            {/* QA #34: return status — shown only for returning guests (hidden
+                otherwise, no "—" row). Dormant until the reservation feed carries
+                a returning-guest flag. */}
+            {isReturnGuest ? (
+              <div className="briefrow">
+                <span className="briefrow__label">Return status</span>
+                <span className="briefrow__value">Returning guest</span>
+              </div>
+            ) : null}
+            {/* QA: hide Requests row when there are none (no "—" row). */}
+            {requestsDisplay !== "—" ? (
+              <div className="briefrow">
+                <span className="briefrow__label">Requests</span>
+                <span className="briefrow__value">{requestsDisplay}</span>
+              </div>
+            ) : null}
             {descNote ? (
               <div className="briefrow">
                 <span className="briefrow__label">Setup</span>
@@ -437,17 +438,13 @@ export default function ArrivalsCard({
 
           {inlineError ? <p className="error">{inlineError}</p> : null}
 
-          {/* Notes section — comment feed + inline compose below */}
-          <section className="section">
-            <header className="section__head">
-              <span className="section__label">Notes</span>
-              <span className="section__count">
-                {notes.length > 0
-                  ? `${notes.length} left for you`
-                  : "no notes yet"}
-              </span>
-            </header>
-            {notes.length > 0 ? (
+          {/* Notes section — hidden when empty; "N left for you" counter
+              removed (QA: notes are not tasks). */}
+          {notes.length > 0 ? (
+            <section className="section">
+              <header className="section__head">
+                <span className="section__label">Notes</span>
+              </header>
               <div className="notes">
                 {notes.map((note) => (
                   <button key={note.id} className="note" type="button">
@@ -493,19 +490,17 @@ export default function ArrivalsCard({
                   </button>
                 ))}
               </div>
-            ) : null}
-            {/* Day 48 — inline NoteComposeForm removed; compose moved into
-                NoteComposeModal (topstrip-right + button trigger). Notes
-                feed above stays inline as informational read-only display. */}
-          </section>
+            </section>
+          ) : null}
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). */}
           <section className="section">
             <header className="section__head">
               <span className="section__label">Maintenance</span>
+              {/* QA: faded "Report an issue" corner text removed. */}
               <span className="section__count">
                 {maintenanceItems.length === 0
-                  ? "Report an issue"
+                  ? ""
                   : `${maintenanceItems.length} issue${maintenanceItems.length !== 1 ? "s" : ""}`}
               </span>
             </header>
@@ -662,7 +657,7 @@ export default function ArrivalsCard({
               onClick={onImDone}
               disabled={doneBusy || taskDone || paused}
             >
-              {taskDone ? "Done" : doneBusy ? "…" : "I'm Done"}
+              {taskDone ? "Done" : doneBusy ? "…" : "Complete"}
             </button>
           </div>
 

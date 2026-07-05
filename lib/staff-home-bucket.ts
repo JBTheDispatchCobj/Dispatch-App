@@ -107,6 +107,15 @@ export function staffHomeBucketForTask(row: {
   return "start_of_day";
 }
 
+/**
+ * A departure rolled over by an admin (context.rolled_over === true) is hidden
+ * from the staff home list. Day 57 — Jennifer QA §3 #31. The task row is kept
+ * for history; only the staff-facing rendering filters it out.
+ */
+export function isRolledOver(row: { context?: unknown }): boolean {
+  return parseContext(row.context)["rolled_over"] === true;
+}
+
 export function partitionStaffHomeTasks<
   T extends { card_type: string; context?: unknown },
 >(tasks: T[]): Record<StaffHomeBucket, T[]> {

@@ -3266,6 +3266,12 @@ main.wrap--wide {
   grid-template-columns: 1fr 1fr;
 }
 
+/* QA #32 — single-column brief when the Incoming column is hidden (no arrival
+   into this room today). Outgoing takes the full width. */
+.preview-d-430 .cols--single {
+  grid-template-columns: 1fr;
+}
+
 .preview-d-430 .col { padding: 16px; }
 
 .preview-d-430 .col--right { border-left: 1px solid var(--hairline); }
@@ -3374,31 +3380,92 @@ main.wrap--wide {
   align-items: center;
 }
 
+/* Day 57 — Departures status card at the top of the D-430 (multi-select,
+   staff-writable). Mirrors the S-430 .statcard treatment so the two status
+   surfaces feel consistent; active pills use the Departures accent. */
+.preview-d-430 .statcard {
+  background: #FFFFFF;
+  border-radius: 14px;
+  box-shadow: var(--shadow-raised);
+  margin-bottom: 14px;
+  padding: 13px 16px 14px;
+}
+
+.preview-d-430 .statcard__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--ink-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  padding-bottom: 9px;
+  margin-bottom: 11px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.preview-d-430 .statcard__sub {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.preview-d-430 .statcard__pills { display: flex; gap: 6px; flex-wrap: wrap; }
+
 .preview-d-430 .status-pill {
+  appearance: none;
+  -webkit-appearance: none;
   border: 1.5px solid var(--ink-faint);
   background: transparent;
   color: var(--ink-soft);
-  padding: 6px 11px;
+  padding: 7px 12px;
   border-radius: 999px;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.10em;
   font-weight: 700;
   text-transform: uppercase;
-  cursor: default;
-  pointer-events: none;
+  cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease,
+    box-shadow 120ms ease;
 }
 
+.preview-d-430 .status-pill:hover:not(:disabled) {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+}
+
+.preview-d-430 .status-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.preview-d-430 .status-pill:disabled { cursor: not-allowed; opacity: 0.55; }
+
 .preview-d-430 .status-pill--active {
-  background: var(--alert);
-  border-color: var(--alert);
-  color: #FFFFFF;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.22);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--shell-ink);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.18),
-    0 0 14px var(--alert-tint);
+    0 0 14px var(--accent-tint);
+}
+
+.preview-d-430 .setstat__caption {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  color: var(--ink-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 13px 16px 2px;
 }
 
 

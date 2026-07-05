@@ -12,6 +12,7 @@ import {
 import ProfileLoadError from "../profile-load-error";
 import AddTaskModal from "@/components/admin/AddTaskModal";
 import NotificationCenter from "@/components/admin/NotificationCenter";
+import RolloverQuickAction from "@/components/admin/RolloverQuickAction";
 import {
   getCurrentWeather,
   getOnShiftCount,
@@ -224,6 +225,10 @@ export default function AdminHomePage() {
             </Link>
           </div>
         </div>
+
+        {/* Rollover quick action — Day 57 (Jennifer QA §3 #31). Lists today's
+            open departures; rolling one hides it from Angie's staff list. */}
+        <RolloverQuickAction />
 
         {/* Notification Center — Day 55, NC Region 3. Lifted directly under the
             Daily Brief; replaces the retired Watchlist / Scheduling / Critical /

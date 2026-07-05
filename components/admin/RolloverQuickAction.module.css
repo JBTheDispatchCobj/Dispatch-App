@@ -1,0 +1,114 @@
+/* Day 57 — Rollover quick action on the admin home. Cream surface matching the
+   Daily Brief / Notification Center; uses global tokens from globals.css. */
+
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: var(--shadow-raised, 0 1px 3px rgba(0, 0, 0, 0.08));
+  padding: 14px 16px 16px;
+  margin-bottom: 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--ink-muted, #6b6b6b);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--hairline, #e7e3da);
+}
+
+.count {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft, #8a8a8a);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--hairline, #e7e3da);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowTitle {
+  font-family: var(--sans, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--shell-ink, #2a2a2a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowSub {
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #8a8a8a);
+  margin-top: 2px;
+}
+
+.rollBtn {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  border: 1.5px solid var(--ink-faint, #cfcabf);
+  background: transparent;
+  color: var(--shell-ink, #2a2a2a);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.rollBtn:hover:not(:disabled) {
+  border-color: var(--ink-soft, #8a8a8a);
+  background: var(--accent-soft, #f3f0e8);
+}
+
+.rollBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.empty {
+  font-family: var(--sans, sans-serif);
+  font-size: 13px;
+  color: var(--ink-soft, #8a8a8a);
+  padding: 8px 0 2px;
+}
+
+.error {
+  color: var(--alert, #c0392b);
+  font-size: 12px;
+  margin: 4px 0 8px;
+  word-break: break-word;
+}

@@ -248,6 +248,18 @@ export default function StaffTaskExecutionPage() {
   const openCardRunForTaskId = useRef<string | null>(null);
   const prevRouteTaskIdRef = useRef<string | null>(null);
 
+  // Day 57 — auto-pause-on-exit (the manual Pause/Resume buttons were removed
+  // per Jennifer's QA). exitRef holds the latest task id / user / status so the
+  // unmount cleanup can pause an in-progress card the staff stepped away from
+  // without completing. skipAutoPauseRef short-circuits that when we leave the
+  // card BECAUSE it was just completed (onImDone navigates to /staff).
+  const exitRef = useRef<{
+    taskId: string | null;
+    userId: string | null;
+    status: string | null;
+  }>({ taskId: null, userId: null, status: null });
+  const skipAutoPauseRef = useRef(false);
+
   const load = useCallback(async () => {
     setLoadError(null);
 
@@ -426,6 +438,30 @@ export default function StaffTaskExecutionPage() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Keep the exit snapshot current so the unmount cleanup below reads the
+  // live task id / status (a ref, not stale closure state).
+  useEffect(() => {
+    exitRef.current = {
+      taskId: task?.id ?? null,
+      userId,
+      status: task?.status ?? null,
+    };
+  }, [task?.id, task?.status, userId]);
+
+  // Auto-pause-on-exit. On unmount (staff leaves the card route, e.g. back to
+  // /staff), pause the card if it is still in progress and we are not leaving
+  // because it was just completed. pauseCard guards on the live DB status, so
+  // a card already moved off in_progress is a safe no-op. Fire-and-forget —
+  // the page is going away. Opening the card again resumes it (openCard).
+  useEffect(() => {
+    return () => {
+      if (skipAutoPauseRef.current) return;
+      const { taskId: tid, userId: uid, status } = exitRef.current;
+      if (!tid || !uid || status !== "in_progress") return;
+      void pauseCard(supabase, { taskId: tid, userId: uid });
+    };
+  }, []);
+
   const toggleItem = useCallback(
     async (row: ExecutionChecklistItem) => {
       if (!task || !userId) return;
@@ -476,7 +512,12 @@ export default function StaffTaskExecutionPage() {
             details: item.details,
             sourceTaskId: task.id,
             userId,
-            displayName,
+            // Stamp the room's assigned housekeeper (staff-directory name),
+            // not the logged-in account's profile name. Fixes the "wrong staff
+            // name" bug: test/master-staff accounts share Angie's staff_id but
+            // have different profile display names, so the logger's name was
+            // showing instead of the housekeeper's.
+            displayName: displayAssignee(task) || displayName,
           });
       if (!r.ok) {
         setInlineError(r.message);
@@ -537,6 +578,9 @@ export default function StaffTaskExecutionPage() {
       }
     }
 
+    // Day 57 — we are leaving the card because it completed; suppress the
+    // auto-pause-on-exit cleanup so it doesn't flip the just-completed card.
+    skipAutoPauseRef.current = true;
     setDoneBusy(false);
     router.push("/staff");
   }, [task, userId, staffId, displayName, router]);
@@ -1135,30 +1179,8 @@ export default function StaffTaskExecutionPage() {
           <Link href="/staff" className="staff-task-exec-back">
             ← Tasks
           </Link>
-          {!taskDone ? (
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={() => void onPause()}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={() => void onResume()}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          {/* Day 57 — Pause/Resume buttons removed (QA). Cards auto-pause on
+              exit and resume on open; no manual toolbar actions. */}
         </header>
 
         <p className="staff-task-exec-room-label">

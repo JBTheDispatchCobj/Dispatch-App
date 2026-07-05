@@ -192,7 +192,6 @@ export default function StartOfDayCard({
       : null;
 
   const firstName = firstNameFromDisplayName(displayName);
-  const doneCount = checklist.filter((i) => i.done).length;
 
   return (
     <div className="preview-sod-430">
@@ -219,33 +218,8 @@ export default function StartOfDayCard({
       />
       <div className="page">
 
-        {/* Pause/Resume toolbar — above shell, only when task is active or paused */}
-        {!taskDone && (inProgress || paused) ? (
-          <header className="staff-task-exec-top staff-task-exec-toolbar">
-            <div className="staff-task-exec-toolbar-actions">
-              {inProgress ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onPause}
-                  disabled={pauseBusy}
-                >
-                  {pauseBusy ? "…" : "Pause"}
-                </button>
-              ) : null}
-              {paused ? (
-                <button
-                  type="button"
-                  className="staff-task-exec-linkbtn"
-                  onClick={onResume}
-                  disabled={resumeBusy}
-                >
-                  {resumeBusy ? "…" : "Resume"}
-                </button>
-              ) : null}
-            </div>
-          </header>
-        ) : null}
+        {/* Day 57 — Pause/Resume toolbar removed (QA). Cards auto-pause on exit
+            and resume on open; handled in page.tsx, no manual buttons. */}
 
         <div className="shell">
 
@@ -320,31 +294,25 @@ export default function StartOfDayCard({
             </div>
           </section>
 
-          {/* Updates panel — always render; locked placeholder when no content */}
-          <section className="updates">
-            <header className="updates__head">
-              <span className="updates__label">Updates</span>
-            </header>
-            {updatesText ? (
+          {/* Updates panel — hidden entirely when blank (QA: no empty Updates). */}
+          {updatesText ? (
+            <section className="updates">
+              <header className="updates__head">
+                <span className="updates__label">Updates</span>
+              </header>
               <div className="updates__body">
                 <p className="updates__text">{updatesText}</p>
               </div>
-            ) : (
-              <div className="updates__body" aria-hidden style={{ opacity: 0.55, minHeight: "52px" }} />
-            )}
-          </section>
+            </section>
+          ) : null}
 
-          {/* Notes section — A-430 pattern: comment feed + inline compose (Gap 6) */}
-          <section className="section">
-            <header className="section__head">
-              <span className="section__label">Notes</span>
-              <span className="section__count">
-                {notes.length > 0
-                  ? `${notes.length} left for you`
-                  : "no notes yet"}
-              </span>
-            </header>
-            {notes.length > 0 ? (
+          {/* Notes section — hidden entirely when empty; "N left for you"
+              counter removed (QA: notes are not tasks). */}
+          {notes.length > 0 ? (
+            <section className="section">
+              <header className="section__head">
+                <span className="section__label">Notes</span>
+              </header>
               <div className="notes">
                 {notes.map((note) => (
                   <button key={note.id} className="note" type="button">
@@ -390,10 +358,8 @@ export default function StartOfDayCard({
                   </button>
                 ))}
               </div>
-            ) : null}
-            {/* Day 48 — inline NoteComposeForm removed; compose moved into
-                NoteComposeModal (topstrip-right + button trigger). */}
-          </section>
+            </section>
+          ) : null}
 
           {/* Maintenance compose drawer — master plan III.B (Day 33). */}
           <section className="section">
@@ -483,14 +449,8 @@ export default function StartOfDayCard({
 
           {inlineError ? <p className="error">{inlineError}</p> : null}
 
-          {/* Today's Tasks — 2-col grid; no per-item sub-labels (Gap 7) */}
+          {/* Today's Tasks — 2-col grid; section header removed (QA). */}
           <section className="section">
-            <header className="section__head">
-              <span className="section__label">Today's Tasks</span>
-              <span className="section__count">
-                {doneCount} of {checklist.length} done
-              </span>
-            </header>
             {checklist.length > 0 ? (
               <div className="tasks">
                 {checklist.map((item) => (
@@ -522,7 +482,8 @@ export default function StartOfDayCard({
             )}
           </section>
 
-          {/* CTAs — "Need Help" secondary, "Start Shift" primary (label change only, Gap CTA) */}
+          {/* CTAs — "Need Help" secondary, "Complete" primary (QA: was
+              "Start Shift" — the shift has already started by SOD). */}
           <div className="cta">
             <button
               type="button"
@@ -538,7 +499,7 @@ export default function StartOfDayCard({
               onClick={onImDone}
               disabled={doneBusy || taskDone || paused}
             >
-              {taskDone ? "Done" : doneBusy ? "…" : "Start Shift"}
+              {taskDone ? "Done" : doneBusy ? "…" : "Complete"}
             </button>
           </div>
 
